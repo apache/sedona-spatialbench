@@ -5,8 +5,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use tpchgen::generators::{
-    CustomerGenerator, LineItemGenerator, NationGenerator, OrderGenerator, PartGenerator,
-    PartSuppGenerator, RegionGenerator, DriverGenerator,
+    CustomerGenerator, LineItemGenerator, NationGenerator, OrderGenerator, VehicleGenerator, RegionGenerator, DriverGenerator,
 };
 
 fn read_tbl_gz<P: AsRef<Path>>(path: P) -> Vec<String> {
@@ -74,7 +73,7 @@ fn test_region_sf_0_001() {
 #[test]
 fn test_part_sf_0_001() {
     let sf = 0.001;
-    let generator = PartGenerator::new(sf, 1, 1);
+    let generator = VehicleGenerator::new(sf, 1, 1);
     test_generator(generator.iter(), "data/sf-0.001/part.tbl.gz", |part| {
         part.to_string()
     });
@@ -89,15 +88,6 @@ fn test_supplier_sf_0_001() {
         "data/sf-0.001/supplier.tbl.gz",
         |supplier| supplier.to_string(),
     );
-}
-
-#[test]
-fn test_partsupp_sf_0_001() {
-    let sf = 0.001;
-    let generator = PartSuppGenerator::new(sf, 1, 1);
-    test_generator(generator.iter(), "data/sf-0.001/partsupp.tbl.gz", |ps| {
-        ps.to_string()
-    });
 }
 
 #[test]
@@ -150,7 +140,7 @@ fn test_region_sf_0_01() {
 #[test]
 fn test_part_sf_0_01() {
     let sf = 0.01;
-    let generator = PartGenerator::new(sf, 1, 1);
+    let generator = VehicleGenerator::new(sf, 1, 1);
     test_generator(generator.iter(), "data/sf-0.01/part.tbl.gz", |part| {
         part.to_string()
     });
@@ -165,15 +155,6 @@ fn test_supplier_sf_0_01() {
         "data/sf-0.01/supplier.tbl.gz",
         |supplier| supplier.to_string(),
     );
-}
-
-#[test]
-fn test_partsupp_sf_0_01() {
-    let sf = 0.01;
-    let generator = PartSuppGenerator::new(sf, 1, 1);
-    test_generator(generator.iter(), "data/sf-0.01/partsupp.tbl.gz", |ps| {
-        ps.to_string()
-    });
 }
 
 #[test]

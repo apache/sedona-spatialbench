@@ -6,15 +6,15 @@ use arrow::datatypes::SchemaRef;
 use std::io::Write;
 use std::sync::Arc;
 use tpchgen::csv::{
-    CustomerCsv, LineItemCsv, NationCsv, OrderCsv, PartCsv, PartSuppCsv, RegionCsv, DriverCsv,
+    CustomerCsv, LineItemCsv, NationCsv, OrderCsv, VehicleCsv, RegionCsv, DriverCsv,
 };
 use tpchgen::generators::{
     Customer, CustomerGenerator, LineItem, LineItemGenerator, Nation, NationGenerator, Order,
-    OrderGenerator, Part, PartGenerator, PartSupp, PartSuppGenerator, Region, RegionGenerator,
+    OrderGenerator, Vehicle, VehicleGenerator, Region, RegionGenerator,
     Driver, DriverGenerator,
 };
 use tpchgen_arrow::{
-    CustomerArrow, LineItemArrow, NationArrow, OrderArrow, PartArrow,
+    CustomerArrow, LineItemArrow, NationArrow, OrderArrow, VehicleArrow,
     RecordBatchIterator, RegionArrow, DriverArrow,
 };
 
@@ -44,8 +44,8 @@ test_row_type!(nation_tbl, NationGenerator, NationArrow, Test::tbl());
 test_row_type!(nation_csv, NationGenerator, NationArrow, Test::csv());
 test_row_type!(order_tbl, OrderGenerator, OrderArrow, Test::tbl());
 test_row_type!(order_csv, OrderGenerator, OrderArrow, Test::csv());
-test_row_type!(part_tbl, PartGenerator, PartArrow, Test::tbl());
-test_row_type!(part_csv, PartGenerator, PartArrow, Test::csv());
+test_row_type!(part_tbl, VehicleGenerator, VehicleArrow, Test::tbl());
+test_row_type!(part_csv, VehicleGenerator, VehicleArrow, Test::csv());
 test_row_type!(region_tbl, RegionGenerator, RegionArrow, Test::tbl());
 test_row_type!(region_csv, RegionGenerator, RegionArrow, Test::csv());
 test_row_type!(driver_tbl, DriverGenerator, DriverArrow, Test::tbl());
@@ -82,7 +82,7 @@ impl_row_type!(Customer<'_>, CustomerCsv);
 impl_row_type!(LineItem<'_>, LineItemCsv);
 impl_row_type!(Nation<'_>, NationCsv);
 impl_row_type!(Order<'_>, OrderCsv);
-impl_row_type!(Part<'_>, PartCsv);
+impl_row_type!(Vehicle<'_>, VehicleCsv);
 impl_row_type!(Region<'_>, RegionCsv);
 impl_row_type!(Driver, DriverCsv);
 

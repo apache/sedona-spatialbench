@@ -62,12 +62,11 @@ use std::str::FromStr;
 use std::time::Instant;
 use tpchgen::distribution::Distributions;
 use tpchgen::generators::{
-    CustomerGenerator, LineItemGenerator, NationGenerator, OrderGenerator, PartGenerator,
-    PartSuppGenerator, RegionGenerator, DriverGenerator,
+    CustomerGenerator, LineItemGenerator, NationGenerator, OrderGenerator, VehicleGenerator, RegionGenerator, DriverGenerator,
 };
 use tpchgen::text::TextPool;
 use tpchgen_arrow::{
-    CustomerArrow, LineItemArrow, NationArrow, OrderArrow, PartArrow,
+    CustomerArrow, LineItemArrow, NationArrow, OrderArrow, VehicleArrow,
     RecordBatchIterator, RegionArrow, DriverArrow,
 };
 
@@ -133,7 +132,7 @@ struct Cli {
 enum Table {
     Nation,
     Region,
-    Part,
+    Vehicle,
     Driver,
     Customer,
     Orders,
@@ -175,8 +174,7 @@ impl TypedValueParser for TableValueParser {
                 clap::builder::PossibleValue::new("nation").help("Nation table (alias: n)"),
                 clap::builder::PossibleValue::new("Driver").help("Driver table (alias: s)"),
                 clap::builder::PossibleValue::new("customer").help("Customer table (alias: c)"),
-                clap::builder::PossibleValue::new("part").help("Part table (alias: P)"),
-                clap::builder::PossibleValue::new("partsupp").help("PartSupp table (alias: S)"),
+                clap::builder::PossibleValue::new("vehicle").help("Vehicle table (alias: P)"),
                 clap::builder::PossibleValue::new("orders").help("Orders table (alias: O)"),
                 clap::builder::PossibleValue::new("lineitem").help("LineItem table (alias: L)"),
             ]
@@ -199,7 +197,7 @@ impl FromStr for Table {
             "n" | "nation" => Ok(Table::Nation),
             "r" | "region" => Ok(Table::Region),
             "d" | "Driver" => Ok(Table::Driver),
-            "P" | "part" => Ok(Table::Part),
+            "V" | "vehicle" => Ok(Table::Vehicle),
             "c" | "customer" => Ok(Table::Customer),
             "O" | "orders" => Ok(Table::Orders),
             "L" | "lineitem" => Ok(Table::Lineitem),
@@ -213,9 +211,8 @@ impl Table {
         match self {
             Table::Nation => "nation",
             Table::Region => "region",
-            Table::Part => "part",
+            Table::Vehicle => "vehicle",
             Table::Driver => "Driver",
-            Table::Partsupp => "partsupp",
             Table::Customer => "customer",
             Table::Orders => "orders",
             Table::Lineitem => "lineitem",
@@ -292,7 +289,7 @@ impl Cli {
             vec![
                 Table::Nation,
                 Table::Region,
-                Table::Part,
+                Table::Vehicle,
                 Table::Driver,
                 Table::Customer,
                 Table::Orders,
@@ -314,9 +311,8 @@ impl Cli {
             match table {
                 Table::Nation => self.generate_nation().await?,
                 Table::Region => self.generate_region().await?,
-                Table::Part => self.generate_part().await?,
-                Table::Driver => self.generate_Driver().await?,
-                Table::Partsupp => self.generate_partsupp().await?,
+                Table::Vehicle => self.generate_part().await?,
+                Table::Driver => self.generate_driver().await?,
                 Table::Customer => self.generate_customer().await?,
                 Table::Orders => self.generate_orders().await?,
                 Table::Lineitem => self.generate_lineitem().await?,
@@ -345,11 +341,11 @@ impl Cli {
     );
     define_generate!(
         generate_part,
-        Table::Part,
-        PartGenerator,
-        PartTblSource,
-        PartCsvSource,
-        PartArrow
+        Table::Vehicle,
+        VehicleGenerator,
+        VehicleTblSource,
+        VehicleCsvSource,
+        VehicleArrow
     );
     define_generate!(
         generate_driver,
@@ -419,17 +415,13 @@ impl Cli {
         let (avg_row_size_bytes, row_count) = match table {
             Table::Nation => (88, 1),
             Table::Region => (77, 1),
-            Table::Part => (
+            Table::Vehicle => (
                 115,
-                PartGenerator::calculate_row_count(self.scale_factor, 1, 1),
+                VehicleGenerator::calculate_row_count(self.scale_factor, 1, 1),
             ),
             Table::Driver => (
                 140,
                 DriverGenerator::calculate_row_count(self.scale_factor, 1, 1),
-            ),
-            Table::Partsupp => (
-                148,
-                PartSuppGenerator::calculate_row_count(self.scale_factor, 1, 1),
             ),
             Table::Customer => (
                 160,

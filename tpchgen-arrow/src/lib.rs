@@ -19,7 +19,7 @@
 //! let formatted_batches = pretty_format_batches(&[batch]).unwrap().to_string();
 //! assert_eq!(formatted_batches.lines().collect::<Vec<_>>(), vec![
 //!   "+------------+-----------+-----------+--------------+------------+-----------------+------------+-------+--------------+--------------+------------+--------------+---------------+-------------------+------------+-------------------------------------+",
-//!   "| l_orderkey | l_partkey | l_suppkey | l_linenumber | l_quantity | l_extendedprice | l_discount | l_tax | l_returnflag | l_linestatus | l_shipdate | l_commitdate | l_receiptdate | l_shipinstruct    | l_shipmode | l_comment                           |",
+//!   "| l_orderkey | l_vehiclekey | l_suppkey | l_linenumber | l_quantity | l_extendedprice | l_discount | l_tax | l_returnflag | l_linestatus | l_shipdate | l_commitdate | l_receiptdate | l_shipinstruct    | l_shipmode | l_comment                           |",
 //!   "+------------+-----------+-----------+--------------+------------+-----------------+------------+-------+--------------+--------------+------------+--------------+---------------+-------------------+------------+-------------------------------------+",
 //!   "| 1          | 155190    | 7706      | 1            | 17.00      | 21168.23        | 0.04       | 0.02  | N            | O            | 1996-03-13 | 1996-02-12   | 1996-03-22    | DELIVER IN PERSON | TRUCK      | egular courts above the             |",
 //!   "| 1          | 67310     | 7311      | 2            | 36.00      | 45983.16        | 0.09       | 0.06  | N            | O            | 1996-04-12 | 1996-02-28   | 1996-04-20    | TAKE BACK RETURN  | MAIL       | ly final dependencies: slyly bold   |",
@@ -39,7 +39,7 @@ mod customer;
 mod lineitem;
 mod nation;
 mod order;
-mod part;
+mod vehicle;
 mod region;
 mod driver;
 
@@ -49,7 +49,7 @@ pub use customer::CustomerArrow;
 pub use lineitem::LineItemArrow;
 pub use nation::NationArrow;
 pub use order::OrderArrow;
-pub use part::PartArrow;
+pub use vehicle::VehicleArrow;
 pub use region::RegionArrow;
 pub use driver::DriverArrow;
 

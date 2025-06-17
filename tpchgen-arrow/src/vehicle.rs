@@ -3,20 +3,20 @@ use crate::{DEFAULT_BATCH_SIZE, RecordBatchIterator};
 use arrow::array::{Int32Array, Int64Array, RecordBatch, StringViewArray};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use std::sync::{Arc, LazyLock};
-use tpchgen::generators::{PartGenerator, PartGeneratorIterator};
+use tpchgen::generators::{VehicleGenerator, VehicleGeneratorIterator};
 
-/// Generate [`Part`]s in [`RecordBatch`] format
+/// Generate [`Vehicle`]s in [`RecordBatch`] format
 ///
-/// [`Part`]: tpchgen::generators::Part
+/// [`Vehicle`]: tpchgen::generators::Vehicle
 ///
 /// # Example
 /// ```
-/// # use tpchgen::generators::{PartGenerator};
-/// # use tpchgen_arrow::PartArrow;
+/// # use tpchgen::generators::{VehicleGenerator};
+/// # use tpchgen_arrow::VehicleArrow;
 ///
 /// // Create a SF=1.0 generator and wrap it in an Arrow generator
-/// let generator = PartGenerator::new(1.0, 1, 1);
-/// let mut arrow_generator = PartArrow::new(generator)
+/// let generator = VehicleGenerator::new(1.0, 1, 1);
+/// let mut arrow_generator = VehicleArrow::new(generator)
 ///   .with_batch_size(10);
 /// // Read the first 10 batches
 /// let batch = arrow_generator.next().unwrap();
@@ -27,7 +27,7 @@ use tpchgen::generators::{PartGenerator, PartGeneratorIterator};
 /// let lines = formatted_batches.lines().collect::<Vec<_>>();
 /// assert_eq!(lines, vec![
 ///  "+-----------+------------------------------------------+----------------+----------+-------------------------+--------+-------------+---------------+----------------------+",
-///   "| p_partkey | p_name                                   | p_mfgr         | p_brand  | p_type                  | p_size | p_container | p_retailprice | p_comment            |",
+///   "| v_vehiclekey | v_name                                   | v_mfgr         | v_brand  | v_type                  | v_size | v_container | v_retailprice | v_comment            |",
 ///   "+-----------+------------------------------------------+----------------+----------+-------------------------+--------+-------------+---------------+----------------------+",
 ///   "| 1         | goldenrod lavender spring chocolate lace | Manufacturer#1 | Brand#13 | PROMO BURNISHED COPPER  | 7      | JUMBO PKG   | 901.00        | ly. slyly ironi      |",
 ///   "| 2         | blush thistle blue yellow saddle         | Manufacturer#1 | Brand#13 | LARGE BRUSHED BRASS     | 1      | LG CASE     | 902.00        | lar accounts amo     |",
@@ -42,13 +42,13 @@ use tpchgen::generators::{PartGenerator, PartGeneratorIterator};
 ///   "+-----------+------------------------------------------+----------------+----------+-------------------------+--------+-------------+---------------+----------------------+"
 /// ]);
 /// ```
-pub struct PartArrow {
-    inner: PartGeneratorIterator<'static>,
+pub struct VehicleArrow {
+    inner: VehicleGeneratorIterator<'static>,
     batch_size: usize,
 }
 
-impl PartArrow {
-    pub fn new(generator: PartGenerator<'static>) -> Self {
+impl VehicleArrow {
+    pub fn new(generator: VehicleGenerator<'static>) -> Self {
         Self {
             inner: generator.iter(),
             batch_size: DEFAULT_BATCH_SIZE,
@@ -62,13 +62,13 @@ impl PartArrow {
     }
 }
 
-impl RecordBatchIterator for PartArrow {
+impl RecordBatchIterator for VehicleArrow {
     fn schema(&self) -> &SchemaRef {
-        &PART_SCHEMA
+        &VEHICLE_SCHEMA
     }
 }
 
-impl Iterator for PartArrow {
+impl Iterator for VehicleArrow {
     type Item = RecordBatch;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -78,28 +78,20 @@ impl Iterator for PartArrow {
             return None;
         }
 
-        let p_partkey = Int64Array::from_iter_values(rows.iter().map(|r| r.p_partkey));
-        let p_name = string_view_array_from_display_iter(rows.iter().map(|r| &r.p_name));
-        let p_mfgr = string_view_array_from_display_iter(rows.iter().map(|r| r.p_mfgr));
-        let p_brand = string_view_array_from_display_iter(rows.iter().map(|r| r.p_brand));
-        let p_type = StringViewArray::from_iter_values(rows.iter().map(|r| r.p_type));
-        let p_size = Int32Array::from_iter_values(rows.iter().map(|r| r.p_size));
-        let p_container = StringViewArray::from_iter_values(rows.iter().map(|r| r.p_container));
-        let p_retailprice = decimal128_array_from_iter(rows.iter().map(|r| r.p_retailprice));
-        let p_comment = StringViewArray::from_iter_values(rows.iter().map(|r| r.p_comment));
+        let v_vehiclekey = Int64Array::from_iter_values(rows.iter().map(|r| r.v_vehiclekey));
+        let v_mfgr = string_view_array_from_display_iter(rows.iter().map(|r| r.v_mfgr));
+        let v_brand = string_view_array_from_display_iter(rows.iter().map(|r| r.v_brand));
+        let v_type = StringViewArray::from_iter_values(rows.iter().map(|r| r.v_type));
+        let v_license = StringViewArray::from_iter_values(rows.iter().map(|r| r.v_license));
 
         let batch = RecordBatch::try_new(
             Arc::clone(self.schema()),
             vec![
-                Arc::new(p_partkey),
-                Arc::new(p_name),
-                Arc::new(p_mfgr),
-                Arc::new(p_brand),
-                Arc::new(p_type),
-                Arc::new(p_size),
-                Arc::new(p_container),
-                Arc::new(p_retailprice),
-                Arc::new(p_comment),
+                Arc::new(v_vehiclekey),
+                Arc::new(v_mfgr),
+                Arc::new(v_brand),
+                Arc::new(v_type),
+                Arc::new(v_license),
             ],
         )
         .unwrap();
@@ -107,18 +99,14 @@ impl Iterator for PartArrow {
     }
 }
 
-/// Schema for the Part
-static PART_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(make_part_schema);
-fn make_part_schema() -> SchemaRef {
+/// Schema for the Vehicle
+static VEHICLE_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(make_vehicle_schema);
+fn make_vehicle_schema() -> SchemaRef {
     Arc::new(Schema::new(vec![
-        Field::new("p_partkey", DataType::Int64, false),
-        Field::new("p_name", DataType::Utf8View, false),
-        Field::new("p_mfgr", DataType::Utf8View, false),
-        Field::new("p_brand", DataType::Utf8View, false),
-        Field::new("p_type", DataType::Utf8View, false),
-        Field::new("p_size", DataType::Int32, false),
-        Field::new("p_container", DataType::Utf8View, false),
-        Field::new("p_retailprice", DataType::Decimal128(15, 2), false),
-        Field::new("p_comment", DataType::Utf8View, false),
+        Field::new("v_vehiclekey", DataType::Int64, false),
+        Field::new("v_mfgr", DataType::Utf8View, false),
+        Field::new("v_brand", DataType::Utf8View, false),
+        Field::new("v_type", DataType::Utf8View, false),
+        Field::new("v_comment", DataType::Utf8View, false),
     ]))
 }

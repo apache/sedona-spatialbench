@@ -5,7 +5,7 @@ use crate::distribution::Distribution;
 use crate::distribution::Distributions;
 use crate::random::RandomPhoneNumber;
 use crate::random::RowRandomInt;
-use crate::random::{PhoneNumberInstance, RandomBoundedLong, StringSequenceInstance};
+use crate::random::{PhoneNumberInstance, RandomBoundedLong};
 use crate::random::{RandomAlphaNumeric, RandomAlphaNumericInstance};
 use crate::text::TextPool;
 use core::fmt;
@@ -31,14 +31,14 @@ impl Default for NationGenerator<'_> {
 impl<'a> NationGenerator<'a> {
     /// Creates a new NationGenerator with default distributions and text pool
     ///
-    /// Nations does not depend on the scale factor or the part number. The signature of
+    /// Nations does not depend on the scale factor or the vehicle number. The signature of
     /// this method is provided to be consistent with the other generators, but the
     /// parameters are ignored. You can use [`NationGenerator::default`] to create a
     /// default generator.
     ///
     /// The generator's lifetime is `&'static` because it references global
     /// [`Distribution]`s and thus can be shared safely between threads.
-    pub fn new(_scale_factor: f64, _part: i32, _part_count: i32) -> NationGenerator<'static> {
+    pub fn new(_scale_factor: f64, _vehicle: i32, _vehicle_count: i32) -> NationGenerator<'static> {
         // Note: use explicit lifetime to ensure this remains `&'static`
         Self::new_with_distributions_and_text_pool(
             Distributions::static_default(),
@@ -222,14 +222,14 @@ impl Default for RegionGenerator<'_> {
 impl<'a> RegionGenerator<'a> {
     /// Creates a new RegionGenerator with default distributions and text pool
     ///
-    /// Regions does not depend on the scale factor or the part number. The signature of
+    /// Regions does not depend on the scale factor or the vehicle number. The signature of
     /// this method is provided to be consistent with the other generators, but the
     /// parameters are ignored. You can use [`RegionGenerator::default`] to create a
     /// default generator.
     ///
     /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
     /// more details.
-    pub fn new(_scale_factor: f64, _part: i32, _part_count: i32) -> RegionGenerator<'static> {
+    pub fn new(_scale_factor: f64, _vehicle: i32, _vehicle_count: i32) -> RegionGenerator<'static> {
         // Note: use explicit lifetime to ensure this remains `&'static`
         Self::new_with_distributions_and_text_pool(
             Distributions::static_default(),
@@ -308,33 +308,33 @@ impl<'a> Iterator for RegionGeneratorIterator<'a> {
     }
 }
 
-/// A Part Manufacturer, formatted as `"Manufacturer#<n>"`
+/// A Vehicle Manufacturer, formatted as `"Manufacturer#<n>"`
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct PartManufacturerName(i32);
+pub struct VehicleManufacturerName(i32);
 
-impl PartManufacturerName {
+impl VehicleManufacturerName {
     pub fn new(value: i32) -> Self {
-        PartManufacturerName(value)
+        VehicleManufacturerName(value)
     }
 }
 
-impl fmt::Display for PartManufacturerName {
+impl fmt::Display for VehicleManufacturerName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Manufacturer#{}", self.0)
     }
 }
 
-/// A Part brand name, formatted as `"Brand#<n>"`
+/// A Vehicle brand name, formatted as `"Brand#<n>"`
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct PartBrandName(i32);
+pub struct VehicleBrandName(i32);
 
-impl PartBrandName {
+impl VehicleBrandName {
     pub fn new(value: i32) -> Self {
-        PartBrandName(value)
+        VehicleBrandName(value)
     }
 }
 
-impl fmt::Display for PartBrandName {
+impl fmt::Display for VehicleBrandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Brand#{}", self.0)
     }
@@ -350,60 +350,48 @@ impl fmt::Display for PartBrandName {
 /// 2|blush thistle blue yellow saddle|Manufacturer#1|Brand#13|LARGE BRUSHED BRASS|1|LG CASE|902.00|lar accounts amo|
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct Part<'a> {
+pub struct Vehicle<'a> {
     /// Primary key
-    pub p_partkey: i64,
-    /// Part name
-    pub p_name: StringSequenceInstance<'a>,
-    /// Part manufacturer.
-    pub p_mfgr: PartManufacturerName,
-    /// Part brand.
-    pub p_brand: PartBrandName,
-    /// Part type
-    pub p_type: &'a str,
-    /// Part size
-    pub p_size: i32,
-    /// Part container
-    pub p_container: &'a str,
-    /// Part retail price
-    pub p_retailprice: TPCHDecimal,
+    pub v_vehiclekey: i64,
+    /// Vehicle manufacturer.
+    pub v_mfgr: VehicleManufacturerName,
+    /// Vehicle brand.
+    pub v_brand: VehicleBrandName,
+    /// Vehicle type
+    pub v_type: &'a str,
     /// Variable length comment
-    pub p_comment: &'a str,
+    pub v_license: &'a str,
 }
 
-impl fmt::Display for Part<'_> {
+impl fmt::Display for Vehicle<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{}|{}|{}|{}|{}|{}|{}|{}|{}|",
-            self.p_partkey,
-            self.p_name,
-            self.p_mfgr,
-            self.p_brand,
-            self.p_type,
-            self.p_size,
-            self.p_container,
-            self.p_retailprice,
-            self.p_comment
+            "{}|{}|{}|{}|{}|",
+            self.v_vehiclekey,
+            self.v_mfgr,
+            self.v_brand,
+            self.v_type,
+            self.v_license
         )
     }
 }
 
-/// Generator for Part table data
+/// Generator for Vehicle table data
 #[derive(Debug, Clone)]
-pub struct PartGenerator<'a> {
+pub struct VehicleGenerator<'a> {
     scale_factor: f64,
-    part: i32,
-    part_count: i32,
+    vehicle: i32,
+    vehicle_count: i32,
     distributions: &'a Distributions,
     text_pool: &'a TextPool,
 }
 
-impl<'a> PartGenerator<'a> {
-    /// Base scale for part generation
+impl<'a> VehicleGenerator<'a> {
+    /// Base scale for vehicle generation
     const SCALE_BASE: i32 = 200_000;
 
-    // Constants for part generation
+    // Constants for vehicle generation
     const NAME_WORDS: i32 = 5;
     const MANUFACTURER_MIN: i32 = 1;
     const MANUFACTURER_MAX: i32 = 5;
@@ -413,71 +401,71 @@ impl<'a> PartGenerator<'a> {
     const SIZE_MAX: i32 = 50;
     const COMMENT_AVERAGE_LENGTH: i32 = 14;
 
-    /// Creates a new PartGenerator with the given scale factor
+    /// Creates a new VehicleGenerator with the given scale factor
     ///
     /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
     /// more details.
-    pub fn new(scale_factor: f64, part: i32, part_count: i32) -> PartGenerator<'static> {
+    pub fn new(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> VehicleGenerator<'static> {
         // Note: use explicit lifetime to ensure this remains `&'static`
         Self::new_with_distributions_and_text_pool(
             scale_factor,
-            part,
-            part_count,
+            vehicle,
+            vehicle_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
         )
     }
 
-    /// Creates a PartGenerator with specified distributions and text pool
+    /// Creates a VehicleGenerator with specified distributions and text pool
     pub fn new_with_distributions_and_text_pool<'b>(
         scale_factor: f64,
-        part: i32,
-        part_count: i32,
+        vehicle: i32,
+        vehicle_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
-    ) -> PartGenerator<'b> {
-        PartGenerator {
+    ) -> VehicleGenerator<'b> {
+        VehicleGenerator {
             scale_factor,
-            part,
-            part_count,
+            vehicle,
+            vehicle_count,
             distributions,
             text_pool,
         }
     }
 
-    /// Return the row count for the given scale factor and generator part count
-    pub fn calculate_row_count(scale_factor: f64, part: i32, part_count: i32) -> i64 {
-        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, part, part_count)
+    /// Return the row count for the given scale factor and generator vehicle count
+    pub fn calculate_row_count(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> i64 {
+        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, vehicle, vehicle_count)
     }
 
-    /// Returns an iterator over the part rows
-    pub fn iter(&self) -> PartGeneratorIterator<'a> {
-        PartGeneratorIterator::new(
+    /// Returns an iterator over the vehicle rows
+    pub fn iter(&self) -> VehicleGeneratorIterator<'a> {
+        VehicleGeneratorIterator::new(
             self.distributions,
             self.text_pool,
             GenerateUtils::calculate_start_index(
                 Self::SCALE_BASE,
                 self.scale_factor,
-                self.part,
-                self.part_count,
+                self.vehicle,
+                self.vehicle_count,
             ),
-            Self::calculate_row_count(self.scale_factor, self.part, self.part_count),
+            Self::calculate_row_count(self.scale_factor, self.vehicle, self.vehicle_count),
         )
     }
 }
 
-impl<'a> IntoIterator for &'a PartGenerator<'a> {
-    type Item = Part<'a>;
-    type IntoIter = PartGeneratorIterator<'a>;
+impl<'a> IntoIterator for &'a VehicleGenerator<'a> {
+    type Item = Vehicle<'a>;
+    type IntoIter = VehicleGeneratorIterator<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
-/// Iterator that generates Part rows
+/// Iterator that generates Vehicle rows
 #[derive(Debug)]
-pub struct PartGeneratorIterator<'a> {
+pub struct VehicleGeneratorIterator<'a> {
     name_random: RandomStringSequence<'a>,
     manufacturer_random: RandomBoundedInt,
     brand_random: RandomBoundedInt,
@@ -491,7 +479,7 @@ pub struct PartGeneratorIterator<'a> {
     index: i64,
 }
 
-impl<'a> PartGeneratorIterator<'a> {
+impl<'a> VehicleGeneratorIterator<'a> {
     fn new(
         distributions: &'a Distributions,
         text_pool: &'a TextPool,
@@ -500,24 +488,24 @@ impl<'a> PartGeneratorIterator<'a> {
     ) -> Self {
         let mut name_random = RandomStringSequence::new(
             709314158,
-            PartGenerator::NAME_WORDS,
+            VehicleGenerator::NAME_WORDS,
             distributions.part_colors(),
         );
         let mut manufacturer_random = RandomBoundedInt::new(
             1,
-            PartGenerator::MANUFACTURER_MIN,
-            PartGenerator::MANUFACTURER_MAX,
+            VehicleGenerator::MANUFACTURER_MIN,
+            VehicleGenerator::MANUFACTURER_MAX,
         );
         let mut brand_random =
-            RandomBoundedInt::new(46831694, PartGenerator::BRAND_MIN, PartGenerator::BRAND_MAX);
+            RandomBoundedInt::new(46831694, VehicleGenerator::BRAND_MIN, VehicleGenerator::BRAND_MAX);
         let mut type_random = RandomString::new(1841581359, distributions.part_types());
         let mut size_random =
-            RandomBoundedInt::new(1193163244, PartGenerator::SIZE_MIN, PartGenerator::SIZE_MAX);
+            RandomBoundedInt::new(1193163244, VehicleGenerator::SIZE_MIN, VehicleGenerator::SIZE_MAX);
         let mut container_random = RandomString::new(727633698, distributions.part_containers());
         let mut comment_random = RandomText::new(
             804159733,
             text_pool,
-            PartGenerator::COMMENT_AVERAGE_LENGTH as f64,
+            VehicleGenerator::COMMENT_AVERAGE_LENGTH as f64,
         );
 
         // Advance all generators to the starting position
@@ -529,7 +517,7 @@ impl<'a> PartGeneratorIterator<'a> {
         container_random.advance_rows(start_index);
         comment_random.advance_rows(start_index);
 
-        PartGeneratorIterator {
+        VehicleGeneratorIterator {
             name_random,
             manufacturer_random,
             brand_random,
@@ -543,47 +531,41 @@ impl<'a> PartGeneratorIterator<'a> {
         }
     }
 
-    /// Creates a part with the given key
-    fn make_part(&mut self, part_key: i64) -> Part<'a> {
-        let name = self.name_random.next_value();
-
+    /// Creates a vehicle with the given key
+    fn make_vehicle(&mut self, vehicle_key: i64) -> Vehicle<'a> {
         let manufacturer = self.manufacturer_random.next_value();
         let brand = manufacturer * 10 + self.brand_random.next_value();
 
-        Part {
-            p_partkey: part_key,
-            p_name: name,
-            p_mfgr: PartManufacturerName::new(manufacturer),
-            p_brand: PartBrandName::new(brand),
-            p_type: self.type_random.next_value(),
-            p_size: self.size_random.next_value(),
-            p_container: self.container_random.next_value(),
-            p_retailprice: TPCHDecimal(Self::calculate_part_price(part_key)),
-            p_comment: self.comment_random.next_value(),
+        Vehicle {
+            v_vehiclekey: vehicle_key,
+            v_mfgr: VehicleManufacturerName::new(manufacturer),
+            v_brand: VehicleBrandName::new(brand),
+            v_type: self.type_random.next_value(),
+            v_license: self.comment_random.next_value(),
         }
     }
 
-    /// Calculates the price for a part
-    pub fn calculate_part_price(part_key: i64) -> i64 {
+    /// Calculates the price for a vehicle
+    pub fn calculate_vehicle_price(vehicle_key: i64) -> i64 {
         let mut price = 90000;
 
         // limit contribution to $200
-        price += (part_key / 10) % 20001;
-        price += (part_key % 1000) * 100;
+        price += (vehicle_key / 10) % 20001;
+        price += (vehicle_key % 1000) * 100;
 
         price
     }
 }
 
-impl<'a> Iterator for PartGeneratorIterator<'a> {
-    type Item = Part<'a>;
+impl<'a> Iterator for VehicleGeneratorIterator<'a> {
+    type Item = Vehicle<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index >= self.row_count {
             return None;
         }
 
-        let part = self.make_part(self.start_index + self.index + 1);
+        let vehicle = self.make_vehicle(self.start_index + self.index + 1);
 
         self.name_random.row_finished();
         self.manufacturer_random.row_finished();
@@ -595,7 +577,7 @@ impl<'a> Iterator for PartGeneratorIterator<'a> {
 
         self.index += 1;
 
-        Some(part)
+        Some(vehicle)
     }
 }
 
@@ -660,8 +642,8 @@ impl fmt::Display for Driver {
 #[derive(Debug, Clone)]
 pub struct DriverGenerator<'a> {
     scale_factor: f64,
-    part: i32,
-    part_count: i32,
+    vehicle: i32,
+    vehicle_count: i32,
     distributions: &'a Distributions,
     text_pool: &'a TextPool,
 }
@@ -689,12 +671,12 @@ impl<'a> DriverGenerator<'a> {
     ///
     /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
     /// more details.
-    pub fn new(scale_factor: f64, part: i32, part_count: i32) -> DriverGenerator<'static> {
+    pub fn new(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> DriverGenerator<'static> {
         // Note: use explicit lifetime to ensure this remains `&'static`
         Self::new_with_distributions_and_text_pool(
             scale_factor,
-            part,
-            part_count,
+            vehicle,
+            vehicle_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
         )
@@ -703,23 +685,23 @@ impl<'a> DriverGenerator<'a> {
     /// Creates a DriverGenerator with specified distributions and text pool
     pub fn new_with_distributions_and_text_pool<'b>(
         scale_factor: f64,
-        part: i32,
-        part_count: i32,
+        vehicle: i32,
+        vehicle_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
     ) -> DriverGenerator<'b> {
         DriverGenerator {
             scale_factor,
-            part,
-            part_count,
+            vehicle,
+            vehicle_count,
             distributions,
             text_pool,
         }
     }
 
-    /// Return the row count for the given scale factor and generator part count
-    pub fn calculate_row_count(scale_factor: f64, part: i32, part_count: i32) -> i64 {
-        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, part, part_count)
+    /// Return the row count for the given scale factor and generator vehicle count
+    pub fn calculate_row_count(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> i64 {
+        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, vehicle, vehicle_count)
     }
 
     /// Returns an iterator over the Driver rows
@@ -730,10 +712,10 @@ impl<'a> DriverGenerator<'a> {
             GenerateUtils::calculate_start_index(
                 Self::SCALE_BASE,
                 self.scale_factor,
-                self.part,
-                self.part_count,
+                self.vehicle,
+                self.vehicle_count,
             ),
-            Self::calculate_row_count(self.scale_factor, self.part, self.part_count),
+            Self::calculate_row_count(self.scale_factor, self.vehicle, self.vehicle_count),
         )
     }
 }
@@ -844,6 +826,17 @@ impl<'a> DriverGeneratorIterator<'a> {
             d_phone: self.phone_random.next_value(nation_key as i64),
         }
     }
+
+    /// Selects a driver for a vehicle, with drivers table 5x the size of vehicles table
+    pub fn select_driver(vehicle_key: i64, scale_factor: f64) -> i64 {
+        // Calculate driver count as 5 times the vehicle count
+        let driver_count = 5 * (VehicleGenerator::SCALE_BASE as f64 * scale_factor) as i64;
+
+        // Map each vehicle to a specific driver
+        // Using the formula that ensures the driver key is within valid range
+        // and maintains a one-to-one relationship between vehicles and drivers
+        ((vehicle_key - 1) % driver_count) + 1
+    }
 }
 
 impl Iterator for DriverGeneratorIterator<'_> {
@@ -933,8 +926,8 @@ impl fmt::Display for Customer<'_> {
 #[derive(Debug, Clone)]
 pub struct CustomerGenerator<'a> {
     scale_factor: f64,
-    part: i32,
-    part_count: i32,
+    vehicle: i32,
+    vehicle_count: i32,
     distributions: &'a Distributions,
     text_pool: &'a TextPool,
 }
@@ -953,12 +946,12 @@ impl<'a> CustomerGenerator<'a> {
     ///
     /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
     /// more details.
-    pub fn new(scale_factor: f64, part: i32, part_count: i32) -> CustomerGenerator<'static> {
+    pub fn new(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> CustomerGenerator<'static> {
         // Note: use explicit lifetime to ensure this remains `&'static`
         Self::new_with_distributions_and_text_pool(
             scale_factor,
-            part,
-            part_count,
+            vehicle,
+            vehicle_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
         )
@@ -967,23 +960,23 @@ impl<'a> CustomerGenerator<'a> {
     /// Creates a CustomerGenerator with specified distributions and text pool
     pub fn new_with_distributions_and_text_pool<'b>(
         scale_factor: f64,
-        part: i32,
-        part_count: i32,
+        vehicle: i32,
+        vehicle_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
     ) -> CustomerGenerator<'b> {
         CustomerGenerator {
             scale_factor,
-            part,
-            part_count,
+            vehicle,
+            vehicle_count,
             distributions,
             text_pool,
         }
     }
 
-    /// Return the row count for the given scale factor and generator part count
-    pub fn calculate_row_count(scale_factor: f64, part: i32, part_count: i32) -> i64 {
-        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, part, part_count)
+    /// Return the row count for the given scale factor and generator vehicle count
+    pub fn calculate_row_count(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> i64 {
+        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, vehicle, vehicle_count)
     }
 
     /// Returns an iterator over the customer rows
@@ -994,10 +987,10 @@ impl<'a> CustomerGenerator<'a> {
             GenerateUtils::calculate_start_index(
                 Self::SCALE_BASE,
                 self.scale_factor,
-                self.part,
-                self.part_count,
+                self.vehicle,
+                self.vehicle_count,
             ),
-            Self::calculate_row_count(self.scale_factor, self.part, self.part_count),
+            Self::calculate_row_count(self.scale_factor, self.vehicle, self.vehicle_count),
         )
     }
 }
@@ -1105,240 +1098,6 @@ impl<'a> Iterator for CustomerGeneratorIterator<'a> {
     }
 }
 
-/// The PARTSUPP (part Driver) table
-///
-/// The Display trait is implemented to format the line item data as a string
-/// in the default TPC-H 'tbl' format.
-///
-/// ```text
-/// 1|2|3325|771.64|, even theodolites. regular, final theodolites eat after the carefully pending foxes. ...
-/// 1|4|8076|993.49|ven ideas. quickly even packages print. pending multipliers must have to are fluff|
-/// ```
-#[derive(Debug, Clone, PartialEq)]
-pub struct PartSupp<'a> {
-    /// Primary key, foreign key to PART
-    pub ps_partkey: i64,
-    /// Primary key, foreign key to Driver
-    pub ps_suppkey: i64,
-    /// Available quantity
-    pub ps_availqty: i32,
-    /// Driver cost
-    pub ps_supplycost: TPCHDecimal,
-    /// Variable length comment
-    pub ps_comment: &'a str,
-}
-
-impl fmt::Display for PartSupp<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}|{}|{}|{}|{}|",
-            self.ps_partkey, self.ps_suppkey, self.ps_availqty, self.ps_supplycost, self.ps_comment
-        )
-    }
-}
-
-/// Generator for PartSupp table data
-#[derive(Debug, Clone)]
-pub struct PartSuppGenerator<'a> {
-    scale_factor: f64,
-    part: i32,
-    part_count: i32,
-    text_pool: &'a TextPool,
-}
-
-impl<'a> PartSuppGenerator<'a> {
-    /// Base scale for part-Driver generation
-    const DriverS_PER_PART: i32 = 4;
-
-    // Constants for part-Driver generation
-    const AVAILABLE_QUANTITY_MIN: i32 = 1;
-    const AVAILABLE_QUANTITY_MAX: i32 = 9999;
-    const SUPPLY_COST_MIN: i32 = 100;
-    const SUPPLY_COST_MAX: i32 = 100000;
-    const COMMENT_AVERAGE_LENGTH: i32 = 124;
-
-    /// Creates a new PartSuppGenerator with the given scale factor
-    ///
-    /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
-    /// more details.
-    pub fn new(scale_factor: f64, part: i32, part_count: i32) -> PartSuppGenerator<'static> {
-        // Note: use explicit lifetime to ensure this remains `&'static`
-        Self::new_with_text_pool(
-            scale_factor,
-            part,
-            part_count,
-            TextPool::get_or_init_default(),
-        )
-    }
-
-    /// Creates a PartSuppGenerator with specified text pool
-    pub fn new_with_text_pool(
-        scale_factor: f64,
-        part: i32,
-        part_count: i32,
-        text_pool: &TextPool,
-    ) -> PartSuppGenerator<'_> {
-        PartSuppGenerator {
-            scale_factor,
-            part,
-            part_count,
-            text_pool,
-        }
-    }
-
-    /// Return the row count for the given scale factor and generator part count
-    pub fn calculate_row_count(scale_factor: f64, part: i32, part_count: i32) -> i64 {
-        // Use the part generator's scale base for start/row calculation
-        GenerateUtils::calculate_row_count(
-            PartGenerator::SCALE_BASE,
-            scale_factor,
-            part,
-            part_count,
-        )
-    }
-
-    /// Returns an iterator over the part Driver rows
-    pub fn iter(&self) -> PartSuppGeneratorIterator<'a> {
-        let scale_base = PartGenerator::SCALE_BASE;
-
-        PartSuppGeneratorIterator::new(
-            self.text_pool,
-            self.scale_factor,
-            GenerateUtils::calculate_start_index(
-                scale_base,
-                self.scale_factor,
-                self.part,
-                self.part_count,
-            ),
-            Self::calculate_row_count(self.scale_factor, self.part, self.part_count),
-        )
-    }
-}
-
-impl<'a> IntoIterator for &'a PartSuppGenerator<'a> {
-    type Item = PartSupp<'a>;
-    type IntoIter = PartSuppGeneratorIterator<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
-
-/// Iterator that generates PartSupp rows
-#[derive(Debug)]
-pub struct PartSuppGeneratorIterator<'a> {
-    scale_factor: f64,
-    start_index: i64,
-    row_count: i64,
-
-    available_quantity_random: RandomBoundedInt,
-    supply_cost_random: RandomBoundedInt,
-    comment_random: RandomText<'a>,
-
-    index: i64,
-    part_Driver_number: i32,
-}
-
-impl<'a> PartSuppGeneratorIterator<'a> {
-    fn new(text_pool: &'a TextPool, scale_factor: f64, start_index: i64, row_count: i64) -> Self {
-        let mut available_quantity_random = RandomBoundedInt::new_with_seeds_per_row(
-            1671059989,
-            PartSuppGenerator::AVAILABLE_QUANTITY_MIN,
-            PartSuppGenerator::AVAILABLE_QUANTITY_MAX,
-            PartSuppGenerator::DriverS_PER_PART,
-        );
-        let mut supply_cost_random = RandomBoundedInt::new_with_seeds_per_row(
-            1051288424,
-            PartSuppGenerator::SUPPLY_COST_MIN,
-            PartSuppGenerator::SUPPLY_COST_MAX,
-            PartSuppGenerator::DriverS_PER_PART,
-        );
-        let mut comment_random = RandomText::new_with_expected_row_count(
-            1961692154,
-            text_pool,
-            PartSuppGenerator::COMMENT_AVERAGE_LENGTH as f64,
-            PartSuppGenerator::DriverS_PER_PART,
-        );
-
-        // Advance all generators to the starting position
-        available_quantity_random.advance_rows(start_index);
-        supply_cost_random.advance_rows(start_index);
-        comment_random.advance_rows(start_index);
-
-        PartSuppGeneratorIterator {
-            scale_factor,
-            start_index,
-            row_count,
-            available_quantity_random,
-            supply_cost_random,
-            comment_random,
-            index: 0,
-            part_Driver_number: 0,
-        }
-    }
-
-    /// Creates a part-Driver entry with the given part key
-    fn make_part_Driver(&mut self, part_key: i64) -> PartSupp<'a> {
-        let Driver_key = Self::select_part_Driver(
-            part_key,
-            self.part_Driver_number as i64,
-            self.scale_factor,
-        );
-
-        let ps_availqty = self.available_quantity_random.next_value();
-        let ps_supplycost = TPCHDecimal(self.supply_cost_random.next_value() as i64);
-        let ps_comment = self.comment_random.next_value();
-
-        PartSupp {
-            ps_partkey: part_key,
-            ps_suppkey: Driver_key,
-            ps_availqty,
-            ps_supplycost,
-            ps_comment,
-        }
-    }
-
-    /// Selects a Driver for a given part and Driver number
-    pub fn select_part_Driver(part_key: i64, Driver_number: i64, scale_factor: f64) -> i64 {
-        // Use Driver generator's scale base
-        let Driver_count = (DriverGenerator::SCALE_BASE as f64 * scale_factor) as i64;
-
-        ((part_key
-            + (Driver_number
-                * ((Driver_count / PartSuppGenerator::DriverS_PER_PART as i64)
-                    + ((part_key - 1) / Driver_count))))
-            % Driver_count)
-            + 1
-    }
-}
-
-impl<'a> Iterator for PartSuppGeneratorIterator<'a> {
-    type Item = PartSupp<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index >= self.row_count {
-            return None;
-        }
-
-        let part_key = self.start_index + self.index + 1;
-        let part_Driver = self.make_part_Driver(part_key);
-        self.part_Driver_number += 1;
-
-        // advance next row only when all Drivers for the part have been produced
-        if self.part_Driver_number >= PartSuppGenerator::DriverS_PER_PART {
-            self.available_quantity_random.row_finished();
-            self.supply_cost_random.row_finished();
-            self.comment_random.row_finished();
-
-            self.index += 1;
-            self.part_Driver_number = 0;
-        }
-
-        Some(part_Driver)
-    }
-}
-
 /// A clerk name, formatted as `"Clerk#<n>"`
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ClerkName(i32);
@@ -1436,8 +1195,8 @@ impl fmt::Display for Order<'_> {
 #[derive(Debug, Clone)]
 pub struct OrderGenerator<'a> {
     scale_factor: f64,
-    part: i32,
-    part_count: i32,
+    vehicle: i32,
+    vehicle_count: i32,
     distributions: &'a Distributions,
     text_pool: &'a TextPool,
 }
@@ -1464,12 +1223,12 @@ impl<'a> OrderGenerator<'a> {
     ///
     /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
     /// more details.
-    pub fn new(scale_factor: f64, part: i32, part_count: i32) -> OrderGenerator<'static> {
+    pub fn new(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> OrderGenerator<'static> {
         // Note: use explicit lifetime to ensure this remains `&'static`
         Self::new_with_distributions_and_text_pool(
             scale_factor,
-            part,
-            part_count,
+            vehicle,
+            vehicle_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
         )
@@ -1478,23 +1237,23 @@ impl<'a> OrderGenerator<'a> {
     /// Creates a OrderGenerator with specified distributions and text pool
     pub fn new_with_distributions_and_text_pool<'b>(
         scale_factor: f64,
-        part: i32,
-        part_count: i32,
+        vehicle: i32,
+        vehicle_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
     ) -> OrderGenerator<'b> {
         OrderGenerator {
             scale_factor,
-            part,
-            part_count,
+            vehicle,
+            vehicle_count,
             distributions,
             text_pool,
         }
     }
 
-    /// Return the row count for the given scale factor and generator part count
-    pub fn calculate_row_count(scale_factor: f64, part: i32, part_count: i32) -> i64 {
-        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, part, part_count)
+    /// Return the row count for the given scale factor and generator vehicle count
+    pub fn calculate_row_count(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> i64 {
+        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, vehicle, vehicle_count)
     }
 
     /// Returns an iterator over the order rows
@@ -1506,10 +1265,10 @@ impl<'a> OrderGenerator<'a> {
             GenerateUtils::calculate_start_index(
                 Self::SCALE_BASE,
                 self.scale_factor,
-                self.part,
-                self.part_count,
+                self.vehicle,
+                self.vehicle_count,
             ),
-            Self::calculate_row_count(self.scale_factor, self.part, self.part_count),
+            Self::calculate_row_count(self.scale_factor, self.vehicle, self.vehicle_count),
         )
     }
 
@@ -1560,7 +1319,7 @@ pub struct OrderGeneratorIterator<'a> {
     line_quantity_random: RandomBoundedInt,
     line_discount_random: RandomBoundedInt,
     line_tax_random: RandomBoundedInt,
-    line_part_key_random: RandomBoundedLong,
+    line_vehicle_key_random: RandomBoundedLong,
     line_ship_date_random: RandomBoundedInt,
 
     start_index: i64,
@@ -1602,7 +1361,7 @@ impl<'a> OrderGeneratorIterator<'a> {
         let mut line_quantity_random = LineItemGenerator::create_quantity_random();
         let mut line_discount_random = LineItemGenerator::create_discount_random();
         let mut line_tax_random = LineItemGenerator::create_tax_random();
-        let mut line_part_key_random = LineItemGenerator::create_part_key_random(scale_factor);
+        let mut line_vehicle_key_random = LineItemGenerator::create_vehicle_key_random(scale_factor);
         let mut line_ship_date_random = LineItemGenerator::create_ship_date_random();
 
         // Advance all generators to the starting position
@@ -1616,7 +1375,7 @@ impl<'a> OrderGeneratorIterator<'a> {
         line_quantity_random.advance_rows(start_index);
         line_discount_random.advance_rows(start_index);
         line_tax_random.advance_rows(start_index);
-        line_part_key_random.advance_rows(start_index);
+        line_vehicle_key_random.advance_rows(start_index);
         line_ship_date_random.advance_rows(start_index);
 
         OrderGeneratorIterator {
@@ -1629,7 +1388,7 @@ impl<'a> OrderGeneratorIterator<'a> {
             line_quantity_random,
             line_discount_random,
             line_tax_random,
-            line_part_key_random,
+            line_vehicle_key_random,
             line_ship_date_random,
             start_index,
             row_count,
@@ -1662,10 +1421,10 @@ impl<'a> OrderGeneratorIterator<'a> {
             let discount = self.line_discount_random.next_value();
             let tax = self.line_tax_random.next_value();
 
-            let part_key = self.line_part_key_random.next_value();
+            let vehicle_key = self.line_vehicle_key_random.next_value();
 
-            let part_price = PartGeneratorIterator::calculate_part_price(part_key);
-            let extended_price = part_price * quantity as i64;
+            let vehicle_price = VehicleGeneratorIterator::calculate_vehicle_price(vehicle_key);
+            let extended_price = vehicle_price * quantity as i64;
             let discounted_price = extended_price * (100 - discount as i64);
             total_price += ((discounted_price / 100) * (100 + tax as i64)) / 100;
 
@@ -1720,7 +1479,7 @@ impl<'a> Iterator for OrderGeneratorIterator<'a> {
         self.line_quantity_random.row_finished();
         self.line_discount_random.row_finished();
         self.line_tax_random.row_finished();
-        self.line_part_key_random.row_finished();
+        self.line_vehicle_key_random.row_finished();
         self.line_ship_date_random.row_finished();
 
         self.index += 1;
@@ -1744,7 +1503,7 @@ pub struct LineItem<'a> {
     /// Foreign key to ORDERS
     pub l_orderkey: i64,
     /// Foreign key to PART
-    pub l_partkey: i64,
+    pub l_vehiclekey: i64,
     /// Foreign key to Driver
     pub l_suppkey: i64,
     /// Line item number within order
@@ -1782,7 +1541,7 @@ impl fmt::Display for LineItem<'_> {
             f,
             "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|",
             self.l_orderkey,
-            self.l_partkey,
+            self.l_vehiclekey,
             self.l_suppkey,
             self.l_linenumber,
             self.l_quantity,
@@ -1805,8 +1564,8 @@ impl fmt::Display for LineItem<'_> {
 #[derive(Debug, Clone)]
 pub struct LineItemGenerator<'a> {
     scale_factor: f64,
-    part: i32,
-    part_count: i32,
+    vehicle: i32,
+    vehicle_count: i32,
     distributions: &'a Distributions,
     text_pool: &'a TextPool,
 }
@@ -1836,11 +1595,11 @@ impl<'a> LineItemGenerator<'a> {
     ///
     /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
     /// more details.
-    pub fn new(scale_factor: f64, part: i32, part_count: i32) -> LineItemGenerator<'static> {
+    pub fn new(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> LineItemGenerator<'static> {
         Self::new_with_distributions_and_text_pool(
             scale_factor,
-            part,
-            part_count,
+            vehicle,
+            vehicle_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
         )
@@ -1849,15 +1608,15 @@ impl<'a> LineItemGenerator<'a> {
     /// Creates a LineItemGenerator with specified distributions and text pool
     pub fn new_with_distributions_and_text_pool<'b>(
         scale_factor: f64,
-        part: i32,
-        part_count: i32,
+        vehicle: i32,
+        vehicle_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
     ) -> LineItemGenerator<'b> {
         LineItemGenerator {
             scale_factor,
-            part,
-            part_count,
+            vehicle,
+            vehicle_count,
             distributions,
             text_pool,
         }
@@ -1872,14 +1631,14 @@ impl<'a> LineItemGenerator<'a> {
             GenerateUtils::calculate_start_index(
                 OrderGenerator::SCALE_BASE,
                 self.scale_factor,
-                self.part,
-                self.part_count,
+                self.vehicle,
+                self.vehicle_count,
             ),
             GenerateUtils::calculate_row_count(
                 OrderGenerator::SCALE_BASE,
                 self.scale_factor,
-                self.part,
-                self.part_count,
+                self.vehicle,
+                self.vehicle_count,
             ),
         )
     }
@@ -1914,15 +1673,15 @@ impl<'a> LineItemGenerator<'a> {
         )
     }
 
-    /// Creates a part key random generator
-    pub fn create_part_key_random(scale_factor: f64) -> RandomBoundedLong {
+    /// Creates a vehicle key random generator
+    pub fn create_vehicle_key_random(scale_factor: f64) -> RandomBoundedLong {
         // If scale_factor >= 30000, use long `RandomBoundedLong` otherwise
         // use `RandomBoundedInt` to avoid overflow.
         RandomBoundedLong::new_with_seeds_per_row(
             1808217256,
             scale_factor >= 30000.0,
             Self::PART_KEY_MIN as i64,
-            (PartGenerator::SCALE_BASE as f64 * scale_factor) as i64,
+            (VehicleGenerator::SCALE_BASE as f64 * scale_factor) as i64,
             OrderGenerator::LINE_COUNT_MAX,
         )
     }
@@ -1957,9 +1716,9 @@ pub struct LineItemGeneratorIterator<'a> {
     discount_random: RandomBoundedInt,
     tax_random: RandomBoundedInt,
 
-    line_part_key_random: RandomBoundedLong,
+    line_vehicle_key_random: RandomBoundedLong,
 
-    Driver_number_random: RandomBoundedInt,
+    driver_number_random: RandomBoundedInt,
 
     ship_date_random: RandomBoundedInt,
     commit_date_random: RandomBoundedInt,
@@ -1996,9 +1755,9 @@ impl<'a> LineItemGeneratorIterator<'a> {
         let mut discount_random = LineItemGenerator::create_discount_random();
         let mut tax_random = LineItemGenerator::create_tax_random();
 
-        let mut line_part_key_random = LineItemGenerator::create_part_key_random(scale_factor);
+        let mut line_vehicle_key_random = LineItemGenerator::create_vehicle_key_random(scale_factor);
 
-        let mut Driver_number_random = RandomBoundedInt::new_with_seeds_per_row(
+        let mut driver_number_random = RandomBoundedInt::new_with_seeds_per_row(
             2095021727,
             0,
             3,
@@ -2049,9 +1808,9 @@ impl<'a> LineItemGeneratorIterator<'a> {
         discount_random.advance_rows(start_index);
         tax_random.advance_rows(start_index);
 
-        line_part_key_random.advance_rows(start_index);
+        line_vehicle_key_random.advance_rows(start_index);
 
-        Driver_number_random.advance_rows(start_index);
+        driver_number_random.advance_rows(start_index);
 
         ship_date_random.advance_rows(start_index);
         commit_date_random.advance_rows(start_index);
@@ -2073,8 +1832,8 @@ impl<'a> LineItemGeneratorIterator<'a> {
             quantity_random,
             discount_random,
             tax_random,
-            line_part_key_random,
-            Driver_number_random,
+            line_vehicle_key_random,
+            driver_number_random,
             ship_date_random,
             commit_date_random,
             receipt_date_random,
@@ -2100,17 +1859,16 @@ impl<'a> LineItemGeneratorIterator<'a> {
         let discount = self.discount_random.next_value();
         let tax = self.tax_random.next_value();
 
-        let part_key = self.line_part_key_random.next_value();
+        let vehicle_key = self.line_vehicle_key_random.next_value();
 
-        let Driver_number = self.Driver_number_random.next_value() as i64;
-        let Driver_key = PartSuppGeneratorIterator::select_part_Driver(
-            part_key,
-            Driver_number,
+        // let driver_number = self.driver_number_random.next_value() as i64;
+        let driver_key = DriverGeneratorIterator::select_driver(
+            vehicle_key,
             self.scale_factor,
         );
 
-        let part_price = PartGeneratorIterator::calculate_part_price(part_key);
-        let extended_price = part_price * quantity as i64;
+        let vehicle_price = VehicleGeneratorIterator::calculate_vehicle_price(vehicle_key);
+        let extended_price = vehicle_price * quantity as i64;
 
         let mut ship_date = self.ship_date_random.next_value();
         ship_date += self.order_date;
@@ -2137,8 +1895,8 @@ impl<'a> LineItemGeneratorIterator<'a> {
 
         LineItem {
             l_orderkey: order_key,
-            l_partkey: part_key,
-            l_suppkey: Driver_key,
+            l_vehiclekey: vehicle_key,
+            l_suppkey: driver_key,
             l_linenumber: (self.line_number + 1),
             l_quantity: quantity as i64,
             l_extendedprice: TPCHDecimal(extended_price),
@@ -2176,8 +1934,8 @@ impl<'a> Iterator for LineItemGeneratorIterator<'a> {
             self.discount_random.row_finished();
             self.tax_random.row_finished();
 
-            self.line_part_key_random.row_finished();
-            self.Driver_number_random.row_finished();
+            self.line_vehicle_key_random.row_finished();
+            self.driver_number_random.row_finished();
 
             self.ship_date_random.row_finished();
             self.commit_date_random.row_finished();
@@ -2224,22 +1982,18 @@ mod tests {
     }
 
     #[test]
-    fn test_part_generation() {
+    fn test_vehicle_generation() {
         // Create a generator with a small scale factor
-        let generator = PartGenerator::new(0.01, 1, 1);
-        let parts: Vec<_> = generator.iter().collect();
+        let generator = VehicleGenerator::new(0.01, 1, 1);
+        let vehicles: Vec<_> = generator.iter().collect();
 
-        // Should have 0.01 * 200,000 = 2,000 parts
-        assert_eq!(parts.len(), 2000);
-    }
+        // Should have 0.01 * 200,000 = 2,000 vehicles
+        assert_eq!(vehicles.len(), 2000);
 
-    #[test]
-    fn test_calculate_part_price() {
-        // Test with a few part keys
-        assert_eq!(PartGeneratorIterator::calculate_part_price(1), 90100);
-        assert_eq!(PartGeneratorIterator::calculate_part_price(10), 91001);
-        assert_eq!(PartGeneratorIterator::calculate_part_price(100), 100010);
-        assert_eq!(PartGeneratorIterator::calculate_part_price(1000), 90100);
+        // Check first Driver
+        let first = &vehicles[0];
+        assert_eq!(first.v_vehiclekey, 1);
+        assert_eq!(first.to_string(), "1|Manufacturer#1|Brand#13|PROMO BURNISHED COPPER|ly. slyly ironi|")
     }
 
     #[test]
@@ -2286,76 +2040,6 @@ mod tests {
             first.c_phone
         );
         assert_eq!(first.to_string(), expected_pattern);
-    }
-
-    #[test]
-    fn test_part_Driver_generation() {
-        // Create a generator with a small scale factor
-        let generator = PartSuppGenerator::new(0.01, 1, 1);
-        let part_Drivers: Vec<_> = generator.iter().collect();
-
-        // Should have 0.01 * 200,000 * 4 = 8,000 part-Driver relationships
-        assert_eq!(part_Drivers.len(), 8000);
-
-        // Each part should have DriverS_PER_PART Drivers
-        let part_keys: std::collections::HashSet<_> =
-            part_Drivers.iter().map(|ps| ps.ps_partkey).collect();
-
-        assert_eq!(part_keys.len(), 2000); // 8,000 / 4 = 2,000 parts
-
-        // Check first part Driver
-        let first = &part_Drivers[0];
-        assert_eq!(first.ps_partkey, 1);
-        assert_ne!(first.ps_suppkey, 0); // Should have a valid Driver key
-        assert!(first.ps_availqty > 0);
-        assert!(first.ps_supplycost > TPCHDecimal::ZERO);
-        assert!(!first.ps_comment.is_empty());
-
-        // Verify Driver distribution
-        let Drivers_for_first_part: Vec<_> = part_Drivers
-            .iter()
-            .filter(|ps| ps.ps_partkey == 1)
-            .map(|ps| ps.ps_suppkey)
-            .collect();
-
-        assert_eq!(
-            Drivers_for_first_part.len(),
-            PartSuppGenerator::DriverS_PER_PART as usize
-        );
-
-        // Driver keys should be unique for each part
-        let unique_Drivers: std::collections::HashSet<_> =
-            Drivers_for_first_part.iter().collect();
-        assert_eq!(
-            unique_Drivers.len(),
-            PartSuppGenerator::DriverS_PER_PART as usize
-        );
-    }
-
-    #[test]
-    fn test_select_part_Driver() {
-        // Test the Driver selection logic for consistency
-        let scale_factor = 1.0;
-
-        // Same part with different Driver numbers should yield different Drivers
-        let Driver1 = PartSuppGeneratorIterator::select_part_Driver(1, 0, scale_factor);
-        let Driver2 = PartSuppGeneratorIterator::select_part_Driver(1, 1, scale_factor);
-        let Driver3 = PartSuppGeneratorIterator::select_part_Driver(1, 2, scale_factor);
-        let Driver4 = PartSuppGeneratorIterator::select_part_Driver(1, 3, scale_factor);
-
-        // All Drivers should be different
-        let Drivers = vec![Driver1, Driver2, Driver3, Driver4];
-        let unique_Drivers: std::collections::HashSet<_> = Drivers.iter().collect();
-        assert_eq!(
-            unique_Drivers.len(),
-            PartSuppGenerator::DriverS_PER_PART as usize
-        );
-
-        // All Driver keys should be within valid range (1 to Driver_count)
-        let Driver_count = (DriverGenerator::SCALE_BASE as f64 * scale_factor) as i64;
-        for Driver in Drivers {
-            assert!(Driver >= 1 && Driver <= Driver_count);
-        }
     }
 
     #[test]
@@ -2418,7 +2102,7 @@ mod tests {
         let first = &line_items[0];
         assert_eq!(first.l_orderkey, OrderGenerator::make_order_key(1));
         assert_eq!(first.l_linenumber, 1);
-        assert!(first.l_partkey > 0);
+        assert!(first.l_vehiclekey > 0);
         assert!(first.l_suppkey > 0);
 
         assert!(first.l_quantity >= LineItemGenerator::QUANTITY_MIN as i64);
@@ -2469,10 +2153,9 @@ mod tests {
 
         let _iter: NationGeneratorIterator<'static> = NationGenerator::default().iter();
         let _iter: RegionGeneratorIterator<'static> = RegionGenerator::default().iter();
-        let _iter: PartGeneratorIterator<'static> = PartGenerator::new(0.1, 1, 1).iter();
+        let _iter: VehicleGeneratorIterator<'static> = VehicleGenerator::new(0.1, 1, 1).iter();
         let _iter: DriverGeneratorIterator<'static> = DriverGenerator::new(0.1, 1, 1).iter();
         let _iter: CustomerGeneratorIterator<'static> = CustomerGenerator::new(0.1, 1, 1).iter();
-        let _iter: PartSuppGeneratorIterator<'static> = PartSuppGenerator::new(0.1, 1, 1).iter();
         let _iter: OrderGeneratorIterator<'static> = OrderGenerator::new(0.1, 1, 1).iter();
         let _iter: LineItemGeneratorIterator<'static> = LineItemGenerator::new(0.1, 1, 1).iter();
     }
