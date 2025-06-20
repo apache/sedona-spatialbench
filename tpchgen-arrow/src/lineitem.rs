@@ -29,7 +29,7 @@ use tpchgen::generators::{LineItemGenerator, LineItemGeneratorIterator};
 /// let lines = formatted_batches.lines().collect::<Vec<_>>();
 /// assert_eq!(lines, vec![
 ///   "+------------+-----------+-----------+--------------+------------+-----------------+------------+-------+--------------+--------------+------------+--------------+---------------+-------------------+------------+-------------------------------------+",
-///   "| l_orderkey | l_partkey | l_suppkey | l_linenumber | l_quantity | l_extendedprice | l_discount | l_tax | l_returnflag | l_linestatus | l_shipdate | l_commitdate | l_receiptdate | l_shipinstruct    | l_shipmode | l_comment                           |",
+///   "| l_orderkey | l_vehiclekey | l_suppkey | l_linenumber | l_quantity | l_extendedprice | l_discount | l_tax | l_returnflag | l_linestatus | l_shipdate | l_commitdate | l_receiptdate | l_shipinstruct    | l_shipmode | l_comment                           |",
 ///   "+------------+-----------+-----------+--------------+------------+-----------------+------------+-------+--------------+--------------+------------+--------------+---------------+-------------------+------------+-------------------------------------+",
 ///   "| 1          | 155190    | 7706      | 1            | 17.00      | 21168.23        | 0.04       | 0.02  | N            | O            | 1996-03-13 | 1996-02-12   | 1996-03-22    | DELIVER IN PERSON | TRUCK      | egular courts above the             |",
 ///   "| 1          | 67310     | 7311      | 2            | 36.00      | 45983.16        | 0.09       | 0.06  | N            | O            | 1996-04-12 | 1996-02-28   | 1996-04-20    | TAKE BACK RETURN  | MAIL       | ly final dependencies: slyly bold   |",
@@ -88,7 +88,7 @@ impl Iterator for LineItemArrow {
 
         // Convert column by column
         let l_orderkey = Int64Array::from_iter_values(rows.iter().map(|row| row.l_orderkey));
-        let l_partkey = Int64Array::from_iter_values(rows.iter().map(|row| row.l_partkey));
+        let l_vehiclekey = Int64Array::from_iter_values(rows.iter().map(|row| row.l_vehiclekey));
         let l_suppkey = Int64Array::from_iter_values(rows.iter().map(|row| row.l_suppkey));
         let l_linenumber = Int32Array::from_iter_values(rows.iter().map(|row| row.l_linenumber));
         let l_quantity = Decimal128Array::from_iter_values(rows.iter().map(|row| {
@@ -126,7 +126,7 @@ impl Iterator for LineItemArrow {
             Arc::clone(self.schema()),
             vec![
                 Arc::new(l_orderkey),
-                Arc::new(l_partkey),
+                Arc::new(l_vehiclekey),
                 Arc::new(l_suppkey),
                 Arc::new(l_linenumber),
                 Arc::new(l_quantity),
@@ -155,7 +155,7 @@ static LINEITEM_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(make_lineitem_schema
 fn make_lineitem_schema() -> SchemaRef {
     Arc::new(Schema::new(vec![
         Field::new("l_orderkey", DataType::Int64, false),
-        Field::new("l_partkey", DataType::Int64, false),
+        Field::new("l_vehiclekey", DataType::Int64, false),
         Field::new("l_suppkey", DataType::Int64, false),
         Field::new("l_linenumber", DataType::Int32, false),
         Field::new("l_quantity", DataType::Decimal128(15, 2), false),

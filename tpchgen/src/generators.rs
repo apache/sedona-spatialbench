@@ -340,7 +340,7 @@ impl fmt::Display for VehicleBrandName {
     }
 }
 
-/// The PART table
+/// The VEHICLE table
 ///
 /// The Display trait is implemented to format the line item data as a string
 /// in the default TPC-H 'tbl' format.
@@ -652,6 +652,9 @@ impl<'a> DriverGenerator<'a> {
     /// Base scale for Driver generation
     const SCALE_BASE: i32 = 10_000;
 
+    /// Base scale for vehicle-driver generation
+    const DRIVERS_PER_VEHICLE: i32 = 4;
+
     // Constants for Driver generation
     const ACCOUNT_BALANCE_MIN: i32 = -99999;
     const ACCOUNT_BALANCE_MAX: i32 = 999999;
@@ -828,14 +831,16 @@ impl<'a> DriverGeneratorIterator<'a> {
     }
 
     /// Selects a driver for a vehicle, with drivers table 5x the size of vehicles table
-    pub fn select_driver(vehicle_key: i64, scale_factor: f64) -> i64 {
-        // Calculate driver count as 5 times the vehicle count
-        let driver_count = 5 * (VehicleGenerator::SCALE_BASE as f64 * scale_factor) as i64;
+    pub fn select_driver(vehicle_key: i64, driver_number: i64, scale_factor: f64) -> i64 {
+        // Use supplier generator's scale base
+        let driver_count = (VehicleGenerator::SCALE_BASE as f64 * scale_factor) as i64;
 
-        // Map each vehicle to a specific driver
-        // Using the formula that ensures the driver key is within valid range
-        // and maintains a one-to-one relationship between vehicles and drivers
-        ((vehicle_key - 1) % driver_count) + 1
+        ((vehicle_key
+            + (driver_number
+            * ((driver_count / DriverGenerator::DRIVERS_PER_VEHICLE as i64)
+            + ((vehicle_key - 1) / driver_count))))
+            % driver_count)
+            + 1
     }
 }
 
@@ -1502,7 +1507,7 @@ impl<'a> Iterator for OrderGeneratorIterator<'a> {
 pub struct LineItem<'a> {
     /// Foreign key to ORDERS
     pub l_orderkey: i64,
-    /// Foreign key to PART
+    /// Foreign key to VEHICLE
     pub l_vehiclekey: i64,
     /// Foreign key to Driver
     pub l_suppkey: i64,
@@ -1578,8 +1583,7 @@ impl<'a> LineItemGenerator<'a> {
     const TAX_MAX: TPCHDecimal = TPCHDecimal(8); // 0.08
     const DISCOUNT_MIN: TPCHDecimal = TPCHDecimal(0); // 0.00
     const DISCOUNT_MAX: TPCHDecimal = TPCHDecimal(10); // 0.10
-    const PART_KEY_MIN: i32 = 1;
-
+    const VEHICLE_KEY_MIN: i32 = 1;
     const SHIP_DATE_MIN: i32 = 1;
     const SHIP_DATE_MAX: i32 = 121;
     const COMMIT_DATE_MIN: i32 = 30;
@@ -1680,7 +1684,7 @@ impl<'a> LineItemGenerator<'a> {
         RandomBoundedLong::new_with_seeds_per_row(
             1808217256,
             scale_factor >= 30000.0,
-            Self::PART_KEY_MIN as i64,
+            Self::VEHICLE_KEY_MIN as i64,
             (VehicleGenerator::SCALE_BASE as f64 * scale_factor) as i64,
             OrderGenerator::LINE_COUNT_MAX,
         )
@@ -1864,6 +1868,7 @@ impl<'a> LineItemGeneratorIterator<'a> {
         // let driver_number = self.driver_number_random.next_value() as i64;
         let driver_key = DriverGeneratorIterator::select_driver(
             vehicle_key,
+            self.line_number as i64,
             self.scale_factor,
         );
 
@@ -1956,6 +1961,325 @@ impl<'a> Iterator for LineItemGeneratorIterator<'a> {
         }
 
         Some(line_item)
+    }
+}
+
+/// The TRIP table (fact table)
+///
+/// The Display trait is implemented to format the trip data as a string
+/// in the default TPC-H 'tbl' format.
+///
+/// ```text
+/// 1|150|342|78|2023-04-12 08:30:15|2023-04-12 09:15:42|25.50|4.50|30.00|12.7|
+/// 2|43|129|156|2023-04-12 10:05:22|2023-04-12 10:32:18|18.75|3.25|22.00|8.3|
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+pub struct Trip {
+    /// Primary key
+    pub t_tripkey: i64,
+    /// Foreign key to CUSTOMER
+    pub t_custkey: i64,
+    /// Foreign key to DRIVER
+    pub t_driverkey: i64,
+    /// Foreign key to VEHICLE
+    pub t_vehiclekey: i64,
+    /// Pickup time
+    pub t_pickuptime: TPCHDate,
+    /// Dropoff time
+    pub t_dropofftime: TPCHDate,
+    /// Trip fare amount
+    pub t_fare: TPCHDecimal,
+    /// Trip tip amount
+    pub t_tip: TPCHDecimal,
+    /// Total amount
+    pub t_totalamount: TPCHDecimal,
+    /// Trip distance
+    pub t_distance: TPCHDecimal,
+}
+
+impl fmt::Display for Trip {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|",
+            self.t_tripkey,
+            self.t_custkey,
+            self.t_driverkey,
+            self.t_vehiclekey,
+            self.t_pickuptime,
+            self.t_dropofftime,
+            self.t_fare,
+            self.t_tip,
+            self.t_totalamount,
+            self.t_distance
+        )
+    }
+}
+
+/// Generator for Trip table data
+#[derive(Debug, Clone)]
+pub struct TripGenerator<'a> {
+    scale_factor: f64,
+    vehicle: i32,
+    vehicle_count: i32,
+    distributions: &'a Distributions,
+    text_pool: &'a TextPool,
+}
+
+impl<'a> TripGenerator<'a> {
+    /// Base scale for trip generation
+    const SCALE_BASE: i32 = 1_500_000;
+
+    // Constants for trip generation
+    const DISTANCE_MIN: i32 = 1;   // 1.0 miles
+    const DISTANCE_MAX: i32 = 500; // 50.0 miles
+    const FARE_MIN_PER_MILE: i32 = 150; // $1.50 per mile
+    const FARE_MAX_PER_MILE: i32 = 300; // $3.00 per mile
+    const TIP_PERCENT_MIN: i32 = 0;     // 0% tip
+    const TIP_PERCENT_MAX: i32 = 30;    // 30% tip
+    const TRIP_DURATION_MIN_MINUTES: i32 = 5;  // min duration 5 minutes
+    const TRIP_DURATION_MAX_PER_MILE: i32 = 3; // max 3 minutes per mile
+
+    /// Creates a new TripGenerator with the given scale factor
+    pub fn new(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> TripGenerator<'static> {
+        Self::new_with_distributions_and_text_pool(
+            scale_factor,
+            vehicle,
+            vehicle_count,
+            Distributions::static_default(),
+            TextPool::get_or_init_default(),
+        )
+    }
+
+    /// Creates a TripGenerator with specified distributions and text pool
+    pub fn new_with_distributions_and_text_pool<'b>(
+        scale_factor: f64,
+        vehicle: i32,
+        vehicle_count: i32,
+        distributions: &'b Distributions,
+        text_pool: &'b TextPool,
+    ) -> TripGenerator<'b> {
+        TripGenerator {
+            scale_factor,
+            vehicle,
+            vehicle_count,
+            distributions,
+            text_pool,
+        }
+    }
+
+    /// Return the row count for the given scale factor and generator vehicle count
+    // pub fn calculate_row_count(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> i64 {
+    //     GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, vehicle, vehicle_count)
+    // }
+
+    /// Returns an iterator over the trip rows
+    pub fn iter(&self) -> TripGeneratorIterator {
+        TripGeneratorIterator::new(
+            self.distributions,
+            self.text_pool,
+            self.scale_factor,
+            GenerateUtils::calculate_start_index(
+                Self::SCALE_BASE,
+                self.scale_factor,
+                self.vehicle,
+                self.vehicle_count,
+            ),
+            GenerateUtils::calculate_row_count(
+                Self::SCALE_BASE,
+                self.scale_factor,
+                self.vehicle,
+                self.vehicle_count,
+            ),
+        )
+    }
+}
+
+impl<'a> IntoIterator for &'a TripGenerator<'a> {
+    type Item = Trip;
+    type IntoIter = TripGeneratorIterator;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+/// Iterator that generates Trip rows
+#[derive(Debug)]
+pub struct TripGeneratorIterator {
+    customer_key_random: RandomBoundedLong,
+    driver_key_random: RandomBoundedLong,
+    vehicle_key_random: RandomBoundedLong,
+    pickup_date_random: RandomBoundedInt,
+    distance_random: RandomBoundedInt,
+    fare_per_mile_random: RandomBoundedInt,
+    tip_percent_random: RandomBoundedInt,
+    trip_minutes_per_mile_random: RandomBoundedInt,
+
+    scale_factor: f64,
+    start_index: i64,
+    row_count: i64,
+    max_customer_key: i64,
+
+    index: i64,
+    trip_number: i64,
+}
+
+impl TripGeneratorIterator {
+    fn new(
+        _distributions: &Distributions,
+        _text_pool: &TextPool,
+        scale_factor: f64,
+        start_index: i64,
+        row_count: i64,
+    ) -> Self {
+        // Create all the randomizers
+        let max_customer_key = (CustomerGenerator::SCALE_BASE as f64 * scale_factor) as i64;
+        let max_driver_key = (DriverGenerator::SCALE_BASE as f64 * scale_factor) as i64;
+        let max_vehicle_key = (VehicleGenerator::SCALE_BASE as f64 * scale_factor) as i64;
+
+        let mut customer_key_random = RandomBoundedLong::new(921591341, scale_factor >= 30000.0, 1, max_customer_key);
+        let mut driver_key_random = RandomBoundedLong::new(572982913, scale_factor >= 30000.0, 1, max_driver_key);
+        let mut vehicle_key_random = RandomBoundedLong::new(135497281, scale_factor >= 30000.0, 1, max_vehicle_key);
+
+        let mut pickup_date_random = RandomBoundedInt::new(
+            831649288,
+            dates::MIN_GENERATE_DATE,
+            dates::MIN_GENERATE_DATE + dates::TOTAL_DATE_RANGE - TripGenerator::TRIP_DURATION_MAX_PER_MILE * TripGenerator::DISTANCE_MAX / 60 / 24
+        );
+
+        let mut distance_random = RandomBoundedInt::new(
+            692134278,
+            TripGenerator::DISTANCE_MIN,
+            TripGenerator::DISTANCE_MAX
+        );
+
+        let mut fare_per_mile_random = RandomBoundedInt::new(
+            109837462,
+            TripGenerator::FARE_MIN_PER_MILE,
+            TripGenerator::FARE_MAX_PER_MILE
+        );
+
+        let mut tip_percent_random = RandomBoundedInt::new(
+            483912756,
+            TripGenerator::TIP_PERCENT_MIN,
+            TripGenerator::TIP_PERCENT_MAX
+        );
+
+        let mut trip_minutes_per_mile_random = RandomBoundedInt::new(
+            748219567,
+            1,
+            TripGenerator::TRIP_DURATION_MAX_PER_MILE
+        );
+
+        // Advance all generators to the starting position
+        customer_key_random.advance_rows(start_index);
+        driver_key_random.advance_rows(start_index);
+        vehicle_key_random.advance_rows(start_index);
+        pickup_date_random.advance_rows(start_index);
+        distance_random.advance_rows(start_index);
+        fare_per_mile_random.advance_rows(start_index);
+        tip_percent_random.advance_rows(start_index);
+        trip_minutes_per_mile_random.advance_rows(start_index);
+
+        TripGeneratorIterator {
+            customer_key_random,
+            driver_key_random,
+            vehicle_key_random,
+            pickup_date_random,
+            distance_random,
+            fare_per_mile_random,
+            tip_percent_random,
+            trip_minutes_per_mile_random,
+            scale_factor,
+            start_index,
+            row_count,
+            max_customer_key,
+            index: 0,
+            trip_number: 0,
+        }
+    }
+
+    /// Creates a trip with the given key
+    fn make_trip(&mut self, trip_key: i64) -> Trip {
+
+        // generate customer key, taking into account customer mortality rate
+        let mut customer_key = self.customer_key_random.next_value();
+        let mut delta = 1;
+        while customer_key % OrderGenerator::CUSTOMER_MORTALITY as i64 == 0 {
+            customer_key += delta;
+            customer_key = customer_key.min(self.max_customer_key);
+            delta *= -1;
+        }
+
+        let vehicle_key = self.vehicle_key_random.next_value();
+        let driver_key = DriverGeneratorIterator::select_driver(
+            vehicle_key,
+            self.trip_number,
+            self.scale_factor,
+        );
+
+        let pickup_date_value = self.pickup_date_random.next_value();
+        let pickup_date = TPCHDate::new(pickup_date_value);
+
+        let distance_value = self.distance_random.next_value();
+        let distance = TPCHDecimal((distance_value * 10) as i64); // Convert to i64
+
+        let fare_per_mile = self.fare_per_mile_random.next_value();
+        let fare_value = (distance_value * fare_per_mile) / 100;
+        let fare = TPCHDecimal((fare_value * 100) as i64); // Convert to i64
+
+        let tip_percent = self.tip_percent_random.next_value();
+        let tip_value = (fare_value * tip_percent) / 100;
+        let tip = TPCHDecimal((tip_value * 100) as i64); // Convert to i64
+
+        let total_value = fare_value + tip_value;
+        let total = TPCHDecimal((total_value * 100) as i64); // Convert to i64
+
+        // Calculate trip duration in minutes
+        let minutes_per_mile = self.trip_minutes_per_mile_random.next_value();
+        let duration_minutes = TripGenerator::TRIP_DURATION_MIN_MINUTES + (distance_value * minutes_per_mile);
+        let dropoff_date_value = pickup_date_value + ((duration_minutes as f64) / (24.0 * 60.0)) as i32;
+        let dropoff_date = TPCHDate::new(dropoff_date_value);
+
+        Trip {
+            t_tripkey: trip_key,
+            t_custkey: customer_key,
+            t_driverkey: driver_key,
+            t_vehiclekey: vehicle_key,
+            t_pickuptime: pickup_date,
+            t_dropofftime: dropoff_date,
+            t_fare: fare,
+            t_tip: tip,
+            t_totalamount: total,
+            t_distance: distance,
+        }
+    }
+}
+
+impl<'a> Iterator for TripGeneratorIterator {
+    type Item = Trip;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.row_count {
+            return None;
+        }
+
+        let trip = self.make_trip(self.start_index + self.index + 1);
+
+        // Mark all generators as finished with this row
+        self.customer_key_random.row_finished();
+        self.driver_key_random.row_finished();
+        self.vehicle_key_random.row_finished();
+        self.pickup_date_random.row_finished();
+        self.distance_random.row_finished();
+        self.fare_per_mile_random.row_finished();
+        self.tip_percent_random.row_finished();
+        self.trip_minutes_per_mile_random.row_finished();
+
+        self.index += 1;
+
+        Some(trip)
     }
 }
 
@@ -2081,6 +2405,54 @@ mod tests {
                 OrderGenerator::make_order_key(i as i64 + 1)
             );
         }
+    }
+
+    #[test]
+    fn test_trip_generation() {
+        // Create a generator with a small scale factor
+        let generator = TripGenerator::new(0.01, 1, 1);
+        let trips: Vec<_> = generator.iter().collect();
+
+        // Should have 0.01 * 1,000,000 = 10,000 trips
+        assert_eq!(trips.len(), 15000);
+
+        // Check first trip
+        let first = &trips[0];
+        assert_eq!(first.t_tripkey, 1);
+        assert!(first.t_custkey > 0);
+        assert!(first.t_driverkey > 0);
+        assert!(first.t_vehiclekey > 0);
+
+        // Check that pickup date is before or equal to dropoff date
+        // TPCHDate doesn't have a .0 field, use date comparison instead
+        assert!(first.t_pickuptime <= first.t_dropofftime);
+
+        // Check that the financial values make sense
+        assert!(first.t_fare.0 > 0);
+        assert!(first.t_tip.0 >= 0); // Tip could be zero
+        assert_eq!(first.t_totalamount.0, first.t_fare.0 + first.t_tip.0);
+        assert!(first.t_distance.0 > 0);
+
+        // Verify the string format matches the expected pattern
+        let expected_pattern = format!(
+            "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|",
+            first.t_tripkey,
+            first.t_custkey,
+            first.t_driverkey,
+            first.t_vehiclekey,
+            first.t_pickuptime,
+            first.t_dropofftime,
+            first.t_fare,
+            first.t_tip,
+            first.t_totalamount,
+            first.t_distance
+        );
+        assert_eq!(first.to_string(), expected_pattern);
+
+        // Check first Trip
+        let first = &trips[1];
+        assert_eq!(first.t_tripkey, 2);
+        assert_eq!(first.to_string(), "2|851|1286|1285|1997-12-24|1997-12-24|37.00|6.00|43.00|1.40|")
     }
 
     #[test]

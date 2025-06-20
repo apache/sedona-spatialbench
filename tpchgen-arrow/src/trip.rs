@@ -1,0 +1,114 @@
+use crate::conversions::{decimal128_array_from_iter, to_arrow_date32};
+use crate::{DEFAULT_BATCH_SIZE, RecordBatchIterator};
+use arrow::array::{Date32Array, Decimal128Array, Int64Array, RecordBatch};
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use std::sync::{Arc, LazyLock};
+use tpchgen::generators::{TripGenerator, TripGeneratorIterator};
+
+/// Generate [`Trip`]s in [`RecordBatch`] format
+///
+/// [`Trip`]: tpchgen::generators::Trip
+///
+/// # Example
+/// ```
+/// # use tpchgen::generators::TripGenerator;
+/// # use tpchgen_arrow::TripArrow;
+///
+/// // Create a SF=1.0 generator and wrap it in an Arrow generator
+/// let generator = TripGenerator::new(1.0, 1, 1);
+/// let mut arrow_generator = TripArrow::new(generator)
+///   .with_batch_size(10);
+/// // Read the first batch
+/// let batch = arrow_generator.next().unwrap();
+/// ```
+pub struct TripArrow {
+    inner: TripGeneratorIterator,
+    batch_size: usize,
+}
+
+impl TripArrow {
+    pub fn new(generator: TripGenerator<'static>) -> Self {
+        Self {
+            inner: generator.iter(),
+            batch_size: DEFAULT_BATCH_SIZE,
+        }
+    }
+
+    /// Set the batch size
+    pub fn with_batch_size(mut self, batch_size: usize) -> Self {
+        self.batch_size = batch_size;
+        self
+    }
+}
+
+impl RecordBatchIterator for TripArrow {
+    fn schema(&self) -> &SchemaRef {
+        &TRIP_SCHEMA
+    }
+}
+
+impl Iterator for TripArrow {
+    type Item = RecordBatch;
+
+    /// Generate the next batch of data, if there is one
+    fn next(&mut self) -> Option<Self::Item> {
+        // Get next rows to convert
+        let rows: Vec<_> = self.inner.by_ref().take(self.batch_size).collect();
+        if rows.is_empty() {
+            return None;
+        }
+
+        // Convert column by column
+        let t_tripkey = Int64Array::from_iter_values(rows.iter().map(|row| row.t_tripkey));
+        let t_custkey = Int64Array::from_iter_values(rows.iter().map(|row| row.t_custkey));
+        let t_driverkey = Int64Array::from_iter_values(rows.iter().map(|row| row.t_driverkey));
+        let t_vehiclekey = Int64Array::from_iter_values(rows.iter().map(|row| row.t_vehiclekey));
+        let t_pickuptime = Date32Array::from_iter_values(
+            rows.iter().map(|row| row.t_pickuptime).map(to_arrow_date32),
+        );
+        let t_dropofftime = Date32Array::from_iter_values(
+            rows.iter().map(|row| row.t_dropofftime).map(to_arrow_date32),
+        );
+        let t_fare = decimal128_array_from_iter(rows.iter().map(|row| row.t_fare));
+        let t_tip = decimal128_array_from_iter(rows.iter().map(|row| row.t_tip));
+        let t_totalamount = decimal128_array_from_iter(rows.iter().map(|row| row.t_totalamount));
+        let t_distance = decimal128_array_from_iter(rows.iter().map(|row| row.t_distance));
+
+        let batch = RecordBatch::try_new(
+            Arc::clone(self.schema()),
+            vec![
+                Arc::new(t_tripkey),
+                Arc::new(t_custkey),
+                Arc::new(t_driverkey),
+                Arc::new(t_vehiclekey),
+                Arc::new(t_pickuptime),
+                Arc::new(t_dropofftime),
+                Arc::new(t_fare),
+                Arc::new(t_tip),
+                Arc::new(t_totalamount),
+                Arc::new(t_distance),
+            ],
+        )
+            .unwrap();
+
+        Some(batch)
+    }
+}
+
+/// Schema for the Trip table
+static TRIP_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(make_trip_schema);
+
+fn make_trip_schema() -> SchemaRef {
+    Arc::new(Schema::new(vec![
+        Field::new("t_tripkey", DataType::Int64, false),
+        Field::new("t_custkey", DataType::Int64, false),
+        Field::new("t_driverkey", DataType::Int64, false),
+        Field::new("t_vehiclekey", DataType::Int64, false),
+        Field::new("t_pickuptime", DataType::Date32, false),
+        Field::new("t_dropofftime", DataType::Date32, false),
+        Field::new("t_fare", DataType::Decimal128(15, 2), false),
+        Field::new("t_tip", DataType::Decimal128(15, 2), false),
+        Field::new("t_totalamount", DataType::Decimal128(15, 2), false),
+        Field::new("t_distance", DataType::Decimal128(15, 2), false),
+    ]))
+}
