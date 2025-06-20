@@ -2018,15 +2018,16 @@ impl fmt::Display for Trip {
 
 /// Generator for Trip table data
 #[derive(Debug, Clone)]
-pub struct TripGenerator<'a> {
+pub struct TripGenerator {
     scale_factor: f64,
     vehicle: i32,
     vehicle_count: i32,
-    distributions: &'a Distributions,
-    text_pool: &'a TextPool,
+    distributions: Distributions,
+    text_pool: TextPool,
+    distance_kde: crate::kde::DistanceKDE,
 }
 
-impl<'a> TripGenerator<'a> {
+impl TripGenerator {
     /// Base scale for trip generation
     const SCALE_BASE: i32 = 1_500_000;
 
@@ -2041,13 +2042,14 @@ impl<'a> TripGenerator<'a> {
     const TRIP_DURATION_MAX_PER_MILE: i32 = 3; // max 3 minutes per mile
 
     /// Creates a new TripGenerator with the given scale factor
-    pub fn new(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> TripGenerator<'static> {
+    pub fn new(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> TripGenerator {
         Self::new_with_distributions_and_text_pool(
             scale_factor,
             vehicle,
             vehicle_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
+            crate::kde::default_distance_kde(),
         )
     }
 
@@ -2058,26 +2060,28 @@ impl<'a> TripGenerator<'a> {
         vehicle_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
-    ) -> TripGenerator<'b> {
+        distance_kde: crate::kde::DistanceKDE,
+    ) -> TripGenerator {
         TripGenerator {
             scale_factor,
             vehicle,
             vehicle_count,
-            distributions,
-            text_pool,
+            distributions: distributions.clone(),
+            text_pool: text_pool.clone(),
+            distance_kde,
         }
     }
 
     /// Return the row count for the given scale factor and generator vehicle count
-    // pub fn calculate_row_count(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> i64 {
-    //     GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, vehicle, vehicle_count)
-    // }
+    pub fn calculate_row_count(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> i64 {
+        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, vehicle, vehicle_count)
+    }
 
     /// Returns an iterator over the trip rows
     pub fn iter(&self) -> TripGeneratorIterator {
         TripGeneratorIterator::new(
-            self.distributions,
-            self.text_pool,
+            &self.distributions,
+            &self.text_pool,
             self.scale_factor,
             GenerateUtils::calculate_start_index(
                 Self::SCALE_BASE,
@@ -2091,11 +2095,12 @@ impl<'a> TripGenerator<'a> {
                 self.vehicle,
                 self.vehicle_count,
             ),
+            self.distance_kde.clone(), // Add the KDE model
         )
     }
 }
 
-impl<'a> IntoIterator for &'a TripGenerator<'a> {
+impl<'a> IntoIterator for TripGenerator{
     type Item = Trip;
     type IntoIter = TripGeneratorIterator;
 
@@ -2115,6 +2120,7 @@ pub struct TripGeneratorIterator {
     fare_per_mile_random: RandomBoundedInt,
     tip_percent_random: RandomBoundedInt,
     trip_minutes_per_mile_random: RandomBoundedInt,
+    distance_kde: crate::kde::DistanceKDE,
 
     scale_factor: f64,
     start_index: i64,
@@ -2132,6 +2138,7 @@ impl TripGeneratorIterator {
         scale_factor: f64,
         start_index: i64,
         row_count: i64,
+        distance_kde: crate::kde::DistanceKDE,
     ) -> Self {
         // Create all the randomizers
         let max_customer_key = (CustomerGenerator::SCALE_BASE as f64 * scale_factor) as i64;
@@ -2191,10 +2198,13 @@ impl TripGeneratorIterator {
             fare_per_mile_random,
             tip_percent_random,
             trip_minutes_per_mile_random,
+            distance_kde, // Store the KDE model
+
             scale_factor,
             start_index,
             row_count,
             max_customer_key,
+
             index: 0,
             trip_number: 0,
         }
@@ -2222,23 +2232,29 @@ impl TripGeneratorIterator {
         let pickup_date_value = self.pickup_date_random.next_value();
         let pickup_date = TPCHDate::new(pickup_date_value);
 
-        let distance_value = self.distance_random.next_value();
-        let distance = TPCHDecimal((distance_value * 10) as i64); // Convert to i64
+        // let distance_value = self.distance_random.next_value();
+        // let distance = TPCHDecimal((distance_value * 10) as i64); // Convert to i64
 
-        let fare_per_mile = self.fare_per_mile_random.next_value();
-        let fare_value = (distance_value * fare_per_mile) / 100;
-        let fare = TPCHDecimal((fare_value * 100) as i64); // Convert to i64
+        // Get distance from KDE model (in miles with decimal precision)
+        let distance_value = self.distance_kde.generate();
+        // Convert to Decimal with 2 decimal places
+        let distance = self.distance_kde.generate_tpch_decimal();
 
-        let tip_percent = self.tip_percent_random.next_value();
-        let tip_value = (fare_value * tip_percent) / 100;
-        let tip = TPCHDecimal((tip_value * 100) as i64); // Convert to i64
+        // Fix multiplication of f64 by integers by using f64 literals
+        let fare_per_mile = self.fare_per_mile_random.next_value() as f64;
+        let fare_value = (distance_value * fare_per_mile) / 100.0;
+        let fare = TPCHDecimal((fare_value * 100.0) as i64); // Use 100.0 (float) instead of 100 (int)
+
+        let tip_percent = self.tip_percent_random.next_value() as f64; // Convert to f64
+        let tip_value = (fare_value * tip_percent) / 100.0; // Use 100.0 instead of 100
+        let tip = TPCHDecimal((tip_value * 100.0) as i64); // Use 100.0 instead of 100
 
         let total_value = fare_value + tip_value;
-        let total = TPCHDecimal((total_value * 100) as i64); // Convert to i64
+        let total = TPCHDecimal((total_value * 100.0) as i64); // Use 100.0 instead of 100
 
         // Calculate trip duration in minutes
-        let minutes_per_mile = self.trip_minutes_per_mile_random.next_value();
-        let duration_minutes = TripGenerator::TRIP_DURATION_MIN_MINUTES + (distance_value * minutes_per_mile);
+        let minutes_per_mile = self.trip_minutes_per_mile_random.next_value() as f64;
+        let duration_minutes = TripGenerator::TRIP_DURATION_MIN_MINUTES as f64 + (distance_value * minutes_per_mile);
         let dropoff_date_value = pickup_date_value + ((duration_minutes as f64) / (24.0 * 60.0)) as i32;
         let dropoff_date = TPCHDate::new(dropoff_date_value);
 

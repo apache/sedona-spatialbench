@@ -62,12 +62,12 @@ use std::str::FromStr;
 use std::time::Instant;
 use tpchgen::distribution::Distributions;
 use tpchgen::generators::{
-    CustomerGenerator, LineItemGenerator, NationGenerator, OrderGenerator, VehicleGenerator, RegionGenerator, DriverGenerator,
+    CustomerGenerator, LineItemGenerator, NationGenerator, OrderGenerator, VehicleGenerator, RegionGenerator, DriverGenerator, TripGenerator,
 };
 use tpchgen::text::TextPool;
 use tpchgen_arrow::{
     CustomerArrow, LineItemArrow, NationArrow, OrderArrow, VehicleArrow,
-    RecordBatchIterator, RegionArrow, DriverArrow,
+    RecordBatchIterator, RegionArrow, DriverArrow, TripArrow
 };
 
 #[derive(Parser)]
@@ -137,6 +137,7 @@ enum Table {
     Customer,
     Orders,
     Lineitem,
+    Trip,
 }
 
 impl Display for Table {
@@ -172,11 +173,12 @@ impl TypedValueParser for TableValueParser {
             [
                 clap::builder::PossibleValue::new("region").help("Region table (alias: r)"),
                 clap::builder::PossibleValue::new("nation").help("Nation table (alias: n)"),
-                clap::builder::PossibleValue::new("Driver").help("Driver table (alias: s)"),
+                clap::builder::PossibleValue::new("driver").help("Driver table (alias: d)"),
                 clap::builder::PossibleValue::new("customer").help("Customer table (alias: c)"),
-                clap::builder::PossibleValue::new("vehicle").help("Vehicle table (alias: P)"),
+                clap::builder::PossibleValue::new("vehicle").help("Vehicle table (alias: V)"),
                 clap::builder::PossibleValue::new("orders").help("Orders table (alias: O)"),
                 clap::builder::PossibleValue::new("lineitem").help("LineItem table (alias: L)"),
+                clap::builder::PossibleValue::new("trip").help("Trip table (alias: T)"),
             ]
             .into_iter(),
         ))
@@ -196,11 +198,12 @@ impl FromStr for Table {
         match s {
             "n" | "nation" => Ok(Table::Nation),
             "r" | "region" => Ok(Table::Region),
-            "d" | "Driver" => Ok(Table::Driver),
+            "d" | "driver" => Ok(Table::Driver),
             "V" | "vehicle" => Ok(Table::Vehicle),
             "c" | "customer" => Ok(Table::Customer),
             "O" | "orders" => Ok(Table::Orders),
             "L" | "lineitem" => Ok(Table::Lineitem),
+            "T" | "trip" => Ok(Table::Trip),
             _ => Err("Invalid table name {s}"),
         }
     }
@@ -212,10 +215,11 @@ impl Table {
             Table::Nation => "nation",
             Table::Region => "region",
             Table::Vehicle => "vehicle",
-            Table::Driver => "Driver",
+            Table::Driver => "driver",
             Table::Customer => "customer",
             Table::Orders => "orders",
             Table::Lineitem => "lineitem",
+            Table::Trip => "Trip",
         }
     }
 }
@@ -294,6 +298,7 @@ impl Cli {
                 Table::Customer,
                 Table::Orders,
                 Table::Lineitem,
+                Table::Trip,
             ]
         };
 
@@ -316,6 +321,7 @@ impl Cli {
                 Table::Customer => self.generate_customer().await?,
                 Table::Orders => self.generate_orders().await?,
                 Table::Lineitem => self.generate_lineitem().await?,
+                Table::Trip => self.generate_trip().await?,
             }
         }
 
@@ -379,6 +385,14 @@ impl Cli {
         LineItemCsvSource,
         LineItemArrow
     );
+    define_generate!(
+        generate_trip,
+        Table::Trip,
+        TripGenerator,
+        TripTblSource,
+        TripCsvSource,
+        TripArrow
+    );
 
     /// return the output filename for the given table
     fn output_filename(&self, table: Table) -> String {
@@ -438,7 +452,8 @@ impl Cli {
                 // * lineitem has around 60,000,000 rows
                 let row_count = 4 * OrderGenerator::calculate_row_count(self.scale_factor, 1, 1);
                 (128, row_count)
-            }
+            },
+            &Table::Trip => (130, TripGenerator::calculate_row_count(self.scale_factor, 1, 1)),
         };
         // target chunks of about 16MB (use 15MB to ensure we don't exceed the target size)
         let target_chunk_size_bytes = 15 * 1024 * 1024;

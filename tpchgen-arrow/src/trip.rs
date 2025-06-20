@@ -1,40 +1,47 @@
 use crate::conversions::{decimal128_array_from_iter, to_arrow_date32};
 use crate::{DEFAULT_BATCH_SIZE, RecordBatchIterator};
-use arrow::array::{Date32Array, Decimal128Array, Int64Array, RecordBatch};
+use arrow::array::{Date32Array, Int64Array, RecordBatch};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-use std::sync::{Arc, LazyLock};
-use tpchgen::generators::{TripGenerator, TripGeneratorIterator};
+use std::sync::{Arc, LazyLock, Mutex};
+use tpchgen::generators::{Trip, TripGenerator, TripGeneratorIterator};
 
-/// Generate [`Trip`]s in [`RecordBatch`] format
-///
-/// [`Trip`]: tpchgen::generators::Trip
-///
-/// # Example
-/// ```
-/// # use tpchgen::generators::TripGenerator;
-/// # use tpchgen_arrow::TripArrow;
-///
-/// // Create a SF=1.0 generator and wrap it in an Arrow generator
-/// let generator = TripGenerator::new(1.0, 1, 1);
-/// let mut arrow_generator = TripArrow::new(generator)
-///   .with_batch_size(10);
-/// // Read the first batch
-/// let batch = arrow_generator.next().unwrap();
-/// ```
-pub struct TripArrow {
-    inner: TripGeneratorIterator,
-    batch_size: usize,
+// Thread-safe wrapper for TripGeneratorIterator
+struct ThreadSafeTripGenerator {
+    generator: Mutex<TripGeneratorIterator>,
 }
 
-impl TripArrow {
-    pub fn new(generator: TripGenerator<'static>) -> Self {
+impl ThreadSafeTripGenerator {
+    fn new(generator: TripGenerator) -> Self {
         Self {
-            inner: generator.iter(),
-            batch_size: DEFAULT_BATCH_SIZE,
+            generator: Mutex::new(generator.iter()),
         }
     }
 
-    /// Set the batch size
+    fn next_batch(&self, batch_size: usize) -> Vec<Trip> {
+        let mut generator = self.generator.lock().unwrap();
+        generator.by_ref().take(batch_size).collect()
+    }
+}
+
+// This is safe because we're using Mutex for synchronization
+unsafe impl Send for ThreadSafeTripGenerator {}
+unsafe impl Sync for ThreadSafeTripGenerator {}
+
+pub struct TripArrow {
+    generator: ThreadSafeTripGenerator,
+    batch_size: usize,
+    schema: SchemaRef,
+}
+
+impl TripArrow {
+    pub fn new(generator: TripGenerator) -> Self {
+        Self {
+            generator: ThreadSafeTripGenerator::new(generator),
+            batch_size: DEFAULT_BATCH_SIZE,
+            schema: TRIP_SCHEMA.clone(),
+        }
+    }
+
     pub fn with_batch_size(mut self, batch_size: usize) -> Self {
         self.batch_size = batch_size;
         self
@@ -43,17 +50,16 @@ impl TripArrow {
 
 impl RecordBatchIterator for TripArrow {
     fn schema(&self) -> &SchemaRef {
-        &TRIP_SCHEMA
+        &self.schema
     }
 }
 
 impl Iterator for TripArrow {
     type Item = RecordBatch;
 
-    /// Generate the next batch of data, if there is one
     fn next(&mut self) -> Option<Self::Item> {
         // Get next rows to convert
-        let rows: Vec<_> = self.inner.by_ref().take(self.batch_size).collect();
+        let rows = self.generator.next_batch(self.batch_size);
         if rows.is_empty() {
             return None;
         }
@@ -75,7 +81,7 @@ impl Iterator for TripArrow {
         let t_distance = decimal128_array_from_iter(rows.iter().map(|row| row.t_distance));
 
         let batch = RecordBatch::try_new(
-            Arc::clone(self.schema()),
+            Arc::clone(&self.schema),
             vec![
                 Arc::new(t_tripkey),
                 Arc::new(t_custkey),
