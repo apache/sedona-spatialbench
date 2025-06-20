@@ -59,4 +59,4 @@ pub mod generators;
 pub mod queries;
 pub mod random;
 pub mod text;
-pub mod kde;
+pub mod kde_nonarrow;
