@@ -2024,7 +2024,7 @@ pub struct TripGenerator {
     vehicle_count: i32,
     distributions: Distributions,
     text_pool: TextPool,
-    distance_kde: crate::kde_nonarrow::DistanceKDE,
+    distance_kde: crate::kde::DistanceKDE,
 }
 
 impl TripGenerator {
@@ -2049,7 +2049,7 @@ impl TripGenerator {
             vehicle_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
-            crate::kde_nonarrow::default_distance_kde(),
+            crate::kde::default_distance_kde(),
         )
     }
 
@@ -2060,7 +2060,7 @@ impl TripGenerator {
         vehicle_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
-        distance_kde: crate::kde_nonarrow::DistanceKDE,
+        distance_kde: crate::kde::DistanceKDE,
     ) -> TripGenerator {
         TripGenerator {
             scale_factor,
@@ -2120,7 +2120,7 @@ pub struct TripGeneratorIterator {
     fare_per_mile_random: RandomBoundedInt,
     tip_percent_random: RandomBoundedInt,
     trip_minutes_per_mile_random: RandomBoundedInt,
-    distance_kde: crate::kde_nonarrow::DistanceKDE,
+    distance_kde: crate::kde::DistanceKDE,
 
     scale_factor: f64,
     start_index: i64,
@@ -2138,7 +2138,7 @@ impl TripGeneratorIterator {
         scale_factor: f64,
         start_index: i64,
         row_count: i64,
-        distance_kde: crate::kde_nonarrow::DistanceKDE,
+        distance_kde: crate::kde::DistanceKDE,
     ) -> Self {
         // Create all the randomizers
         let max_customer_key = (CustomerGenerator::SCALE_BASE as f64 * scale_factor) as i64;
@@ -2236,9 +2236,8 @@ impl TripGeneratorIterator {
         // let distance = TPCHDecimal((distance_value * 10) as i64); // Convert to i64
 
         // Get distance from KDE model (in miles with decimal precision)
-        let distance_value = self.distance_kde.generate();
-        // Convert to Decimal with 2 decimal places
-        let distance = self.distance_kde.generate_tpch_decimal();
+        let distance_value = self.distance_kde.generate(trip_key as u64);
+        let distance = TPCHDecimal((distance_value * 100.0) as i64);
 
         // Fix multiplication of f64 by integers by using f64 literals
         let fare_per_mile = self.fare_per_mile_random.next_value() as f64;
