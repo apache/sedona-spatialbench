@@ -412,7 +412,7 @@ impl<'a> TripCsv {
 
     /// Returns the CSV header for the Trip table
     pub fn header() -> &'static str {
-        "t_tripkey,t_custkey,t_driverkey,t_vehiclekey,t_pickuptime,t_dropofftime,t_fare,t_tip,t_totalamount,t_distance"
+        "t_tripkey,t_custkey,t_driverkey,t_vehiclekey,t_pickuptime,t_dropofftime,t_fare,t_tip,t_totalamount,t_distance,t_pickupx,t_pickupy"
     }
 }
 
@@ -421,7 +421,7 @@ impl Display for TripCsv {
         write!(
             f,
             // note must quote location and comment fields as they may contain commas
-            "{},{},{},{},{},{},{},{},{},{}",
+            "{},{},{},{},{},{},{},{},{},{},{},{}",
             self.inner.t_tripkey,
             self.inner.t_custkey,
             self.inner.t_driverkey,
@@ -432,6 +432,8 @@ impl Display for TripCsv {
             self.inner.t_tip,
             self.inner.t_totalamount,
             self.inner.t_distance,
+            self.inner.t_pickupx,
+            self.inner.t_pickupy,
         )
     }
 }

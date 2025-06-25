@@ -10,9 +10,11 @@ use crate::random::{RandomAlphaNumeric, RandomAlphaNumericInstance};
 use crate::text::TextPool;
 use core::fmt;
 use std::fmt::Display;
-
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use crate::dates::{GenerateUtils, TPCHDate};
 use crate::random::{RandomBoundedInt, RandomString, RandomStringSequence, RandomText};
+use crate::spider::SpiderGenerator;
 
 /// Generator for Nation table data
 #[derive(Debug, Clone)]
@@ -1995,13 +1997,19 @@ pub struct Trip {
     pub t_totalamount: TPCHDecimal,
     /// Trip distance
     pub t_distance: TPCHDecimal,
+    /// Trip pickup coordinates
+    pub t_pickupx: f64,
+    pub t_pickupy: f64,
+    /// Trip dropoff coordinates
+    pub t_dropoffx: f64,
+    pub t_dropoffy: f64,
 }
 
 impl fmt::Display for Trip {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|",
+            "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|",
             self.t_tripkey,
             self.t_custkey,
             self.t_driverkey,
@@ -2011,7 +2019,11 @@ impl fmt::Display for Trip {
             self.t_fare,
             self.t_tip,
             self.t_totalamount,
-            self.t_distance
+            self.t_distance,
+            self.t_pickupx,
+            self.t_pickupy,
+            self.t_dropoffx,
+            self.t_dropoffy,
         )
     }
 }
@@ -2025,6 +2037,7 @@ pub struct TripGenerator {
     distributions: Distributions,
     text_pool: TextPool,
     distance_kde: crate::kde::DistanceKDE,
+    spatial_gen: SpiderGenerator,
 }
 
 impl TripGenerator {
@@ -2032,8 +2045,6 @@ impl TripGenerator {
     const SCALE_BASE: i32 = 1_500_000;
 
     // Constants for trip generation
-    const DISTANCE_MIN: i32 = 1;   // 1.0 miles
-    const DISTANCE_MAX: i32 = 500; // 50.0 miles
     const FARE_MIN_PER_MILE: i32 = 150; // $1.50 per mile
     const FARE_MAX_PER_MILE: i32 = 300; // $3.00 per mile
     const TIP_PERCENT_MIN: i32 = 0;     // 0% tip
@@ -2050,6 +2061,7 @@ impl TripGenerator {
             Distributions::static_default(),
             TextPool::get_or_init_default(),
             crate::kde::default_distance_kde(),
+            SpiderGenerator::default(),
         )
     }
 
@@ -2061,6 +2073,7 @@ impl TripGenerator {
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
         distance_kde: crate::kde::DistanceKDE,
+        spatial_gen: SpiderGenerator
     ) -> TripGenerator {
         TripGenerator {
             scale_factor,
@@ -2069,6 +2082,7 @@ impl TripGenerator {
             distributions: distributions.clone(),
             text_pool: text_pool.clone(),
             distance_kde,
+            spatial_gen,
         }
     }
 
@@ -2096,6 +2110,7 @@ impl TripGenerator {
                 self.vehicle_count,
             ),
             self.distance_kde.clone(), // Add the KDE model
+            self.spatial_gen.clone(),
         )
     }
 }
@@ -2116,11 +2131,11 @@ pub struct TripGeneratorIterator {
     driver_key_random: RandomBoundedLong,
     vehicle_key_random: RandomBoundedLong,
     pickup_date_random: RandomBoundedInt,
-    distance_random: RandomBoundedInt,
     fare_per_mile_random: RandomBoundedInt,
     tip_percent_random: RandomBoundedInt,
     trip_minutes_per_mile_random: RandomBoundedInt,
     distance_kde: crate::kde::DistanceKDE,
+    spatial_gen: SpiderGenerator,
 
     scale_factor: f64,
     start_index: i64,
@@ -2139,6 +2154,7 @@ impl TripGeneratorIterator {
         start_index: i64,
         row_count: i64,
         distance_kde: crate::kde::DistanceKDE,
+        spatial_gen: SpiderGenerator
     ) -> Self {
         // Create all the randomizers
         let max_customer_key = (CustomerGenerator::SCALE_BASE as f64 * scale_factor) as i64;
@@ -2152,13 +2168,7 @@ impl TripGeneratorIterator {
         let mut pickup_date_random = RandomBoundedInt::new(
             831649288,
             dates::MIN_GENERATE_DATE,
-            dates::MIN_GENERATE_DATE + dates::TOTAL_DATE_RANGE - TripGenerator::TRIP_DURATION_MAX_PER_MILE * TripGenerator::DISTANCE_MAX / 60 / 24
-        );
-
-        let mut distance_random = RandomBoundedInt::new(
-            692134278,
-            TripGenerator::DISTANCE_MIN,
-            TripGenerator::DISTANCE_MAX
+            dates::MIN_GENERATE_DATE + dates::TOTAL_DATE_RANGE
         );
 
         let mut fare_per_mile_random = RandomBoundedInt::new(
@@ -2184,7 +2194,6 @@ impl TripGeneratorIterator {
         driver_key_random.advance_rows(start_index);
         vehicle_key_random.advance_rows(start_index);
         pickup_date_random.advance_rows(start_index);
-        distance_random.advance_rows(start_index);
         fare_per_mile_random.advance_rows(start_index);
         tip_percent_random.advance_rows(start_index);
         trip_minutes_per_mile_random.advance_rows(start_index);
@@ -2194,11 +2203,11 @@ impl TripGeneratorIterator {
             driver_key_random,
             vehicle_key_random,
             pickup_date_random,
-            distance_random,
             fare_per_mile_random,
             tip_percent_random,
             trip_minutes_per_mile_random,
             distance_kde, // Store the KDE model
+            spatial_gen,
 
             scale_factor,
             start_index,
@@ -2232,12 +2241,21 @@ impl TripGeneratorIterator {
         let pickup_date_value = self.pickup_date_random.next_value();
         let pickup_date = TPCHDate::new(pickup_date_value);
 
-        // let distance_value = self.distance_random.next_value();
-        // let distance = TPCHDecimal((distance_value * 10) as i64); // Convert to i64
-
         // Get distance from KDE model (in miles with decimal precision)
         let distance_value = self.distance_kde.generate(trip_key as u64);
         let distance = TPCHDecimal((distance_value * 100.0) as i64);
+
+        // Pickup
+        let (pickup_x, pickup_y) = self.spatial_gen.generate_pickup_point(trip_key as u64);
+
+        // Angle
+        let angle_seed = crate::spider::spider_seed_for_index(trip_key as u64, 1234);
+        let mut angle_rng = StdRng::seed_from_u64(angle_seed);
+        let angle: f64 = angle_rng.gen::<f64>() * std::f64::consts::TAU;
+
+        // Dropoff via polar projection
+        let dropoff_x = pickup_x + distance_value * angle.cos();
+        let dropoff_y = pickup_y + distance_value * angle.sin();
 
         // Fix multiplication of f64 by integers by using f64 literals
         let fare_per_mile = self.fare_per_mile_random.next_value() as f64;
@@ -2268,6 +2286,10 @@ impl TripGeneratorIterator {
             t_tip: tip,
             t_totalamount: total,
             t_distance: distance,
+            t_pickupx: pickup_x,
+            t_pickupy: pickup_y,
+            t_dropoffx: dropoff_x,
+            t_dropoffy: dropoff_y,
         }
     }
 }
@@ -2287,7 +2309,6 @@ impl<'a> Iterator for TripGeneratorIterator {
         self.driver_key_random.row_finished();
         self.vehicle_key_random.row_finished();
         self.pickup_date_random.row_finished();
-        self.distance_random.row_finished();
         self.fare_per_mile_random.row_finished();
         self.tip_percent_random.row_finished();
         self.trip_minutes_per_mile_random.row_finished();
