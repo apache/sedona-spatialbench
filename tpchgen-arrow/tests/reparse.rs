@@ -6,16 +6,16 @@ use arrow::datatypes::SchemaRef;
 use std::io::Write;
 use std::sync::Arc;
 use tpchgen::csv::{
-    CustomerCsv, LineItemCsv, NationCsv, OrderCsv, VehicleCsv, RegionCsv, DriverCsv,
+    CustomerCsv, LineItemCsv, NationCsv, OrderCsv, VehicleCsv, RegionCsv, DriverCsv, TripCsv, BuildingCsv
 };
 use tpchgen::generators::{
     Customer, CustomerGenerator, LineItem, LineItemGenerator, Nation, NationGenerator, Order,
     OrderGenerator, Vehicle, VehicleGenerator, Region, RegionGenerator,
-    Driver, DriverGenerator,
+    Driver, DriverGenerator, TripGenerator, BuildingGenerator
 };
 use tpchgen_arrow::{
     CustomerArrow, LineItemArrow, NationArrow, OrderArrow, VehicleArrow,
-    RecordBatchIterator, RegionArrow, DriverArrow,
+    RecordBatchIterator, RegionArrow, DriverArrow, TripArrow, BuildingArrow
 };
 
 /// Macro that defines tests for tbl for a given type
@@ -44,12 +44,16 @@ test_row_type!(nation_tbl, NationGenerator, NationArrow, Test::tbl());
 test_row_type!(nation_csv, NationGenerator, NationArrow, Test::csv());
 test_row_type!(order_tbl, OrderGenerator, OrderArrow, Test::tbl());
 test_row_type!(order_csv, OrderGenerator, OrderArrow, Test::csv());
-test_row_type!(part_tbl, VehicleGenerator, VehicleArrow, Test::tbl());
-test_row_type!(part_csv, VehicleGenerator, VehicleArrow, Test::csv());
+test_row_type!(vehicle_tbl, VehicleGenerator, VehicleArrow, Test::tbl());
+test_row_type!(vehicle_csv, VehicleGenerator, VehicleArrow, Test::csv());
 test_row_type!(region_tbl, RegionGenerator, RegionArrow, Test::tbl());
 test_row_type!(region_csv, RegionGenerator, RegionArrow, Test::csv());
 test_row_type!(driver_tbl, DriverGenerator, DriverArrow, Test::tbl());
 test_row_type!(driver_csv, DriverGenerator, DriverArrow, Test::csv());
+// test_row_type!(trip_tbl, TripGenerator, TripArrow, Test::tbl());
+// test_row_type!(trip_csv, TripGenerator, TripArrow, Test::csv());
+// test_row_type!(building_tbl, BuildingGenerator, BuildingArrow, Test::tbl());
+// test_row_type!(building_csv, BuildingGenerator, BuildingArrow, Test::csv());
 
 /// Common trait for writing rows in TBL and CSV format
 trait RowType {

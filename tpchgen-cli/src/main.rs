@@ -62,12 +62,12 @@ use std::str::FromStr;
 use std::time::Instant;
 use tpchgen::distribution::Distributions;
 use tpchgen::generators::{
-    CustomerGenerator, LineItemGenerator, NationGenerator, OrderGenerator, VehicleGenerator, RegionGenerator, DriverGenerator, TripGenerator,
+    CustomerGenerator, LineItemGenerator, NationGenerator, OrderGenerator, VehicleGenerator, RegionGenerator, DriverGenerator, TripGenerator, BuildingGenerator,
 };
 use tpchgen::text::TextPool;
 use tpchgen_arrow::{
     CustomerArrow, LineItemArrow, NationArrow, OrderArrow, VehicleArrow,
-    RecordBatchIterator, RegionArrow, DriverArrow, TripArrow
+    RecordBatchIterator, RegionArrow, DriverArrow, TripArrow, BuildingArrow,
 };
 
 #[derive(Parser)]
@@ -138,6 +138,7 @@ enum Table {
     Orders,
     Lineitem,
     Trip,
+    Building,
 }
 
 impl Display for Table {
@@ -179,6 +180,7 @@ impl TypedValueParser for TableValueParser {
                 clap::builder::PossibleValue::new("orders").help("Orders table (alias: O)"),
                 clap::builder::PossibleValue::new("lineitem").help("LineItem table (alias: L)"),
                 clap::builder::PossibleValue::new("trip").help("Trip table (alias: T)"),
+                clap::builder::PossibleValue::new("building").help("Trip table (alias: b)"),
             ]
             .into_iter(),
         ))
@@ -204,6 +206,7 @@ impl FromStr for Table {
             "O" | "orders" => Ok(Table::Orders),
             "L" | "lineitem" => Ok(Table::Lineitem),
             "T" | "trip" => Ok(Table::Trip),
+            "b" | "building" => Ok(Table::Building),
             _ => Err("Invalid table name {s}"),
         }
     }
@@ -219,7 +222,8 @@ impl Table {
             Table::Customer => "customer",
             Table::Orders => "orders",
             Table::Lineitem => "lineitem",
-            Table::Trip => "Trip",
+            Table::Trip => "trip",
+            Table::Building => "building",
         }
     }
 }
@@ -316,12 +320,13 @@ impl Cli {
             match table {
                 Table::Nation => self.generate_nation().await?,
                 Table::Region => self.generate_region().await?,
-                Table::Vehicle => self.generate_part().await?,
+                Table::Vehicle => self.generate_vehicle().await?,
                 Table::Driver => self.generate_driver().await?,
                 Table::Customer => self.generate_customer().await?,
                 Table::Orders => self.generate_orders().await?,
                 Table::Lineitem => self.generate_lineitem().await?,
                 Table::Trip => self.generate_trip().await?,
+                Table::Building => self.generate_building().await?,
             }
         }
 
@@ -346,7 +351,7 @@ impl Cli {
         RegionArrow
     );
     define_generate!(
-        generate_part,
+        generate_vehicle,
         Table::Vehicle,
         VehicleGenerator,
         VehicleTblSource,
@@ -392,6 +397,14 @@ impl Cli {
         TripTblSource,
         TripCsvSource,
         TripArrow
+    );
+    define_generate!(
+        generate_building,
+        Table::Building,
+        BuildingGenerator,
+        BuildingTblSource,
+        BuildingCsvSource,
+        BuildingArrow
     );
 
     /// return the output filename for the given table
@@ -454,6 +467,10 @@ impl Cli {
                 (128, row_count)
             },
             &Table::Trip => (130, TripGenerator::calculate_row_count(self.scale_factor, 1, 1)),
+            Table::Building => (
+                115,
+                BuildingGenerator::calculate_row_count(self.scale_factor, 1, 1),
+            ),
         };
         // target chunks of about 16MB (use 15MB to ensure we don't exceed the target size)
         let target_chunk_size_bytes = 15 * 1024 * 1024;

@@ -2,10 +2,10 @@
 use super::generate::Source;
 use std::io::Write;
 use tpchgen::csv::{
-    CustomerCsv, LineItemCsv, NationCsv, OrderCsv, VehicleCsv, RegionCsv, DriverCsv, TripCsv
+    CustomerCsv, LineItemCsv, NationCsv, OrderCsv, VehicleCsv, RegionCsv, DriverCsv, TripCsv, BuildingCsv
 };
 use tpchgen::generators::{
-    CustomerGenerator, LineItemGenerator, NationGenerator, OrderGenerator, VehicleGenerator, RegionGenerator, DriverGenerator, TripGenerator,
+    CustomerGenerator, LineItemGenerator, NationGenerator, OrderGenerator, VehicleGenerator, RegionGenerator, DriverGenerator, TripGenerator, BuildingGenerator,
 };
 
 /// Define a Source that writes the table in CSV format
@@ -49,3 +49,4 @@ define_csv_source!(CustomerCsvSource, CustomerGenerator<'static>, CustomerCsv);
 define_csv_source!(OrderCsvSource, OrderGenerator<'static>, OrderCsv);
 define_csv_source!(LineItemCsvSource, LineItemGenerator<'static>, LineItemCsv);
 define_csv_source!(TripCsvSource, TripGenerator, TripCsv);
+define_csv_source!(BuildingCsvSource, BuildingGenerator<'static>, BuildingCsv);

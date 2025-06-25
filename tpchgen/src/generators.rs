@@ -5,7 +5,7 @@ use crate::distribution::Distribution;
 use crate::distribution::Distributions;
 use crate::random::RandomPhoneNumber;
 use crate::random::RowRandomInt;
-use crate::random::{PhoneNumberInstance, RandomBoundedLong};
+use crate::random::{PhoneNumberInstance, RandomBoundedLong, StringSequenceInstance};
 use crate::random::{RandomAlphaNumeric, RandomAlphaNumericInstance};
 use crate::text::TextPool;
 use core::fmt;
@@ -33,7 +33,7 @@ impl Default for NationGenerator<'_> {
 impl<'a> NationGenerator<'a> {
     /// Creates a new NationGenerator with default distributions and text pool
     ///
-    /// Nations does not depend on the scale factor or the vehicle number. The signature of
+    /// Nations does not depend on the scale factor or the part number. The signature of
     /// this method is provided to be consistent with the other generators, but the
     /// parameters are ignored. You can use [`NationGenerator::default`] to create a
     /// default generator.
@@ -224,7 +224,7 @@ impl Default for RegionGenerator<'_> {
 impl<'a> RegionGenerator<'a> {
     /// Creates a new RegionGenerator with default distributions and text pool
     ///
-    /// Regions does not depend on the scale factor or the vehicle number. The signature of
+    /// Regions does not depend on the scale factor or the part number. The signature of
     /// this method is provided to be consistent with the other generators, but the
     /// parameters are ignored. You can use [`RegionGenerator::default`] to create a
     /// default generator.
@@ -383,8 +383,8 @@ impl fmt::Display for Vehicle<'_> {
 #[derive(Debug, Clone)]
 pub struct VehicleGenerator<'a> {
     scale_factor: f64,
-    vehicle: i32,
-    vehicle_count: i32,
+    part: i32,
+    part_count: i32,
     distributions: &'a Distributions,
     text_pool: &'a TextPool,
 }
@@ -407,12 +407,12 @@ impl<'a> VehicleGenerator<'a> {
     ///
     /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
     /// more details.
-    pub fn new(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> VehicleGenerator<'static> {
+    pub fn new(scale_factor: f64, part: i32, part_count: i32) -> VehicleGenerator<'static> {
         // Note: use explicit lifetime to ensure this remains `&'static`
         Self::new_with_distributions_and_text_pool(
             scale_factor,
-            vehicle,
-            vehicle_count,
+            part,
+            part_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
         )
@@ -421,26 +421,26 @@ impl<'a> VehicleGenerator<'a> {
     /// Creates a VehicleGenerator with specified distributions and text pool
     pub fn new_with_distributions_and_text_pool<'b>(
         scale_factor: f64,
-        vehicle: i32,
-        vehicle_count: i32,
+        part: i32,
+        part_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
     ) -> VehicleGenerator<'b> {
         VehicleGenerator {
             scale_factor,
-            vehicle,
-            vehicle_count,
+            part,
+            part_count,
             distributions,
             text_pool,
         }
     }
 
-    /// Return the row count for the given scale factor and generator vehicle count
-    pub fn calculate_row_count(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> i64 {
-        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, vehicle, vehicle_count)
+    /// Return the row count for the given scale factor and generator part count
+    pub fn calculate_row_count(scale_factor: f64, part: i32, part_count: i32) -> i64 {
+        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, part, part_count)
     }
 
-    /// Returns an iterator over the vehicle rows
+    /// Returns an iterator over the part rows
     pub fn iter(&self) -> VehicleGeneratorIterator<'a> {
         VehicleGeneratorIterator::new(
             self.distributions,
@@ -448,10 +448,10 @@ impl<'a> VehicleGenerator<'a> {
             GenerateUtils::calculate_start_index(
                 Self::SCALE_BASE,
                 self.scale_factor,
-                self.vehicle,
-                self.vehicle_count,
+                self.part,
+                self.part_count,
             ),
-            Self::calculate_row_count(self.scale_factor, self.vehicle, self.vehicle_count),
+            Self::calculate_row_count(self.scale_factor, self.part, self.part_count),
         )
     }
 }
@@ -644,8 +644,8 @@ impl fmt::Display for Driver {
 #[derive(Debug, Clone)]
 pub struct DriverGenerator<'a> {
     scale_factor: f64,
-    vehicle: i32,
-    vehicle_count: i32,
+    part: i32,
+    part_count: i32,
     distributions: &'a Distributions,
     text_pool: &'a TextPool,
 }
@@ -676,12 +676,12 @@ impl<'a> DriverGenerator<'a> {
     ///
     /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
     /// more details.
-    pub fn new(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> DriverGenerator<'static> {
+    pub fn new(scale_factor: f64, part: i32, part_count: i32) -> DriverGenerator<'static> {
         // Note: use explicit lifetime to ensure this remains `&'static`
         Self::new_with_distributions_and_text_pool(
             scale_factor,
-            vehicle,
-            vehicle_count,
+            part,
+            part_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
         )
@@ -690,23 +690,23 @@ impl<'a> DriverGenerator<'a> {
     /// Creates a DriverGenerator with specified distributions and text pool
     pub fn new_with_distributions_and_text_pool<'b>(
         scale_factor: f64,
-        vehicle: i32,
-        vehicle_count: i32,
+        part: i32,
+        part_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
     ) -> DriverGenerator<'b> {
         DriverGenerator {
             scale_factor,
-            vehicle,
-            vehicle_count,
+            part,
+            part_count,
             distributions,
             text_pool,
         }
     }
 
-    /// Return the row count for the given scale factor and generator vehicle count
-    pub fn calculate_row_count(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> i64 {
-        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, vehicle, vehicle_count)
+    /// Return the row count for the given scale factor and generator part count
+    pub fn calculate_row_count(scale_factor: f64, part: i32, part_count: i32) -> i64 {
+        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, part, part_count)
     }
 
     /// Returns an iterator over the Driver rows
@@ -717,10 +717,10 @@ impl<'a> DriverGenerator<'a> {
             GenerateUtils::calculate_start_index(
                 Self::SCALE_BASE,
                 self.scale_factor,
-                self.vehicle,
-                self.vehicle_count,
+                self.part,
+                self.part_count,
             ),
-            Self::calculate_row_count(self.scale_factor, self.vehicle, self.vehicle_count),
+            Self::calculate_row_count(self.scale_factor, self.part, self.part_count),
         )
     }
 }
@@ -933,8 +933,8 @@ impl fmt::Display for Customer<'_> {
 #[derive(Debug, Clone)]
 pub struct CustomerGenerator<'a> {
     scale_factor: f64,
-    vehicle: i32,
-    vehicle_count: i32,
+    part: i32,
+    part_count: i32,
     distributions: &'a Distributions,
     text_pool: &'a TextPool,
 }
@@ -953,12 +953,12 @@ impl<'a> CustomerGenerator<'a> {
     ///
     /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
     /// more details.
-    pub fn new(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> CustomerGenerator<'static> {
+    pub fn new(scale_factor: f64, part: i32, part_count: i32) -> CustomerGenerator<'static> {
         // Note: use explicit lifetime to ensure this remains `&'static`
         Self::new_with_distributions_and_text_pool(
             scale_factor,
-            vehicle,
-            vehicle_count,
+            part,
+            part_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
         )
@@ -967,23 +967,23 @@ impl<'a> CustomerGenerator<'a> {
     /// Creates a CustomerGenerator with specified distributions and text pool
     pub fn new_with_distributions_and_text_pool<'b>(
         scale_factor: f64,
-        vehicle: i32,
-        vehicle_count: i32,
+        part: i32,
+        part_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
     ) -> CustomerGenerator<'b> {
         CustomerGenerator {
             scale_factor,
-            vehicle,
-            vehicle_count,
+            part,
+            part_count,
             distributions,
             text_pool,
         }
     }
 
-    /// Return the row count for the given scale factor and generator vehicle count
-    pub fn calculate_row_count(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> i64 {
-        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, vehicle, vehicle_count)
+    /// Return the row count for the given scale factor and generator part count
+    pub fn calculate_row_count(scale_factor: f64, part: i32, part_count: i32) -> i64 {
+        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, part, part_count)
     }
 
     /// Returns an iterator over the customer rows
@@ -994,10 +994,10 @@ impl<'a> CustomerGenerator<'a> {
             GenerateUtils::calculate_start_index(
                 Self::SCALE_BASE,
                 self.scale_factor,
-                self.vehicle,
-                self.vehicle_count,
+                self.part,
+                self.part_count,
             ),
-            Self::calculate_row_count(self.scale_factor, self.vehicle, self.vehicle_count),
+            Self::calculate_row_count(self.scale_factor, self.part, self.part_count),
         )
     }
 }
@@ -1202,8 +1202,8 @@ impl fmt::Display for Order<'_> {
 #[derive(Debug, Clone)]
 pub struct OrderGenerator<'a> {
     scale_factor: f64,
-    vehicle: i32,
-    vehicle_count: i32,
+    part: i32,
+    part_count: i32,
     distributions: &'a Distributions,
     text_pool: &'a TextPool,
 }
@@ -1230,12 +1230,12 @@ impl<'a> OrderGenerator<'a> {
     ///
     /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
     /// more details.
-    pub fn new(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> OrderGenerator<'static> {
+    pub fn new(scale_factor: f64, part: i32, part_count: i32) -> OrderGenerator<'static> {
         // Note: use explicit lifetime to ensure this remains `&'static`
         Self::new_with_distributions_and_text_pool(
             scale_factor,
-            vehicle,
-            vehicle_count,
+            part,
+            part_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
         )
@@ -1244,23 +1244,23 @@ impl<'a> OrderGenerator<'a> {
     /// Creates a OrderGenerator with specified distributions and text pool
     pub fn new_with_distributions_and_text_pool<'b>(
         scale_factor: f64,
-        vehicle: i32,
-        vehicle_count: i32,
+        part: i32,
+        part_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
     ) -> OrderGenerator<'b> {
         OrderGenerator {
             scale_factor,
-            vehicle,
-            vehicle_count,
+            part,
+            part_count,
             distributions,
             text_pool,
         }
     }
 
-    /// Return the row count for the given scale factor and generator vehicle count
-    pub fn calculate_row_count(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> i64 {
-        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, vehicle, vehicle_count)
+    /// Return the row count for the given scale factor and generator part count
+    pub fn calculate_row_count(scale_factor: f64, part: i32, part_count: i32) -> i64 {
+        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, part, part_count)
     }
 
     /// Returns an iterator over the order rows
@@ -1272,10 +1272,10 @@ impl<'a> OrderGenerator<'a> {
             GenerateUtils::calculate_start_index(
                 Self::SCALE_BASE,
                 self.scale_factor,
-                self.vehicle,
-                self.vehicle_count,
+                self.part,
+                self.part_count,
             ),
-            Self::calculate_row_count(self.scale_factor, self.vehicle, self.vehicle_count),
+            Self::calculate_row_count(self.scale_factor, self.part, self.part_count),
         )
     }
 
@@ -1571,8 +1571,8 @@ impl fmt::Display for LineItem<'_> {
 #[derive(Debug, Clone)]
 pub struct LineItemGenerator<'a> {
     scale_factor: f64,
-    vehicle: i32,
-    vehicle_count: i32,
+    part: i32,
+    part_count: i32,
     distributions: &'a Distributions,
     text_pool: &'a TextPool,
 }
@@ -1601,11 +1601,11 @@ impl<'a> LineItemGenerator<'a> {
     ///
     /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
     /// more details.
-    pub fn new(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> LineItemGenerator<'static> {
+    pub fn new(scale_factor: f64, part: i32, part_count: i32) -> LineItemGenerator<'static> {
         Self::new_with_distributions_and_text_pool(
             scale_factor,
-            vehicle,
-            vehicle_count,
+            part,
+            part_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
         )
@@ -1614,15 +1614,15 @@ impl<'a> LineItemGenerator<'a> {
     /// Creates a LineItemGenerator with specified distributions and text pool
     pub fn new_with_distributions_and_text_pool<'b>(
         scale_factor: f64,
-        vehicle: i32,
-        vehicle_count: i32,
+        part: i32,
+        part_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
     ) -> LineItemGenerator<'b> {
         LineItemGenerator {
             scale_factor,
-            vehicle,
-            vehicle_count,
+            part,
+            part_count,
             distributions,
             text_pool,
         }
@@ -1637,14 +1637,14 @@ impl<'a> LineItemGenerator<'a> {
             GenerateUtils::calculate_start_index(
                 OrderGenerator::SCALE_BASE,
                 self.scale_factor,
-                self.vehicle,
-                self.vehicle_count,
+                self.part,
+                self.part_count,
             ),
             GenerateUtils::calculate_row_count(
                 OrderGenerator::SCALE_BASE,
                 self.scale_factor,
-                self.vehicle,
-                self.vehicle_count,
+                self.part,
+                self.part_count,
             ),
         )
     }
@@ -2032,8 +2032,8 @@ impl fmt::Display for Trip {
 #[derive(Debug, Clone)]
 pub struct TripGenerator {
     scale_factor: f64,
-    vehicle: i32,
-    vehicle_count: i32,
+    part: i32,
+    part_count: i32,
     distributions: Distributions,
     text_pool: TextPool,
     distance_kde: crate::kde::DistanceKDE,
@@ -2053,11 +2053,11 @@ impl TripGenerator {
     const TRIP_DURATION_MAX_PER_MILE: i32 = 3; // max 3 minutes per mile
 
     /// Creates a new TripGenerator with the given scale factor
-    pub fn new(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> TripGenerator {
+    pub fn new(scale_factor: f64, part: i32, part_count: i32) -> TripGenerator {
         Self::new_with_distributions_and_text_pool(
             scale_factor,
-            vehicle,
-            vehicle_count,
+            part,
+            part_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
             crate::kde::default_distance_kde(),
@@ -2068,8 +2068,8 @@ impl TripGenerator {
     /// Creates a TripGenerator with specified distributions and text pool
     pub fn new_with_distributions_and_text_pool<'b>(
         scale_factor: f64,
-        vehicle: i32,
-        vehicle_count: i32,
+        part: i32,
+        part_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
         distance_kde: crate::kde::DistanceKDE,
@@ -2077,8 +2077,8 @@ impl TripGenerator {
     ) -> TripGenerator {
         TripGenerator {
             scale_factor,
-            vehicle,
-            vehicle_count,
+            part,
+            part_count,
             distributions: distributions.clone(),
             text_pool: text_pool.clone(),
             distance_kde,
@@ -2086,9 +2086,9 @@ impl TripGenerator {
         }
     }
 
-    /// Return the row count for the given scale factor and generator vehicle count
-    pub fn calculate_row_count(scale_factor: f64, vehicle: i32, vehicle_count: i32) -> i64 {
-        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, vehicle, vehicle_count)
+    /// Return the row count for the given scale factor and generator part count
+    pub fn calculate_row_count(scale_factor: f64, part: i32, part_count: i32) -> i64 {
+        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, part, part_count)
     }
 
     /// Returns an iterator over the trip rows
@@ -2100,14 +2100,14 @@ impl TripGenerator {
             GenerateUtils::calculate_start_index(
                 Self::SCALE_BASE,
                 self.scale_factor,
-                self.vehicle,
-                self.vehicle_count,
+                self.part,
+                self.part_count,
             ),
             GenerateUtils::calculate_row_count(
                 Self::SCALE_BASE,
                 self.scale_factor,
-                self.vehicle,
-                self.vehicle_count,
+                self.part,
+                self.part_count,
             ),
             self.distance_kde.clone(), // Add the KDE model
             self.spatial_gen.clone(),
@@ -2319,6 +2319,179 @@ impl<'a> Iterator for TripGeneratorIterator {
     }
 }
 
+/// Represents a building in the dataset
+#[derive(Debug, Clone, PartialEq)]
+pub struct Building<'a> {
+    /// Unique identifier for the building
+    pub b_buildingkey: i64,
+    /// Name of the building
+    pub b_name: StringSequenceInstance<'a>,
+    /// WKT representation of the building's polygon
+    pub b_polygonwkt: &'a str,
+}
+
+impl Display for Building<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}|{}|{}|",
+            self.b_buildingkey,
+            self.b_name,
+            self.b_polygonwkt,
+        )
+    }
+}
+
+/// Generator for [`Building`]s
+pub struct BuildingGenerator<'a> {
+    scale_factor: f64,
+    part: i32,
+    part_count: i32,
+    distributions: &'a Distributions,
+    text_pool: &'a TextPool,
+}
+
+impl<'a> BuildingGenerator<'a> {
+    /// Base scale for vehicle generation
+    const SCALE_BASE: i32 = 20_000;
+    const NAME_WORDS: i32 = 1;
+    const COMMENT_AVERAGE_LENGTH: i32 = 14;
+
+    /// Creates a new VehicleGenerator with the given scale factor
+    ///
+    /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
+    /// more details.
+    pub fn new(scale_factor: f64, part: i32, part_count: i32) -> BuildingGenerator<'static> {
+        // Note: use explicit lifetime to ensure this remains `&'static`
+        Self::new_with_distributions_and_text_pool(
+            scale_factor,
+            part,
+            part_count,
+            Distributions::static_default(),
+            TextPool::get_or_init_default(),
+        )
+    }
+
+    /// Creates a BuildingGenerator with specified distributions and text pool
+    pub fn new_with_distributions_and_text_pool<'b>(
+        scale_factor: f64,
+        part: i32,
+        part_count: i32,
+        distributions: &'b Distributions,
+        text_pool: &'b TextPool,
+    ) -> BuildingGenerator<'b> {
+        BuildingGenerator {
+            scale_factor,
+            part,
+            part_count,
+            distributions,
+            text_pool,
+        }
+    }
+
+    /// Return the row count for the given scale factor and generator part count
+    pub fn calculate_row_count(scale_factor: f64, part: i32, part_count: i32) -> i64 {
+        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, part, part_count)
+    }
+
+    /// Returns an iterator over the part rows
+    pub fn iter(&self) -> BuildingGeneratorIterator<'a> {
+        BuildingGeneratorIterator::new(
+            self.distributions,
+            self.text_pool,
+            GenerateUtils::calculate_start_index(
+                Self::SCALE_BASE,
+                self.scale_factor,
+                self.part,
+                self.part_count,
+            ),
+            Self::calculate_row_count(self.scale_factor, self.part, self.part_count),
+        )
+    }
+}
+
+impl<'a> IntoIterator for &'a BuildingGenerator<'a> {
+    type Item = Building<'a>;
+    type IntoIter = BuildingGeneratorIterator<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+/// Iterator that generates Building rows
+#[derive(Debug)]
+pub struct BuildingGeneratorIterator<'a> {
+    name_random: RandomStringSequence<'a>,
+    wkt_random: RandomText<'a>,
+
+    start_index: i64,
+    row_count: i64,
+    index: i64,
+}
+
+impl<'a> BuildingGeneratorIterator<'a> {
+    fn new(
+        distributions: &'a Distributions,
+        text_pool: &'a TextPool,
+        start_index: i64,
+        row_count: i64,
+    ) -> Self {
+        let mut name_random = RandomStringSequence::new(
+            709314158,
+            BuildingGenerator::NAME_WORDS,
+            distributions.part_colors(),
+        );
+        let mut wkt_random = RandomText::new(
+            804159733,
+            text_pool,
+            BuildingGenerator::COMMENT_AVERAGE_LENGTH as f64,
+        );
+
+        // Advance all generators to the starting position
+        name_random.advance_rows(start_index);
+        wkt_random.advance_rows(start_index);
+
+        BuildingGeneratorIterator {
+            name_random,
+            wkt_random,
+            start_index,
+            row_count,
+            index: 0,
+        }
+    }
+
+    /// Creates a part with the given key
+    fn make_building(&mut self, building_key: i64) -> Building<'a> {
+        let name = self.name_random.next_value();
+
+        Building {
+            b_buildingkey: building_key,
+            b_name: name,
+            b_polygonwkt: self.wkt_random.next_value(),
+        }
+    }
+}
+
+impl<'a> Iterator for BuildingGeneratorIterator<'a> {
+    type Item = Building<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.row_count {
+            return None;
+        }
+
+        let building = self.make_building(self.start_index + self.index + 1);
+
+        self.name_random.row_finished();
+        self.wkt_random.row_finished();
+
+        self.index += 1;
+
+        Some(building)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2471,7 +2644,7 @@ mod tests {
 
         // Verify the string format matches the expected pattern
         let expected_pattern = format!(
-            "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|",
+            "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|",
             first.t_tripkey,
             first.t_custkey,
             first.t_driverkey,
@@ -2481,14 +2654,46 @@ mod tests {
             first.t_fare,
             first.t_tip,
             first.t_totalamount,
-            first.t_distance
+            first.t_distance,
+            first.t_pickupx,
+            first.t_pickupy,
+            first.t_dropoffx,
+            first.t_dropoffy,
         );
         assert_eq!(first.to_string(), expected_pattern);
 
         // Check first Trip
         let first = &trips[1];
         assert_eq!(first.t_tripkey, 2);
-        assert_eq!(first.to_string(), "2|851|1286|1285|1997-12-24|1997-12-24|37.00|6.00|43.00|1.40|")
+        assert_eq!(first.to_string(), "2|851|1286|1285|1997-12-25|1997-12-25|0.03|0.00|0.04|0.01|-102.20681068856331|34.032813907715486|-102.19307587853756|34.03497048015551|")
+    }
+
+    #[test]
+    fn test_building_generation() {
+        // Create a generator with a small scale factor
+        let generator = BuildingGenerator::new(0.01, 1, 1);
+        let buildings: Vec<_> = generator.iter().collect();
+
+        // Should have 0.01 * 20,000 = 200 buildings
+        assert_eq!(buildings.len(), 200);
+
+        // Check first building
+        let first = &buildings[0];
+        assert_eq!(first.b_buildingkey, 1);
+
+        // Verify the string format matches the expected pattern
+        let expected_pattern = format!(
+            "{}|{}|{}|",
+            first.b_buildingkey,
+            first.b_name,
+            first.b_polygonwkt,
+        );
+        assert_eq!(first.to_string(), expected_pattern);
+
+        // Check first Building
+        let first = &buildings[1];
+        assert_eq!(first.b_buildingkey, 2);
+        assert_eq!(first.to_string(), "2|blush|lar accounts amo|")
     }
 
     #[test]
