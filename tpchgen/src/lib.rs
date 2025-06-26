@@ -60,4 +60,5 @@ pub mod queries;
 pub mod random;
 pub mod text;
 pub mod kde;
-mod spider;
+pub mod spider;
+pub mod spider_presets;

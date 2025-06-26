@@ -14,7 +14,8 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use crate::dates::{GenerateUtils, TPCHDate};
 use crate::random::{RandomBoundedInt, RandomString, RandomStringSequence, RandomText};
-use crate::spider::SpiderGenerator;
+use crate::spider::{spider_seed_for_index, SpiderGenerator};
+use crate::spider_presets::SpiderPresets;
 
 /// Generator for Nation table data
 #[derive(Debug, Clone)]
@@ -2042,7 +2043,7 @@ pub struct TripGenerator {
 
 impl TripGenerator {
     /// Base scale for trip generation
-    const SCALE_BASE: i32 = 1_500_000;
+    const SCALE_BASE: i32 = 500_000;
 
     // Constants for trip generation
     const FARE_MIN_PER_MILE: i32 = 150; // $1.50 per mile
@@ -2061,7 +2062,7 @@ impl TripGenerator {
             Distributions::static_default(),
             TextPool::get_or_init_default(),
             crate::kde::default_distance_kde(),
-            SpiderGenerator::default(),
+            SpiderPresets::for_trip_pickups(),
         )
     }
 
@@ -2327,7 +2328,7 @@ pub struct Building<'a> {
     /// Name of the building
     pub b_name: StringSequenceInstance<'a>,
     /// WKT representation of the building's polygon
-    pub b_polygonwkt: &'a str,
+    pub b_polygonwkt: String,
 }
 
 impl Display for Building<'_> {
@@ -2349,6 +2350,7 @@ pub struct BuildingGenerator<'a> {
     part_count: i32,
     distributions: &'a Distributions,
     text_pool: &'a TextPool,
+    spatial_gen: SpiderGenerator,
 }
 
 impl<'a> BuildingGenerator<'a> {
@@ -2369,6 +2371,7 @@ impl<'a> BuildingGenerator<'a> {
             part_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
+            SpiderPresets::for_building_polygons(),
         )
     }
 
@@ -2379,6 +2382,7 @@ impl<'a> BuildingGenerator<'a> {
         part_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
+        spatial_gen: SpiderGenerator,
     ) -> BuildingGenerator<'b> {
         BuildingGenerator {
             scale_factor,
@@ -2386,6 +2390,7 @@ impl<'a> BuildingGenerator<'a> {
             part_count,
             distributions,
             text_pool,
+            spatial_gen,
         }
     }
 
@@ -2406,6 +2411,7 @@ impl<'a> BuildingGenerator<'a> {
                 self.part_count,
             ),
             Self::calculate_row_count(self.scale_factor, self.part, self.part_count),
+            self.spatial_gen.clone(),
         )
     }
 }
@@ -2424,6 +2430,7 @@ impl<'a> IntoIterator for &'a BuildingGenerator<'a> {
 pub struct BuildingGeneratorIterator<'a> {
     name_random: RandomStringSequence<'a>,
     wkt_random: RandomText<'a>,
+    spatial_gen: SpiderGenerator,
 
     start_index: i64,
     row_count: i64,
@@ -2436,6 +2443,7 @@ impl<'a> BuildingGeneratorIterator<'a> {
         text_pool: &'a TextPool,
         start_index: i64,
         row_count: i64,
+        spatial_gen: SpiderGenerator,
     ) -> Self {
         let mut name_random = RandomStringSequence::new(
             709314158,
@@ -2457,6 +2465,8 @@ impl<'a> BuildingGeneratorIterator<'a> {
             wkt_random,
             start_index,
             row_count,
+            spatial_gen,
+
             index: 0,
         }
     }
@@ -2465,10 +2475,14 @@ impl<'a> BuildingGeneratorIterator<'a> {
     fn make_building(&mut self, building_key: i64) -> Building<'a> {
         let name = self.name_random.next_value();
 
+        let seed = spider_seed_for_index(building_key as u64, 1234);
+        let mut rng = StdRng::seed_from_u64(seed);
+        let wkt = self.spatial_gen.generate_parcel(&mut rng);
+
         Building {
             b_buildingkey: building_key,
             b_name: name,
-            b_polygonwkt: self.wkt_random.next_value(),
+            b_polygonwkt: wkt,
         }
     }
 }
@@ -2623,7 +2637,7 @@ mod tests {
         let trips: Vec<_> = generator.iter().collect();
 
         // Should have 0.01 * 1,000,000 = 10,000 trips
-        assert_eq!(trips.len(), 15000);
+        assert_eq!(trips.len(), 5000);
 
         // Check first trip
         let first = &trips[0];

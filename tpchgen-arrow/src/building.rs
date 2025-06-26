@@ -59,7 +59,7 @@ impl Iterator for BuildingArrow {
 
         let buildingkey = Int64Array::from_iter_values(rows.iter().map(|r| r.b_buildingkey));
         let name = string_view_array_from_display_iter(rows.iter().map(|r| &r.b_name));
-        let polygon_wkt = StringViewArray::from_iter_values(rows.iter().map(|r| r.b_polygonwkt));
+        let polygon_wkt = StringViewArray::from_iter_values(rows.iter().map(|r| r.b_polygonwkt.clone()));
 
         let batch = RecordBatch::try_new(
             Arc::clone(self.schema()),
