@@ -432,8 +432,8 @@ impl Display for TripCsv {
             self.inner.t_tip,
             self.inner.t_totalamount,
             self.inner.t_distance,
-            self.inner.t_pickupx,
-            self.inner.t_pickupy,
+            self.inner.t_pickuploc,
+            self.inner.t_dropoffloc,
         )
     }
 }

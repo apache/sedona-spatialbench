@@ -37,22 +37,48 @@ static JULIAN_DATE: LazyLock<Vec<i32>> = LazyLock::new(|| {
 pub struct GenerateUtils;
 
 impl GenerateUtils {
-    /// Calculates row count for a specific part of the data
+    /// Calculates row count with linear scaling (original behavior)
     pub fn calculate_row_count(
         scale_base: i32,
         scale_factor: f64,
         part: i32,
         part_count: i32,
     ) -> i64 {
-        let total_row_count = (scale_base as f64 * scale_factor) as i64;
-        let mut row_count = total_row_count / part_count as i64;
+        Self::calculate_scaled_row_count(scale_base, scale_factor, part, part_count, false)
+    }
+
+    /// Calculates row count with logarithmic scaling (for buildings)
+    pub fn calculate_logarithmic_row_count(
+        scale_base: i32,
+        scale_factor: f64,
+        part: i32,
+        part_count: i32,
+    ) -> i64 {
+        Self::calculate_scaled_row_count(scale_base, scale_factor, part, part_count, true)
+    }
+
+    /// Internal implementation for row count calculation with scaling option
+    fn calculate_scaled_row_count(
+        scale_base: i32,
+        scale_factor: f64,
+        part: i32,
+        part_count: i32,
+        log_scale: bool,
+    ) -> i64 {
+        let total_row_count = if log_scale {
+            (scale_base as f64 * (1.0 + scale_factor.log2())) as i64
+        } else {
+            (scale_base as f64 * scale_factor) as i64
+        };
+
+        let rows_per_part = total_row_count / part_count as i64;
 
         if part == part_count {
             // for the last part, add the remainder rows
-            row_count += total_row_count % part_count as i64;
+            rows_per_part + (total_row_count % part_count as i64)
+        } else {
+            rows_per_part
         }
-
-        row_count
     }
 
     /// Calculates start index for a specific part of the data

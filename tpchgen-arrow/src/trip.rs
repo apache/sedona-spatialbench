@@ -1,6 +1,6 @@
 use crate::conversions::{decimal128_array_from_iter, to_arrow_date32};
 use crate::{DEFAULT_BATCH_SIZE, RecordBatchIterator};
-use arrow::array::{Date32Array, Float64Array, Int64Array, RecordBatch};
+use arrow::array::{Date32Array, Int64Array, RecordBatch, StringViewArray};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use std::sync::{Arc, LazyLock, Mutex};
 use tpchgen::generators::{Trip, TripGenerator, TripGeneratorIterator};
@@ -79,10 +79,8 @@ impl Iterator for TripArrow {
         let t_tip = decimal128_array_from_iter(rows.iter().map(|row| row.t_tip));
         let t_totalamount = decimal128_array_from_iter(rows.iter().map(|row| row.t_totalamount));
         let t_distance = decimal128_array_from_iter(rows.iter().map(|row| row.t_distance));
-        let t_pickupx = Float64Array::from_iter_values(rows.iter().map(|row| row.t_pickupx));
-        let t_pickupy = Float64Array::from_iter_values(rows.iter().map(|row| row.t_pickupy));
-        let t_dropoffx = Float64Array::from_iter_values(rows.iter().map(|row| row.t_dropoffx));
-        let t_dropoffy = Float64Array::from_iter_values(rows.iter().map(|row| row.t_dropoffy));
+        let t_pickuploc = StringViewArray::from_iter_values(rows.iter().map(|row| row.t_pickuploc.clone()));
+        let t_dropoffloc = StringViewArray::from_iter_values(rows.iter().map(|row| row.t_dropoffloc.clone()));
 
         let batch = RecordBatch::try_new(
             Arc::clone(&self.schema),
@@ -97,10 +95,8 @@ impl Iterator for TripArrow {
                 Arc::new(t_tip),
                 Arc::new(t_totalamount),
                 Arc::new(t_distance),
-                Arc::new(t_pickupx),
-                Arc::new(t_pickupy),
-                Arc::new(t_dropoffx),
-                Arc::new(t_dropoffy),
+                Arc::new(t_pickuploc),
+                Arc::new(t_dropoffloc),
             ],
         )
             .unwrap();
@@ -124,9 +120,7 @@ fn make_trip_schema() -> SchemaRef {
         Field::new("t_tip", DataType::Decimal128(15, 2), false),
         Field::new("t_totalamount", DataType::Decimal128(15, 2), false),
         Field::new("t_distance", DataType::Decimal128(15, 2), false),
-        Field::new("t_pickupx", DataType::Float64, false),
-        Field::new("t_pickupy", DataType::Float64, false),
-        Field::new("t_dropoffx", DataType::Float64, false),
-        Field::new("t_dropoffy", DataType::Float64, false),
+        Field::new("t_pickuploc", DataType::Utf8View, false),
+        Field::new("t_dropoffloc", DataType::Utf8View, false),
     ]))
 }

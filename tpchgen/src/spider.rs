@@ -1,3 +1,4 @@
+use std::f64::consts::PI;
 use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
 
@@ -8,7 +9,6 @@ pub enum DistributionType {
     Diagonal,
     Sierpinski,
     Bit,
-    Parcel,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -16,15 +16,6 @@ pub enum GeomType {
     Polygon,
     Box,
     Point,
-}
-
-#[derive(Debug, Clone)]
-pub struct BoxWithDepth {
-    pub depth: i32,
-    pub x: f64,
-    pub y: f64,
-    pub w: f64,
-    pub h: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -66,7 +57,7 @@ impl SpiderGenerator {
         Self { config }
     }
 
-    pub fn generate_point(&self, index: u64) -> (f64, f64) {
+    pub fn generate(&self, index: u64) -> String {
         let seed = spider_seed_for_index(index, self.config.seed as u64);
         let mut rng = StdRng::seed_from_u64(seed);
 
@@ -75,57 +66,77 @@ impl SpiderGenerator {
             DistributionType::Normal => self.generate_normal(&mut rng),
             DistributionType::Diagonal => self.generate_diagonal(&mut rng),
             DistributionType::Bit => self.generate_bit(&mut rng),
-            DistributionType::Sierpinski => self.generate_sierpinski(&mut rng),
-            _ => (rng.gen(), rng.gen())
-        }
-
-    }
-
-    fn generate_uniform(&self, rng: &mut StdRng) -> (f64, f64) {
-        (rand_unit(rng), rand_unit(rng))
-    }
-
-    fn generate_normal(&self, rng: &mut StdRng) -> (f64, f64) {
-        if let DistributionParams::Normal { mu, sigma } = self.config.params {
-            let x = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
-            let y = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
-            (x, y)
-        } else {
-            // Default values or error handling
-            (rng.gen(), rng.gen())
+            DistributionType::Sierpinski => self.generate_sierpinski(&mut rng)
         }
     }
 
-    fn generate_diagonal(&self, rng: &mut StdRng) -> (f64, f64) {
-        if let DistributionParams::Diagonal { percentage, buffer } = self.config.params {
-            if rng.gen::<f64>() < percentage {
-                let v = rng.gen();
-                (v, v)
-            } else {
-                let c: f64 = rng.gen();
-                let d: f64 = rand_normal(rng, 0.0, buffer / 5.0);
-                let x: f64 = (c + d / f64::sqrt(2.0)).clamp(0.0, 1.0);
-                let y: f64 = (c - d / f64::sqrt(2.0)).clamp(0.0, 1.0);
-                (x, y)
-            }
-        } else {
-            // Default values or error handling
-            (rng.gen(), rng.gen())
+    fn generate_uniform(&self, rng: &mut StdRng) -> String {
+        let x = rand_unit(rng);
+        let y = rand_unit(rng);
+
+        match self.config.geom_type {
+            GeomType::Point => generate_point_wkt((x, y), &self.config),
+            GeomType::Box => generate_box_wkt((x, y), &self.config, rng),
+            GeomType::Polygon => generate_polygon_wkt((x, y), &self.config, rng),
         }
     }
 
-    fn generate_bit(&self, rng: &mut StdRng) -> (f64, f64) {
-        if let DistributionParams::Bit { probability, digits } = self.config.params {
-            let x = spider_bit(rng, probability, digits);
-            let y = spider_bit(rng, probability, digits);
-            (x, y)
-        } else {
-            // Default values or error handling
-            (rng.gen(), rng.gen())
+    fn generate_normal(&self, rng: &mut StdRng) -> String {
+        match self.config.params {
+            DistributionParams::Normal { mu, sigma } => {
+                let x = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
+                let y = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
+                match self.config.geom_type {
+                    GeomType::Point => generate_point_wkt((x, y), &self.config),
+                    GeomType::Box => generate_box_wkt((x, y), &self.config, rng),
+                    GeomType::Polygon => generate_polygon_wkt((x, y), &self.config, rng),
+                }
+            },
+            _ => panic!("Expected Normal distribution parameters but got {:?}", self.config.params)
         }
     }
 
-    fn generate_sierpinski(&self, rng: &mut StdRng) -> (f64, f64) {
+    fn generate_diagonal(&self, rng: &mut StdRng) -> String {
+        match self.config.params {
+            DistributionParams::Diagonal { percentage, buffer } => {
+                let (x, y) = if rng.gen::<f64>() < percentage {
+                    let v = rng.gen();
+                    (v, v)
+                } else {
+                    let c: f64 = rng.gen();
+                    let d: f64 = rand_normal(rng, 0.0, buffer / 5.0);
+                    let x: f64 = (c + d / f64::sqrt(2.0)).clamp(0.0, 1.0);
+                    let y: f64 = (c - d / f64::sqrt(2.0)).clamp(0.0, 1.0);
+                    (x, y)
+                };
+
+                match self.config.geom_type {
+                    GeomType::Point => generate_point_wkt((x, y), &self.config),
+                    GeomType::Box => generate_box_wkt((x, y), &self.config, rng),
+                    GeomType::Polygon => generate_polygon_wkt((x, y), &self.config, rng),
+                }
+            },
+            _ => panic!("Expected Diagonal distribution parameters but got {:?}", self.config.params)
+        }
+    }
+
+    fn generate_bit(&self, rng: &mut StdRng) -> String {
+        match self.config.params {
+            DistributionParams::Bit { probability, digits } => {
+                let x = spider_bit(rng, probability, digits);
+                let y = spider_bit(rng, probability, digits);
+
+                match self.config.geom_type {
+                    GeomType::Point => generate_point_wkt((x, y), &self.config),
+                    GeomType::Box => generate_box_wkt((x, y), &self.config, rng),
+                    GeomType::Polygon => generate_polygon_wkt((x, y), &self.config, rng),
+                }
+            },
+            _ => panic!("Expected Bit distribution parameters but got {:?}", self.config.params)
+        }
+    }
+
+    fn generate_sierpinski(&self, rng: &mut StdRng) -> String {
         let (mut x, mut y) = (0.0, 0.0);
         let a = (0.0, 0.0);
         let b = (1.0, 0.0);
@@ -137,100 +148,11 @@ impl SpiderGenerator {
                 _ => { x = (x + c.0) / 2.0; y = (y + c.1) / 2.0; }
             }
         }
-        (x, y)
-    }
 
-    pub fn generate_parcel(&self, rng: &mut StdRng) -> String {
-        if let DistributionParams::Parcel { srange, dither } = self.config.params {
-            let mut box_stack = vec![BoxWithDepth {
-                depth: 0,
-                x: 0.0,
-                y: 0.0,
-                w: 1.0,
-                h: 1.0,
-            }];
-
-            // Pick a depth based on dim (log2) or fixed depth
-            let depth_limit = 6; // You can make this configurable if needed
-
-            for _ in 0..depth_limit {
-                let b = box_stack.pop().unwrap();
-                let (b1, b2) = if b.w > b.h {
-                    let split = b.w * (srange + rand_unit(rng) * (1.0 - 2.0 * srange));
-                    (
-                        BoxWithDepth { depth: b.depth + 1, x: b.x, y: b.y, w: split, h: b.h },
-                        BoxWithDepth { depth: b.depth + 1, x: b.x + split, y: b.y, w: b.w - split, h: b.h },
-                    )
-                } else {
-                    let split = b.h * (srange + rand_unit(rng) * (1.0 - 2.0 * srange));
-                    (
-                        BoxWithDepth { depth: b.depth + 1, x: b.x, y: b.y, w: b.w, h: split },
-                        BoxWithDepth { depth: b.depth + 1, x: b.x, y: b.y + split, w: b.w, h: b.h - split },
-                    )
-                };
-
-                // Randomly pick one of the two
-                if rng.gen_bool(0.5) {
-                    box_stack.push(b1);
-                } else {
-                    box_stack.push(b2);
-                }
-            }
-
-            let mut b = box_stack.pop().unwrap();
-
-            // Apply dither
-            let dx = b.w * dither * (rand_unit(rng) - 0.5);
-            let dy = b.h * dither * (rand_unit(rng) - 0.5);
-            b.x += dx / 2.0;
-            b.y += dy / 2.0;
-            b.w -= dx;
-            b.h -= dy;
-
-            // Pick random point inside the box
-            let _x = b.x + rand_unit(rng) * b.w;
-            let _y = b.y + rand_unit(rng) * b.h;
-
-            self.box_to_wkt(&b)
-        } else {
-            self.box_to_wkt(&BoxWithDepth {
-                depth: 0,
-                x: 0.0,
-                y: 0.0,
-                w: 1.0,
-                h: 1.0,
-            })
-        }
-    }
-
-    fn box_to_wkt(&self, b: &BoxWithDepth) -> String {
-        let corners = [
-            (b.x, b.y),
-            (b.x + b.w, b.y),
-            (b.x + b.w, b.y + b.h),
-            (b.x, b.y + b.h),
-            (b.x, b.y),
-        ];
-
-        let affine = self.config.affine.unwrap_or([1.0, 0.0, 0.0, 0.0, 1.0, 0.0]);
-
-        let coords: Vec<String> = corners
-            .iter()
-            .map(|&(x, y)| {
-                let (tx, ty) = apply_affine(x, y, &affine);
-                format!("{:.6} {:.6}", tx, ty)
-            })
-            .collect();
-
-        format!("POLYGON (({}))", coords.join(", "))
-    }
-
-    pub fn generate_pickup_point(&self, trip_id: u64) -> (f64, f64) {
-        let (x, y) = self.generate_point(trip_id);
-        if let Some(aff) = &self.config.affine {
-            apply_affine(x, y, aff)
-        } else {
-            (x, y)
+        match self.config.geom_type {
+            GeomType::Point => generate_point_wkt((x, y), &self.config),
+            GeomType::Box => generate_box_wkt((x, y), &self.config, rng),
+            GeomType::Polygon => generate_polygon_wkt((x, y), &self.config, rng),
         }
     }
 }
@@ -267,16 +189,82 @@ fn spider_bit(rng: &mut StdRng, prob: f64, digits: u32) -> f64 {
         .sum()
 }
 
-// impl Default for SpiderGenerator {
-//     fn default() -> Self {
-//         let config = SpiderConfig {
-//             dist: SpiderDistribution::Uniform,
-//             global_seed: 42,
-//             affine: Some([
-//                 58.368269, 0.0, -125.244606, // scale X to 58.37°, offset to -125.24°
-//                 0.0, 25.175375, 24.006328,    // scale Y to 25.18°, offset to 24.00°
-//             ]),
-//         };
-//         SpiderGenerator::new(config)
-//     }
-// }
+pub fn generate_point_wkt(center: (f64, f64), config: &SpiderConfig) -> String {
+    let (x, y) = if let Some(aff) = &config.affine {
+        apply_affine(center.0, center.1, aff)
+    } else {
+        center
+    };
+    format!("POINT ({} {})", x, y)
+}
+
+pub fn generate_box_wkt(center: (f64, f64), config: &SpiderConfig, rng: &mut StdRng) -> String {
+    let half_width = rand_unit(rng) * config.width / 2.0;
+    let half_height = rand_unit(rng) * config.height / 2.0;
+
+    let corners = [
+        (center.0 - half_width, center.1 - half_height), // lower-left
+        (center.0 + half_width, center.1 - half_height), // lower-right
+        (center.0 + half_width, center.1 + half_height), // upper-right
+        (center.0 - half_width, center.1 + half_height), // upper-left
+        (center.0 - half_width, center.1 - half_height), // close ring
+    ];
+
+    let coords: Vec<String> = corners.iter().map(|&(x, y)| {
+        let (tx, ty) = if let Some(aff) = &config.affine {
+            apply_affine(x, y, aff)
+        } else {
+            (x, y)
+        };
+        format!("{:.10} {:.10}", tx, ty)
+    }).collect();
+
+    format!("POLYGON (({}))", coords.join(", "))
+}
+
+pub fn generate_polygon_wkt(center: (f64, f64), config: &SpiderConfig, rng: &mut StdRng) -> String {
+    let min_segs = 3;
+    let num_segments = if config.maxseg <= 3 {
+        3
+    } else {
+        rng.gen_range(0..=(config.maxseg - min_segs)) + min_segs
+    };
+
+    // Generate random angles
+    let mut angles: Vec<f64> = (0..num_segments)
+        .map(|_| rand_unit(rng) * 2.0 * PI)
+        .collect();
+
+    // Sort angles to form a valid polygon
+    angles.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+    let mut coords = Vec::with_capacity((num_segments + 1) as usize);
+
+    for angle in &angles {
+        let local = (
+            center.0 + config.polysize * angle.cos(),
+            center.1 + config.polysize * angle.sin(),
+        );
+        let (tx, ty) = if let Some(aff) = &config.affine {
+            apply_affine(local.0, local.1, aff)
+        } else {
+            local
+        };
+        coords.push(format!("{:.10} {:.10}", tx, ty));
+    }
+
+    // Close the ring by repeating the first point
+    let first_angle = angles[0];
+    let local0 = (
+        center.0 + config.polysize * first_angle.cos(),
+        center.1 + config.polysize * first_angle.sin(),
+    );
+    let (tx0, ty0) = if let Some(aff) = &config.affine {
+        apply_affine(local0.0, local0.1, aff)
+    } else {
+        local0
+    };
+    coords.push(format!("{:.10} {:.10}", tx0, ty0));
+
+    format!("POLYGON (({}))", coords.join(", "))
+}

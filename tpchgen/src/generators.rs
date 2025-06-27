@@ -392,7 +392,7 @@ pub struct VehicleGenerator<'a> {
 
 impl<'a> VehicleGenerator<'a> {
     /// Base scale for vehicle generation
-    const SCALE_BASE: i32 = 200_000;
+    const SCALE_BASE: i32 = 100;
 
     // Constants for vehicle generation
     const NAME_WORDS: i32 = 5;
@@ -653,7 +653,7 @@ pub struct DriverGenerator<'a> {
 
 impl<'a> DriverGenerator<'a> {
     /// Base scale for Driver generation
-    const SCALE_BASE: i32 = 10_000;
+    const SCALE_BASE: i32 = 500;
 
     /// Base scale for vehicle-driver generation
     const DRIVERS_PER_VEHICLE: i32 = 4;
@@ -942,7 +942,7 @@ pub struct CustomerGenerator<'a> {
 
 impl<'a> CustomerGenerator<'a> {
     /// Base scale for customer generation
-    const SCALE_BASE: i32 = 150_000;
+    const SCALE_BASE: i32 = 30_000;
 
     // Constants for customer generation
     const ACCOUNT_BALANCE_MIN: i32 = -99999;
@@ -1999,18 +1999,16 @@ pub struct Trip {
     /// Trip distance
     pub t_distance: TPCHDecimal,
     /// Trip pickup coordinates
-    pub t_pickupx: f64,
-    pub t_pickupy: f64,
+    pub t_pickuploc: String,
     /// Trip dropoff coordinates
-    pub t_dropoffx: f64,
-    pub t_dropoffy: f64,
+    pub t_dropoffloc: String,
 }
 
 impl fmt::Display for Trip {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|",
+            "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|",
             self.t_tripkey,
             self.t_custkey,
             self.t_driverkey,
@@ -2021,10 +2019,8 @@ impl fmt::Display for Trip {
             self.t_tip,
             self.t_totalamount,
             self.t_distance,
-            self.t_pickupx,
-            self.t_pickupy,
-            self.t_dropoffx,
-            self.t_dropoffy,
+            self.t_pickuploc,
+            self.t_dropoffloc,
         )
     }
 }
@@ -2043,7 +2039,7 @@ pub struct TripGenerator {
 
 impl TripGenerator {
     /// Base scale for trip generation
-    const SCALE_BASE: i32 = 500_000;
+    const SCALE_BASE: i32 = 6_000_000;
 
     // Constants for trip generation
     const FARE_MIN_PER_MILE: i32 = 150; // $1.50 per mile
@@ -2062,7 +2058,7 @@ impl TripGenerator {
             Distributions::static_default(),
             TextPool::get_or_init_default(),
             crate::kde::default_distance_kde(),
-            SpiderPresets::for_trip_pickups(),
+            SpiderPresets::for_trip_pickups4(),
         )
     }
 
@@ -2247,16 +2243,25 @@ impl TripGeneratorIterator {
         let distance = TPCHDecimal((distance_value * 100.0) as i64);
 
         // Pickup
-        let (pickup_x, pickup_y) = self.spatial_gen.generate_pickup_point(trip_key as u64);
+        let pickuploc = self.spatial_gen.generate(trip_key as u64);
+
+        // Extract just the coordinates part by removing "POINT (" and ")"
+        let coords_str = pickuploc.trim_start_matches("POINT (").trim_end_matches(")");
+        let coords: Vec<&str> = coords_str.split_whitespace().collect();
+
+        // Parse the coordinates directly
+        let pickup_x = coords[0].parse::<f64>().unwrap();
+        let pickup_y = coords[1].parse::<f64>().unwrap();
 
         // Angle
-        let angle_seed = crate::spider::spider_seed_for_index(trip_key as u64, 1234);
+        let angle_seed = spider_seed_for_index(trip_key as u64, 1234);
         let mut angle_rng = StdRng::seed_from_u64(angle_seed);
         let angle: f64 = angle_rng.gen::<f64>() * std::f64::consts::TAU;
 
         // Dropoff via polar projection
         let dropoff_x = pickup_x + distance_value * angle.cos();
         let dropoff_y = pickup_y + distance_value * angle.sin();
+        let dropoffloc = format!("POINT ({} {})", dropoff_x, dropoff_y);
 
         // Fix multiplication of f64 by integers by using f64 literals
         let fare_per_mile = self.fare_per_mile_random.next_value() as f64;
@@ -2287,10 +2292,8 @@ impl TripGeneratorIterator {
             t_tip: tip,
             t_totalamount: total,
             t_distance: distance,
-            t_pickupx: pickup_x,
-            t_pickupy: pickup_y,
-            t_dropoffx: dropoff_x,
-            t_dropoffy: dropoff_y,
+            t_pickuploc: pickuploc,
+            t_dropoffloc: dropoffloc,
         }
     }
 }
@@ -2396,7 +2399,7 @@ impl<'a> BuildingGenerator<'a> {
 
     /// Return the row count for the given scale factor and generator part count
     pub fn calculate_row_count(scale_factor: f64, part: i32, part_count: i32) -> i64 {
-        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, part, part_count)
+        GenerateUtils::calculate_logarithmic_row_count(Self::SCALE_BASE, scale_factor, part, part_count)
     }
 
     /// Returns an iterator over the part rows
@@ -2429,7 +2432,6 @@ impl<'a> IntoIterator for &'a BuildingGenerator<'a> {
 #[derive(Debug)]
 pub struct BuildingGeneratorIterator<'a> {
     name_random: RandomStringSequence<'a>,
-    wkt_random: RandomText<'a>,
     spatial_gen: SpiderGenerator,
 
     start_index: i64,
@@ -2462,7 +2464,6 @@ impl<'a> BuildingGeneratorIterator<'a> {
 
         BuildingGeneratorIterator {
             name_random,
-            wkt_random,
             start_index,
             row_count,
             spatial_gen,
@@ -2474,10 +2475,7 @@ impl<'a> BuildingGeneratorIterator<'a> {
     /// Creates a part with the given key
     fn make_building(&mut self, building_key: i64) -> Building<'a> {
         let name = self.name_random.next_value();
-
-        let seed = spider_seed_for_index(building_key as u64, 1234);
-        let mut rng = StdRng::seed_from_u64(seed);
-        let wkt = self.spatial_gen.generate_parcel(&mut rng);
+        let wkt = self.spatial_gen.generate(building_key as u64);
 
         Building {
             b_buildingkey: building_key,
@@ -2498,7 +2496,6 @@ impl<'a> Iterator for BuildingGeneratorIterator<'a> {
         let building = self.make_building(self.start_index + self.index + 1);
 
         self.name_random.row_finished();
-        self.wkt_random.row_finished();
 
         self.index += 1;
 
@@ -2637,7 +2634,7 @@ mod tests {
         let trips: Vec<_> = generator.iter().collect();
 
         // Should have 0.01 * 1,000,000 = 10,000 trips
-        assert_eq!(trips.len(), 5000);
+        assert_eq!(trips.len(), 200);
 
         // Check first trip
         let first = &trips[0];
@@ -2658,7 +2655,7 @@ mod tests {
 
         // Verify the string format matches the expected pattern
         let expected_pattern = format!(
-            "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|",
+            "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|",
             first.t_tripkey,
             first.t_custkey,
             first.t_driverkey,
@@ -2669,27 +2666,25 @@ mod tests {
             first.t_tip,
             first.t_totalamount,
             first.t_distance,
-            first.t_pickupx,
-            first.t_pickupy,
-            first.t_dropoffx,
-            first.t_dropoffy,
+            first.t_pickuploc,
+            first.t_dropoffloc,
         );
         assert_eq!(first.to_string(), expected_pattern);
 
         // Check first Trip
         let first = &trips[1];
         assert_eq!(first.t_tripkey, 2);
-        assert_eq!(first.to_string(), "2|851|1286|1285|1997-12-25|1997-12-25|0.03|0.00|0.04|0.01|-102.20681068856331|34.032813907715486|-102.19307587853756|34.03497048015551|")
+        assert_eq!(first.to_string(), "2|851|1286|1285|1997-12-25|1997-12-25|0.03|0.00|0.04|0.01|POINT (-102.44792625704861 37.56233603076481)|POINT (-102.43419144702285 37.56449260320483)|")
     }
 
     #[test]
     fn test_building_generation() {
         // Create a generator with a small scale factor
-        let generator = BuildingGenerator::new(0.01, 1, 1);
+        let generator = BuildingGenerator::new(1.0, 1, 1);
         let buildings: Vec<_> = generator.iter().collect();
 
         // Should have 0.01 * 20,000 = 200 buildings
-        assert_eq!(buildings.len(), 200);
+        assert_eq!(buildings.len(), 20_000);
 
         // Check first building
         let first = &buildings[0];
@@ -2707,7 +2702,7 @@ mod tests {
         // Check first Building
         let first = &buildings[1];
         assert_eq!(first.b_buildingkey, 2);
-        assert_eq!(first.to_string(), "2|blush|lar accounts amo|")
+        assert_eq!(first.to_string(), "2|blush|POLYGON ((-102.2154579691 40.5193652499, -102.2133112848 40.5193652499, -102.2133112848 40.5207006446, -102.2154579691 40.5207006446, -102.2154579691 40.5193652499))|")
     }
 
     #[test]
