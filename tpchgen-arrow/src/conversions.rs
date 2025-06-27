@@ -40,7 +40,7 @@ where
 {
     let values = values.map(to_arrow_decimal);
     arrow::array::Decimal128Array::from_iter_values(values)
-        .with_precision_and_scale(15, 2)
+        .with_precision_and_scale(15, 5)
         // safe to unwrap because 15,2 is within the valid range for Decimal128 (38)
         .unwrap()
 }
@@ -78,13 +78,13 @@ mod tests {
 
     #[test]
     fn test_to_arrow_date32() {
-        let value = TPCHDate::new(MIN_GENERATE_DATE);
+        let value = TPCHDate::new(MIN_GENERATE_DATE, 0, 0);
         assert_eq!(to_arrow_date32(value), 8035);
 
-        let value = TPCHDate::new(MIN_GENERATE_DATE + 100);
+        let value = TPCHDate::new(MIN_GENERATE_DATE + 100, 0, 0);
         assert_eq!(to_arrow_date32(value), 8135);
 
-        let value = TPCHDate::new(MIN_GENERATE_DATE + 1234);
+        let value = TPCHDate::new(MIN_GENERATE_DATE + 1234, 0, 0);
         assert_eq!(to_arrow_date32(value), 9269);
     }
 }
