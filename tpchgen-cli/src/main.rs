@@ -180,7 +180,7 @@ impl TypedValueParser for TableValueParser {
                 // clap::builder::PossibleValue::new("orders").help("Orders table (alias: O)"),
                 // clap::builder::PossibleValue::new("lineitem").help("LineItem table (alias: L)"),
                 clap::builder::PossibleValue::new("trip").help("Trip table (alias: T)"),
-                clap::builder::PossibleValue::new("building").help("Trip table (alias: b)"),
+                clap::builder::PossibleValue::new("building").help("Building table (alias: b)"),
             ]
             .into_iter(),
         ))
