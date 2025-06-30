@@ -1,5 +1,6 @@
 //! Generators for each TPC-H Tables
 use crate::dates;
+use crate::dates::{GenerateUtils, TPCHDate};
 use crate::decimal::TPCHDecimal;
 use crate::distribution::Distribution;
 use crate::distribution::Distributions;
@@ -7,15 +8,14 @@ use crate::random::RandomPhoneNumber;
 use crate::random::RowRandomInt;
 use crate::random::{PhoneNumberInstance, RandomBoundedLong, StringSequenceInstance};
 use crate::random::{RandomAlphaNumeric, RandomAlphaNumericInstance};
-use crate::text::TextPool;
-use core::fmt;
-use std::fmt::Display;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
-use crate::dates::{GenerateUtils, TPCHDate};
 use crate::random::{RandomBoundedInt, RandomString, RandomStringSequence, RandomText};
 use crate::spider::{spider_seed_for_index, SpiderGenerator};
 use crate::spider_presets::SpiderPresets;
+use crate::text::TextPool;
+use core::fmt;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
+use std::fmt::Display;
 
 /// Generator for Nation table data
 #[derive(Debug, Clone)]
@@ -371,11 +371,7 @@ impl fmt::Display for Vehicle<'_> {
         write!(
             f,
             "{}|{}|{}|{}|{}|",
-            self.v_vehiclekey,
-            self.v_mfgr,
-            self.v_brand,
-            self.v_type,
-            self.v_license
+            self.v_vehiclekey, self.v_mfgr, self.v_brand, self.v_type, self.v_license
         )
     }
 }
@@ -499,11 +495,17 @@ impl<'a> VehicleGeneratorIterator<'a> {
             VehicleGenerator::MANUFACTURER_MIN,
             VehicleGenerator::MANUFACTURER_MAX,
         );
-        let mut brand_random =
-            RandomBoundedInt::new(46831694, VehicleGenerator::BRAND_MIN, VehicleGenerator::BRAND_MAX);
+        let mut brand_random = RandomBoundedInt::new(
+            46831694,
+            VehicleGenerator::BRAND_MIN,
+            VehicleGenerator::BRAND_MAX,
+        );
         let mut type_random = RandomString::new(1841581359, distributions.part_types());
-        let mut size_random =
-            RandomBoundedInt::new(1193163244, VehicleGenerator::SIZE_MIN, VehicleGenerator::SIZE_MAX);
+        let mut size_random = RandomBoundedInt::new(
+            1193163244,
+            VehicleGenerator::SIZE_MIN,
+            VehicleGenerator::SIZE_MAX,
+        );
         let mut container_random = RandomString::new(727633698, distributions.part_containers());
         let mut comment_random = RandomText::new(
             804159733,
@@ -821,7 +823,9 @@ impl<'a> DriverGeneratorIterator<'a> {
     fn make_driver(&mut self, driver_key: i64) -> Driver {
         let nation_key = self.nation_key_random.next_value();
         let nation = self.nations.get_value(nation_key as usize);
-        let region = self.regions.get_value(self.nations.get_weight(nation_key as usize) as usize);
+        let region = self
+            .regions
+            .get_value(self.nations.get_weight(nation_key as usize) as usize);
 
         Driver {
             d_driverkey: driver_key,
@@ -840,8 +844,8 @@ impl<'a> DriverGeneratorIterator<'a> {
 
         ((vehicle_key
             + (driver_number
-            * ((driver_count / DriverGenerator::DRIVERS_PER_VEHICLE as i64)
-            + ((vehicle_key - 1) / driver_count))))
+                * ((driver_count / DriverGenerator::DRIVERS_PER_VEHICLE as i64)
+                    + ((vehicle_key - 1) / driver_count))))
             % driver_count)
             + 1
     }
@@ -920,12 +924,7 @@ impl fmt::Display for Customer<'_> {
         write!(
             f,
             "{}|{}|{}|{}|{}|{}|",
-            self.c_custkey,
-            self.c_name,
-            self.c_address,
-            self.c_region,
-            self.c_nation,
-            self.c_phone,
+            self.c_custkey, self.c_name, self.c_address, self.c_region, self.c_nation, self.c_phone,
         )
     }
 }
@@ -1369,7 +1368,8 @@ impl<'a> OrderGeneratorIterator<'a> {
         let mut line_quantity_random = LineItemGenerator::create_quantity_random();
         let mut line_discount_random = LineItemGenerator::create_discount_random();
         let mut line_tax_random = LineItemGenerator::create_tax_random();
-        let mut line_vehicle_key_random = LineItemGenerator::create_vehicle_key_random(scale_factor);
+        let mut line_vehicle_key_random =
+            LineItemGenerator::create_vehicle_key_random(scale_factor);
         let mut line_ship_date_random = LineItemGenerator::create_ship_date_random();
 
         // Advance all generators to the starting position
@@ -1762,7 +1762,8 @@ impl<'a> LineItemGeneratorIterator<'a> {
         let mut discount_random = LineItemGenerator::create_discount_random();
         let mut tax_random = LineItemGenerator::create_tax_random();
 
-        let mut line_vehicle_key_random = LineItemGenerator::create_vehicle_key_random(scale_factor);
+        let mut line_vehicle_key_random =
+            LineItemGenerator::create_vehicle_key_random(scale_factor);
 
         let mut driver_number_random = RandomBoundedInt::new_with_seeds_per_row(
             2095021727,
@@ -2044,8 +2045,8 @@ impl TripGenerator {
     // Constants for trip generation
     const FARE_MIN_PER_MILE: i32 = 150; // $1.50 per mile
     const FARE_MAX_PER_MILE: i32 = 300; // $3.00 per mile
-    const TIP_PERCENT_MIN: i32 = 0;     // 0% tip
-    const TIP_PERCENT_MAX: i32 = 30;    // 30% tip
+    const TIP_PERCENT_MIN: i32 = 0; // 0% tip
+    const TIP_PERCENT_MAX: i32 = 30; // 30% tip
     const TRIP_DURATION_MAX_PER_MILE: i32 = 3; // max 3 minutes per mile
 
     /// Creates a new TripGenerator with the given scale factor
@@ -2069,7 +2070,7 @@ impl TripGenerator {
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
         distance_kde: crate::kde::DistanceKDE,
-        spatial_gen: SpiderGenerator
+        spatial_gen: SpiderGenerator,
     ) -> TripGenerator {
         TripGenerator {
             scale_factor,
@@ -2111,7 +2112,7 @@ impl TripGenerator {
     }
 }
 
-impl<'a> IntoIterator for TripGenerator{
+impl<'a> IntoIterator for TripGenerator {
     type Item = Trip;
     type IntoIter = TripGeneratorIterator;
 
@@ -2152,21 +2153,24 @@ impl TripGeneratorIterator {
         start_index: i64,
         row_count: i64,
         distance_kde: crate::kde::DistanceKDE,
-        spatial_gen: SpiderGenerator
+        spatial_gen: SpiderGenerator,
     ) -> Self {
         // Create all the randomizers
         let max_customer_key = (CustomerGenerator::SCALE_BASE as f64 * scale_factor) as i64;
         let max_driver_key = (DriverGenerator::SCALE_BASE as f64 * scale_factor) as i64;
         let max_vehicle_key = (VehicleGenerator::SCALE_BASE as f64 * scale_factor) as i64;
 
-        let mut customer_key_random = RandomBoundedLong::new(921591341, scale_factor >= 30000.0, 1, max_customer_key);
-        let mut driver_key_random = RandomBoundedLong::new(572982913, scale_factor >= 30000.0, 1, max_driver_key);
-        let mut vehicle_key_random = RandomBoundedLong::new(135497281, scale_factor >= 30000.0, 1, max_vehicle_key);
+        let mut customer_key_random =
+            RandomBoundedLong::new(921591341, scale_factor >= 30000.0, 1, max_customer_key);
+        let mut driver_key_random =
+            RandomBoundedLong::new(572982913, scale_factor >= 30000.0, 1, max_driver_key);
+        let mut vehicle_key_random =
+            RandomBoundedLong::new(135497281, scale_factor >= 30000.0, 1, max_vehicle_key);
 
         let mut pickup_date_random = RandomBoundedInt::new(
             831649288,
             dates::MIN_GENERATE_DATE,
-            dates::MIN_GENERATE_DATE + dates::TOTAL_DATE_RANGE - 1
+            dates::MIN_GENERATE_DATE + dates::TOTAL_DATE_RANGE - 1,
         );
         let mut hour_random = RandomBoundedInt::new(123456789, 0, 23);
         let mut minute_random = RandomBoundedInt::new(987654321, 0, 59);
@@ -2174,20 +2178,17 @@ impl TripGeneratorIterator {
         let mut fare_per_mile_random = RandomBoundedInt::new(
             109837462,
             TripGenerator::FARE_MIN_PER_MILE,
-            TripGenerator::FARE_MAX_PER_MILE
+            TripGenerator::FARE_MAX_PER_MILE,
         );
 
         let mut tip_percent_random = RandomBoundedInt::new(
             483912756,
             TripGenerator::TIP_PERCENT_MIN,
-            TripGenerator::TIP_PERCENT_MAX
+            TripGenerator::TIP_PERCENT_MAX,
         );
 
-        let mut trip_minutes_per_mile_random = RandomBoundedInt::new(
-            748219567,
-            1,
-            TripGenerator::TRIP_DURATION_MAX_PER_MILE
-        );
+        let mut trip_minutes_per_mile_random =
+            RandomBoundedInt::new(748219567, 1, TripGenerator::TRIP_DURATION_MAX_PER_MILE);
 
         // Advance all generators to the starting position
         customer_key_random.advance_rows(start_index);
@@ -2225,7 +2226,6 @@ impl TripGeneratorIterator {
 
     /// Creates a trip with the given key
     fn make_trip(&mut self, trip_key: i64) -> Trip {
-
         // generate customer key, taking into account customer mortality rate
         let mut customer_key = self.customer_key_random.next_value();
         let mut delta = 1;
@@ -2257,7 +2257,9 @@ impl TripGeneratorIterator {
         let pickuploc = self.spatial_gen.generate(trip_key as u64);
 
         // Extract just the coordinates part by removing "POINT (" and ")"
-        let coords_str = pickuploc.trim_start_matches("POINT (").trim_end_matches(")");
+        let coords_str = pickuploc
+            .trim_start_matches("POINT (")
+            .trim_end_matches(")");
         let coords: Vec<&str> = coords_str.split_whitespace().collect();
 
         // Parse the coordinates directly
@@ -2299,10 +2301,14 @@ impl TripGeneratorIterator {
         // Ensure the dropoff day doesn't exceed the maximum date value
         let bounded_dropoff_day = std::cmp::min(
             dropoff_day,
-            dates::MIN_GENERATE_DATE + dates::TOTAL_DATE_RANGE - 1
+            dates::MIN_GENERATE_DATE + dates::TOTAL_DATE_RANGE - 1,
         );
-        let dropoff_date = TPCHDate::new(bounded_dropoff_day, dropoff_hour as u8, dropoff_minute as u8);
-        
+        let dropoff_date = TPCHDate::new(
+            bounded_dropoff_day,
+            dropoff_hour as u8,
+            dropoff_minute as u8,
+        );
+
         Trip {
             t_tripkey: trip_key,
             t_custkey: customer_key,
@@ -2361,9 +2367,7 @@ impl Display for Building<'_> {
         write!(
             f,
             "{}|{}|{}|",
-            self.b_buildingkey,
-            self.b_name,
-            self.b_polygonwkt,
+            self.b_buildingkey, self.b_name, self.b_polygonwkt,
         )
     }
 }
@@ -2421,7 +2425,12 @@ impl<'a> BuildingGenerator<'a> {
 
     /// Return the row count for the given scale factor and generator part count
     pub fn calculate_row_count(scale_factor: f64, part: i32, part_count: i32) -> i64 {
-        GenerateUtils::calculate_logarithmic_row_count(Self::SCALE_BASE, scale_factor, part, part_count)
+        GenerateUtils::calculate_logarithmic_row_count(
+            Self::SCALE_BASE,
+            scale_factor,
+            part,
+            part_count,
+        )
     }
 
     /// Returns an iterator over the part rows
@@ -2559,7 +2568,10 @@ mod tests {
         // Check first Driver
         let first = &vehicles[0];
         assert_eq!(first.v_vehiclekey, 1);
-        assert_eq!(first.to_string(), "1|Manufacturer#1|Brand#13|PROMO BURNISHED COPPER|ly. slyly ironi|")
+        assert_eq!(
+            first.to_string(),
+            "1|Manufacturer#1|Brand#13|PROMO BURNISHED COPPER|ly. slyly ironi|"
+        )
     }
 
     #[test]
@@ -2574,7 +2586,10 @@ mod tests {
         // Check first Driver
         let first = &drivers[0];
         assert_eq!(first.d_driverkey, 1);
-        assert_eq!(first.to_string(), "1|Driver#000000001| N kD4on9OM Ipw3,gf0JBoQDd7tgrzrddZ|AMERICA|PERU|27-918-335-1736|")
+        assert_eq!(
+            first.to_string(),
+            "1|Driver#000000001| N kD4on9OM Ipw3,gf0JBoQDd7tgrzrddZ|AMERICA|PERU|27-918-335-1736|"
+        )
     }
 
     #[test]
@@ -2726,9 +2741,7 @@ mod tests {
         // Verify the string format matches the expected pattern
         let expected_pattern = format!(
             "{}|{}|{}|",
-            first.b_buildingkey,
-            first.b_name,
-            first.b_polygonwkt,
+            first.b_buildingkey, first.b_name, first.b_polygonwkt,
         );
         assert_eq!(first.to_string(), expected_pattern);
 

@@ -5,7 +5,8 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use tpchgen::generators::{
-    CustomerGenerator, LineItemGenerator, NationGenerator, OrderGenerator, VehicleGenerator, RegionGenerator, DriverGenerator,
+    CustomerGenerator, DriverGenerator, LineItemGenerator, NationGenerator, OrderGenerator,
+    RegionGenerator, VehicleGenerator,
 };
 
 fn read_tbl_gz<P: AsRef<Path>>(path: P) -> Vec<String> {

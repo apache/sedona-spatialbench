@@ -1,6 +1,6 @@
-use std::f64::consts::PI;
-use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
+use std::f64::consts::PI;
 
 #[derive(Debug, Clone, Copy)]
 pub enum DistributionType {
@@ -66,7 +66,7 @@ impl SpiderGenerator {
             DistributionType::Normal => self.generate_normal(&mut rng),
             DistributionType::Diagonal => self.generate_diagonal(&mut rng),
             DistributionType::Bit => self.generate_bit(&mut rng),
-            DistributionType::Sierpinski => self.generate_sierpinski(&mut rng)
+            DistributionType::Sierpinski => self.generate_sierpinski(&mut rng),
         }
     }
 
@@ -91,8 +91,11 @@ impl SpiderGenerator {
                     GeomType::Box => generate_box_wkt((x, y), &self.config, rng),
                     GeomType::Polygon => generate_polygon_wkt((x, y), &self.config, rng),
                 }
-            },
-            _ => panic!("Expected Normal distribution parameters but got {:?}", self.config.params)
+            }
+            _ => panic!(
+                "Expected Normal distribution parameters but got {:?}",
+                self.config.params
+            ),
         }
     }
 
@@ -115,14 +118,20 @@ impl SpiderGenerator {
                     GeomType::Box => generate_box_wkt((x, y), &self.config, rng),
                     GeomType::Polygon => generate_polygon_wkt((x, y), &self.config, rng),
                 }
-            },
-            _ => panic!("Expected Diagonal distribution parameters but got {:?}", self.config.params)
+            }
+            _ => panic!(
+                "Expected Diagonal distribution parameters but got {:?}",
+                self.config.params
+            ),
         }
     }
 
     fn generate_bit(&self, rng: &mut StdRng) -> String {
         match self.config.params {
-            DistributionParams::Bit { probability, digits } => {
+            DistributionParams::Bit {
+                probability,
+                digits,
+            } => {
                 let x = spider_bit(rng, probability, digits);
                 let y = spider_bit(rng, probability, digits);
 
@@ -131,8 +140,11 @@ impl SpiderGenerator {
                     GeomType::Box => generate_box_wkt((x, y), &self.config, rng),
                     GeomType::Polygon => generate_polygon_wkt((x, y), &self.config, rng),
                 }
-            },
-            _ => panic!("Expected Bit distribution parameters but got {:?}", self.config.params)
+            }
+            _ => panic!(
+                "Expected Bit distribution parameters but got {:?}",
+                self.config.params
+            ),
         }
     }
 
@@ -143,9 +155,18 @@ impl SpiderGenerator {
         let c = (0.5, (3.0f64).sqrt() / 2.0);
         for _ in 0..10 {
             match rng.gen_range(0..3) {
-                0 => { x = (x + a.0) / 2.0; y = (y + a.1) / 2.0; }
-                1 => { x = (x + b.0) / 2.0; y = (y + b.1) / 2.0; }
-                _ => { x = (x + c.0) / 2.0; y = (y + c.1) / 2.0; }
+                0 => {
+                    x = (x + a.0) / 2.0;
+                    y = (y + a.1) / 2.0;
+                }
+                1 => {
+                    x = (x + b.0) / 2.0;
+                    y = (y + b.1) / 2.0;
+                }
+                _ => {
+                    x = (x + c.0) / 2.0;
+                    y = (y + c.1) / 2.0;
+                }
             }
         }
 
@@ -170,7 +191,9 @@ fn apply_affine(x: f64, y: f64, m: &[f64; 6]) -> (f64, f64) {
 
 // Deterministic hash (SplitMix64-like)
 pub fn spider_seed_for_index(index: u64, global_seed: u64) -> u64 {
-    let mut z = index.wrapping_add(global_seed).wrapping_add(0x9E3779B97F4A7C15);
+    let mut z = index
+        .wrapping_add(global_seed)
+        .wrapping_add(0x9E3779B97F4A7C15);
     z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);
     z = (z ^ (z >> 27)).wrapping_mul(0x94D049BB133111EB);
     z ^ (z >> 31)
@@ -185,7 +208,13 @@ fn rand_normal(rng: &mut StdRng, mu: f64, sigma: f64) -> f64 {
 
 fn spider_bit(rng: &mut StdRng, prob: f64, digits: u32) -> f64 {
     (1..=digits)
-        .map(|i| if rng.gen::<f64>() < prob { 1.0 / 2f64.powi(i as i32) } else { 0.0 })
+        .map(|i| {
+            if rng.gen::<f64>() < prob {
+                1.0 / 2f64.powi(i as i32)
+            } else {
+                0.0
+            }
+        })
         .sum()
 }
 
@@ -210,14 +239,17 @@ pub fn generate_box_wkt(center: (f64, f64), config: &SpiderConfig, rng: &mut Std
         (center.0 - half_width, center.1 - half_height), // close ring
     ];
 
-    let coords: Vec<String> = corners.iter().map(|&(x, y)| {
-        let (tx, ty) = if let Some(aff) = &config.affine {
-            apply_affine(x, y, aff)
-        } else {
-            (x, y)
-        };
-        format!("{:.10} {:.10}", tx, ty)
-    }).collect();
+    let coords: Vec<String> = corners
+        .iter()
+        .map(|&(x, y)| {
+            let (tx, ty) = if let Some(aff) = &config.affine {
+                apply_affine(x, y, aff)
+            } else {
+                (x, y)
+            };
+            format!("{:.10} {:.10}", tx, ty)
+        })
+        .collect();
 
     format!("POLYGON (({}))", coords.join(", "))
 }

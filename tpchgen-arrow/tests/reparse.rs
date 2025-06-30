@@ -6,16 +6,17 @@ use arrow::datatypes::SchemaRef;
 use std::io::Write;
 use std::sync::Arc;
 use tpchgen::csv::{
-    CustomerCsv, LineItemCsv, NationCsv, OrderCsv, VehicleCsv, RegionCsv, DriverCsv, TripCsv, BuildingCsv
+    BuildingCsv, CustomerCsv, DriverCsv, LineItemCsv, NationCsv, OrderCsv, RegionCsv, TripCsv,
+    VehicleCsv,
 };
 use tpchgen::generators::{
-    Customer, CustomerGenerator, LineItem, LineItemGenerator, Nation, NationGenerator, Order,
-    OrderGenerator, Vehicle, VehicleGenerator, Region, RegionGenerator,
-    Driver, DriverGenerator, TripGenerator, BuildingGenerator
+    BuildingGenerator, Customer, CustomerGenerator, Driver, DriverGenerator, LineItem,
+    LineItemGenerator, Nation, NationGenerator, Order, OrderGenerator, Region, RegionGenerator,
+    TripGenerator, Vehicle, VehicleGenerator,
 };
 use tpchgen_arrow::{
-    CustomerArrow, LineItemArrow, NationArrow, OrderArrow, VehicleArrow,
-    RecordBatchIterator, RegionArrow, DriverArrow, TripArrow, BuildingArrow
+    BuildingArrow, CustomerArrow, DriverArrow, LineItemArrow, NationArrow, OrderArrow,
+    RecordBatchIterator, RegionArrow, TripArrow, VehicleArrow,
 };
 
 /// Macro that defines tests for tbl for a given type

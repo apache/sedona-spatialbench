@@ -62,12 +62,13 @@ use std::str::FromStr;
 use std::time::Instant;
 use tpchgen::distribution::Distributions;
 use tpchgen::generators::{
-    CustomerGenerator, LineItemGenerator, NationGenerator, OrderGenerator, VehicleGenerator, RegionGenerator, DriverGenerator, TripGenerator, BuildingGenerator,
+    BuildingGenerator, CustomerGenerator, DriverGenerator, LineItemGenerator, NationGenerator,
+    OrderGenerator, RegionGenerator, TripGenerator, VehicleGenerator,
 };
 use tpchgen::text::TextPool;
 use tpchgen_arrow::{
-    CustomerArrow, LineItemArrow, NationArrow, OrderArrow, VehicleArrow,
-    RecordBatchIterator, RegionArrow, DriverArrow, TripArrow, BuildingArrow,
+    BuildingArrow, CustomerArrow, DriverArrow, LineItemArrow, NationArrow, OrderArrow,
+    RecordBatchIterator, RegionArrow, TripArrow, VehicleArrow,
 };
 
 #[derive(Parser)]
@@ -467,7 +468,10 @@ impl Cli {
             //     let row_count = 4 * OrderGenerator::calculate_row_count(self.scale_factor, 1, 1);
             //     (128, row_count)
             // },
-            &Table::Trip => (130, TripGenerator::calculate_row_count(self.scale_factor, 1, 1)),
+            &Table::Trip => (
+                130,
+                TripGenerator::calculate_row_count(self.scale_factor, 1, 1),
+            ),
             Table::Building => (
                 115,
                 BuildingGenerator::calculate_row_count(self.scale_factor, 1, 1),

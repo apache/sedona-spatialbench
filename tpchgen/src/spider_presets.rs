@@ -1,4 +1,6 @@
-use crate::spider::{SpiderGenerator, SpiderConfig, DistributionType, DistributionParams, GeomType};
+use crate::spider::{
+    DistributionParams, DistributionType, GeomType, SpiderConfig, SpiderGenerator,
+};
 
 pub struct SpiderPresets;
 
@@ -10,8 +12,12 @@ impl SpiderPresets {
             dim: 2,
             seed: 42,
             affine: Some([
-                58.368269, 0.0, -125.244606, // scale X to 58.37°, offset to -125.24°
-                0.0, 25.175375, 24.006328,   // scale Y to 25.18°, offset to 24.00°
+                58.368269,
+                0.0,
+                -125.244606, // scale X to 58.37°, offset to -125.24°
+                0.0,
+                25.175375,
+                24.006328, // scale Y to 25.18°, offset to 24.00°
             ]),
 
             // geometry = box
@@ -34,8 +40,12 @@ impl SpiderPresets {
             dim: 2,
             seed: 42,
             affine: Some([
-                58.368269, 0.0, -125.244606, // scale X to 58.37°, offset to -125.24°
-                0.0, 25.175375, 24.006328,   // scale Y to 25.18°, offset to 24.00°
+                58.368269,
+                0.0,
+                -125.244606, // scale X to 58.37°, offset to -125.24°
+                0.0,
+                25.175375,
+                24.006328, // scale Y to 25.18°, offset to 24.00°
             ]),
 
             // geometry = box
@@ -46,7 +56,10 @@ impl SpiderPresets {
             maxseg: 0,
             polysize: 0.0,
 
-            params: DistributionParams::Diagonal { percentage: 0.5, buffer: 0.5},
+            params: DistributionParams::Diagonal {
+                percentage: 0.5,
+                buffer: 0.5,
+            },
         };
         SpiderGenerator::new(config)
     }
@@ -58,8 +71,12 @@ impl SpiderPresets {
             dim: 2,
             seed: 42,
             affine: Some([
-                58.368269, 0.0, -125.244606, // scale X to 58.37°, offset to -125.24°
-                0.0, 25.175375, 24.006328,   // scale Y to 25.18°, offset to 24.00°
+                58.368269,
+                0.0,
+                -125.244606, // scale X to 58.37°, offset to -125.24°
+                0.0,
+                25.175375,
+                24.006328, // scale Y to 25.18°, offset to 24.00°
             ]),
 
             // geometry = box
@@ -82,8 +99,12 @@ impl SpiderPresets {
             dim: 2,
             seed: 42,
             affine: Some([
-                58.368269, 0.0, -125.244606, // scale X to 58.37°, offset to -125.24°
-                0.0, 25.175375, 24.006328,   // scale Y to 25.18°, offset to 24.00°
+                58.368269,
+                0.0,
+                -125.244606, // scale X to 58.37°, offset to -125.24°
+                0.0,
+                25.175375,
+                24.006328, // scale Y to 25.18°, offset to 24.00°
             ]),
 
             // geometry = box
@@ -94,7 +115,10 @@ impl SpiderPresets {
             maxseg: 0,
             polysize: 0.0,
 
-            params: DistributionParams::Bit { probability: 0.2, digits: 10},
+            params: DistributionParams::Bit {
+                probability: 0.2,
+                digits: 10,
+            },
         };
         SpiderGenerator::new(config)
     }
@@ -106,8 +130,12 @@ impl SpiderPresets {
             dim: 2,
             seed: 42,
             affine: Some([
-                58.368269, 0.0, -125.244606, // scale X to 58.37°, offset to -125.24°
-                0.0, 25.175375, 24.006328,   // scale Y to 25.18°, offset to 24.00°
+                58.368269,
+                0.0,
+                -125.244606, // scale X to 58.37°, offset to -125.24°
+                0.0,
+                25.175375,
+                24.006328, // scale Y to 25.18°, offset to 24.00°
             ]),
 
             // geometry = box
@@ -118,7 +146,10 @@ impl SpiderPresets {
             maxseg: 0,
             polysize: 0.0,
 
-            params: DistributionParams::Normal {mu: 0.5, sigma: 0.1},
+            params: DistributionParams::Normal {
+                mu: 0.5,
+                sigma: 0.1,
+            },
         };
         SpiderGenerator::new(config)
     }
@@ -130,8 +161,12 @@ impl SpiderPresets {
             dim: 2,
             seed: 12345,
             affine: Some([
-                58.368269, 0.0, -125.244606, // scale X to 58.37°, offset to -125.24°
-                0.0, 25.175375, 24.006328,   // scale Y to 25.18°, offset to 24.00°
+                58.368269,
+                0.0,
+                -125.244606, // scale X to 58.37°, offset to -125.24°
+                0.0,
+                25.175375,
+                24.006328, // scale Y to 25.18°, offset to 24.00°
             ]),
 
             // geometry = box
@@ -142,7 +177,10 @@ impl SpiderPresets {
             maxseg: 0,
             polysize: 0.0,
 
-            params: DistributionParams::Bit { probability: 0.5, digits: 20},
+            params: DistributionParams::Bit {
+                probability: 0.5,
+                digits: 20,
+            },
         };
         SpiderGenerator::new(config)
     }

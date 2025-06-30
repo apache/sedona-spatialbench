@@ -73,14 +73,18 @@ impl Iterator for TripArrow {
             rows.iter().map(|row| row.t_pickuptime).map(to_arrow_date32),
         );
         let t_dropofftime = Date32Array::from_iter_values(
-            rows.iter().map(|row| row.t_dropofftime).map(to_arrow_date32),
+            rows.iter()
+                .map(|row| row.t_dropofftime)
+                .map(to_arrow_date32),
         );
         let t_fare = decimal128_array_from_iter(rows.iter().map(|row| row.t_fare));
         let t_tip = decimal128_array_from_iter(rows.iter().map(|row| row.t_tip));
         let t_totalamount = decimal128_array_from_iter(rows.iter().map(|row| row.t_totalamount));
         let t_distance = decimal128_array_from_iter(rows.iter().map(|row| row.t_distance));
-        let t_pickuploc = StringViewArray::from_iter_values(rows.iter().map(|row| row.t_pickuploc.clone()));
-        let t_dropoffloc = StringViewArray::from_iter_values(rows.iter().map(|row| row.t_dropoffloc.clone()));
+        let t_pickuploc =
+            StringViewArray::from_iter_values(rows.iter().map(|row| row.t_pickuploc.clone()));
+        let t_dropoffloc =
+            StringViewArray::from_iter_values(rows.iter().map(|row| row.t_dropoffloc.clone()));
 
         let batch = RecordBatch::try_new(
             Arc::clone(&self.schema),
@@ -99,7 +103,7 @@ impl Iterator for TripArrow {
                 Arc::new(t_dropoffloc),
             ],
         )
-            .unwrap();
+        .unwrap();
 
         Some(batch)
     }

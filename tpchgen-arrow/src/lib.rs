@@ -34,28 +34,28 @@
 //!   "+------------+-----------+-----------+--------------+------------+-----------------+------------+-------+--------------+--------------+------------+--------------+---------------+-------------------+------------+-------------------------------------+"
 //! ]);
 //! ```
+mod building;
 pub mod conversions;
 mod customer;
+mod driver;
 mod lineitem;
 mod nation;
 mod order;
-mod vehicle;
 mod region;
-mod driver;
 mod trip;
-mod building;
+mod vehicle;
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::SchemaRef;
+pub use building::BuildingArrow;
 pub use customer::CustomerArrow;
+pub use driver::DriverArrow;
 pub use lineitem::LineItemArrow;
 pub use nation::NationArrow;
 pub use order::OrderArrow;
-pub use vehicle::VehicleArrow;
 pub use region::RegionArrow;
-pub use driver::DriverArrow;
 pub use trip::TripArrow;
-pub use building::BuildingArrow;
+pub use vehicle::VehicleArrow;
 
 /// Iterator of Arrow [`RecordBatch`] that also knows its schema
 pub trait RecordBatchIterator: Iterator<Item = RecordBatch> + Send {

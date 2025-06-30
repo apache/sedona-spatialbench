@@ -113,8 +113,8 @@ impl GenerateUtils {
 pub struct TPCHDate {
     /// date index (0 based) from MIN_GENERATE_DATE
     date_index: i32,
-    hour: u8,    // 0-23
-    minute: u8,  // 0-59
+    hour: u8,   // 0-23
+    minute: u8, // 0-59
 }
 
 impl Display for TPCHDate {
@@ -122,9 +122,7 @@ impl Display for TPCHDate {
         write!(
             f,
             "{} {:02}:{:02}",
-            &DATE_TO_STRING[self.date_index as usize],
-            self.hour,
-            self.minute
+            &DATE_TO_STRING[self.date_index as usize], self.hour, self.minute
         )
     }
 }
