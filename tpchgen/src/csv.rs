@@ -407,7 +407,7 @@ pub struct TripCsv {
     inner: Trip,
 }
 
-impl<'a> TripCsv {
+impl TripCsv {
     pub fn new(inner: Trip) -> Self {
         Self { inner }
     }

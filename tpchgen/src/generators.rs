@@ -96,7 +96,7 @@ pub struct Nation<'a> {
     pub n_comment: &'a str,
 }
 
-impl fmt::Display for Nation<'_> {
+impl Display for Nation<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -187,8 +187,8 @@ pub struct Region<'a> {
     pub r_comment: &'a str,
 }
 
-impl fmt::Display for Region<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Display for Region<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}|{}|{}|",
@@ -321,7 +321,7 @@ impl VehicleManufacturerName {
     }
 }
 
-impl fmt::Display for VehicleManufacturerName {
+impl Display for VehicleManufacturerName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Manufacturer#{}", self.0)
     }
@@ -337,7 +337,7 @@ impl VehicleBrandName {
     }
 }
 
-impl fmt::Display for VehicleBrandName {
+impl Display for VehicleBrandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Brand#{}", self.0)
     }
@@ -366,7 +366,7 @@ pub struct Vehicle<'a> {
     pub v_license: &'a str,
 }
 
-impl fmt::Display for Vehicle<'_> {
+impl Display for Vehicle<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -597,7 +597,7 @@ impl DriverName {
     }
 }
 
-impl fmt::Display for DriverName {
+impl Display for DriverName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Driver#{:09}", self.0)
     }
@@ -628,7 +628,7 @@ pub struct Driver {
     pub d_phone: PhoneNumberInstance,
 }
 
-impl fmt::Display for Driver {
+impl Display for Driver {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -888,7 +888,7 @@ impl CustomerName {
     }
 }
 
-impl fmt::Display for CustomerName {
+impl Display for CustomerName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Customer#{:09}", self.0)
     }
@@ -919,7 +919,7 @@ pub struct Customer<'a> {
     pub c_phone: PhoneNumberInstance,
 }
 
-impl fmt::Display for Customer<'_> {
+impl Display for Customer<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -1116,7 +1116,7 @@ impl ClerkName {
     }
 }
 
-impl fmt::Display for ClerkName {
+impl Display for ClerkName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Clerk#{:09}", self.0)
     }
@@ -1180,7 +1180,7 @@ pub struct Order<'a> {
     pub o_comment: &'a str,
 }
 
-impl fmt::Display for Order<'_> {
+impl Display for Order<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -1543,7 +1543,7 @@ pub struct LineItem<'a> {
     pub l_comment: &'a str,
 }
 
-impl fmt::Display for LineItem<'_> {
+impl Display for LineItem<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -1906,7 +1906,7 @@ impl<'a> LineItemGeneratorIterator<'a> {
             l_orderkey: order_key,
             l_vehiclekey: vehicle_key,
             l_suppkey: driver_key,
-            l_linenumber: (self.line_number + 1),
+            l_linenumber: self.line_number + 1,
             l_quantity: quantity as i64,
             l_extendedprice: TPCHDecimal(extended_price),
             l_discount: TPCHDecimal(discount as i64),
@@ -2005,7 +2005,7 @@ pub struct Trip {
     pub t_dropoffloc: String,
 }
 
-impl fmt::Display for Trip {
+impl Display for Trip {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -2112,7 +2112,7 @@ impl TripGenerator {
     }
 }
 
-impl<'a> IntoIterator for TripGenerator {
+impl IntoIterator for TripGenerator {
     type Item = Trip;
     type IntoIter = TripGeneratorIterator;
 
@@ -2293,7 +2293,7 @@ impl TripGeneratorIterator {
         let distance_miles = distance_value;
         let duration_minutes = (distance_miles * minutes_per_mile as f64).round() as i32;
 
-        let total_minutes = hour as i32 * 60 + minute as i32 + duration_minutes;
+        let total_minutes = hour * 60 + minute + duration_minutes;
         let dropoff_hour = (total_minutes / 60) % 24;
         let dropoff_minute = total_minutes % 60;
         let day_delta = total_minutes / (24 * 60);
