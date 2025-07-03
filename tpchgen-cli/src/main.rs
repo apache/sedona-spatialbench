@@ -62,13 +62,11 @@ use std::str::FromStr;
 use std::time::Instant;
 use tpchgen::distribution::Distributions;
 use tpchgen::generators::{
-    BuildingGenerator, CustomerGenerator, DriverGenerator, LineItemGenerator, NationGenerator,
-    OrderGenerator, RegionGenerator, TripGenerator, VehicleGenerator,
+    BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
 };
 use tpchgen::text::TextPool;
 use tpchgen_arrow::{
-    BuildingArrow, CustomerArrow, DriverArrow, LineItemArrow, NationArrow, OrderArrow,
-    RecordBatchIterator, RegionArrow, TripArrow, VehicleArrow,
+    BuildingArrow, CustomerArrow, DriverArrow, RecordBatchIterator, TripArrow, VehicleArrow,
 };
 
 #[derive(Parser)]

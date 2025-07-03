@@ -17,299 +17,299 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::fmt::Display;
 
-/// Generator for Nation table data
-#[derive(Debug, Clone)]
-pub struct NationGenerator<'a> {
-    distributions: &'a Distributions,
-    text_pool: &'a TextPool,
-}
-
-impl Default for NationGenerator<'_> {
-    fn default() -> Self {
-        // arguments are ignored
-        Self::new(1.0, 1, 1)
-    }
-}
-
-impl<'a> NationGenerator<'a> {
-    /// Creates a new NationGenerator with default distributions and text pool
-    ///
-    /// Nations does not depend on the scale factor or the part number. The signature of
-    /// this method is provided to be consistent with the other generators, but the
-    /// parameters are ignored. You can use [`NationGenerator::default`] to create a
-    /// default generator.
-    ///
-    /// The generator's lifetime is `&'static` because it references global
-    /// [`Distribution]`s and thus can be shared safely between threads.
-    pub fn new(_scale_factor: f64, _vehicle: i32, _vehicle_count: i32) -> NationGenerator<'static> {
-        // Note: use explicit lifetime to ensure this remains `&'static`
-        Self::new_with_distributions_and_text_pool(
-            Distributions::static_default(),
-            TextPool::get_or_init_default(),
-        )
-    }
-
-    /// Creates a NationGenerator with the specified distributions and text pool
-    pub fn new_with_distributions_and_text_pool<'b>(
-        distributions: &'b Distributions,
-        text_pool: &'b TextPool,
-    ) -> NationGenerator<'b> {
-        NationGenerator {
-            distributions,
-            text_pool,
-        }
-    }
-
-    /// Returns an iterator over the nation rows
-    pub fn iter(&self) -> NationGeneratorIterator<'a> {
-        NationGeneratorIterator::new(self.distributions.nations(), self.text_pool)
-    }
-}
-
-impl<'a> IntoIterator for NationGenerator<'a> {
-    type Item = Nation<'a>;
-    type IntoIter = NationGeneratorIterator<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
-
-/// The NATION table
-///
-/// The Display trait is implemented to format the line item data as a string
-/// in the default TPC-H 'tbl' format.
-///
-/// ```text
-/// 0|ALGERIA|0| haggle. carefully final deposits detect slyly agai|
-/// 1|ARGENTINA|1|al foxes promise slyly according to the regular accounts. bold requests alon|
-/// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Nation<'a> {
-    /// Primary key (0-24)
-    pub n_nationkey: i64,
-    /// Nation name
-    pub n_name: &'a str,
-    /// Foreign key to REGION
-    pub n_regionkey: i64,
-    /// Variable length comment
-    pub n_comment: &'a str,
-}
-
-impl Display for Nation<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}|{}|{}|{}|",
-            self.n_nationkey, self.n_name, self.n_regionkey, self.n_comment
-        )
-    }
-}
-
-impl<'a> Nation<'a> {
-    /// Create a new `nation` record with the specified values.
-    pub fn new(n_nationkey: i64, n_name: &'a str, n_regionkey: i64, n_comment: &'a str) -> Self {
-        Nation {
-            n_nationkey,
-            n_name,
-            n_regionkey,
-            n_comment,
-        }
-    }
-}
-
-/// Iterator that generates Nation rows
-#[derive(Debug)]
-pub struct NationGeneratorIterator<'a> {
-    nations: &'a Distribution,
-    comment_random: RandomText<'a>,
-    index: usize,
-}
-
-impl<'a> NationGeneratorIterator<'a> {
-    const COMMENT_AVERAGE_LENGTH: i32 = 72;
-
-    fn new(nations: &'a Distribution, text_pool: &'a TextPool) -> Self {
-        NationGeneratorIterator {
-            nations,
-            comment_random: RandomText::new(
-                606179079,
-                text_pool,
-                Self::COMMENT_AVERAGE_LENGTH as f64,
-            ),
-            index: 0,
-        }
-    }
-}
-
-impl<'a> Iterator for NationGeneratorIterator<'a> {
-    type Item = Nation<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index >= self.nations.size() {
-            return None;
-        }
-
-        let nation = Nation {
-            // n_nationkey
-            n_nationkey: self.index as i64,
-            // n_name
-            n_name: self.nations.get_value(self.index),
-            // n_regionkey
-            n_regionkey: self.nations.get_weight(self.index) as i64,
-            // n_comment
-            n_comment: self.comment_random.next_value(),
-        };
-
-        self.comment_random.row_finished();
-        self.index += 1;
-
-        Some(nation)
-    }
-}
-
-/// The REGION table
-///
-/// The Display trait is implemented to format the line item data as a string
-/// in the default TPC-H 'tbl' format.
-///
-/// ```text
-/// 0|AFRICA|lar deposits. blithely final packages cajole. regular waters are final requests. regular accounts are according to |
-/// 1|AMERICA|hs use ironic, even requests. s|
-/// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Region<'a> {
-    /// Primary key (0-4)
-    pub r_regionkey: i64,
-    /// Region name (AFRICA, AMERICA, ASIA, EUROPE, MIDDLE EAST)
-    pub r_name: &'a str,
-    /// Variable length comment
-    pub r_comment: &'a str,
-}
-
-impl Display for Region<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}|{}|{}|",
-            self.r_regionkey, self.r_name, self.r_comment
-        )
-    }
-}
-
-impl<'a> Region<'a> {
-    /// Creates a new `region` record with the specified values.
-    pub fn new(r_regionkey: i64, r_name: &'a str, r_comment: &'a str) -> Self {
-        Region {
-            r_regionkey,
-            r_name,
-            r_comment,
-        }
-    }
-}
-
-/// Generator for Region table data
-#[derive(Debug, Clone)]
-pub struct RegionGenerator<'a> {
-    distributions: &'a Distributions,
-    text_pool: &'a TextPool,
-}
-
-impl Default for RegionGenerator<'_> {
-    fn default() -> Self {
-        // arguments are ignored
-        Self::new(1.0, 1, 1)
-    }
-}
-
-impl<'a> RegionGenerator<'a> {
-    /// Creates a new RegionGenerator with default distributions and text pool
-    ///
-    /// Regions does not depend on the scale factor or the part number. The signature of
-    /// this method is provided to be consistent with the other generators, but the
-    /// parameters are ignored. You can use [`RegionGenerator::default`] to create a
-    /// default generator.
-    ///
-    /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
-    /// more details.
-    pub fn new(_scale_factor: f64, _vehicle: i32, _vehicle_count: i32) -> RegionGenerator<'static> {
-        // Note: use explicit lifetime to ensure this remains `&'static`
-        Self::new_with_distributions_and_text_pool(
-            Distributions::static_default(),
-            TextPool::get_or_init_default(),
-        )
-    }
-
-    /// Creates a RegionGenerator with the specified distributions and text pool
-    pub fn new_with_distributions_and_text_pool<'b>(
-        distributions: &'b Distributions,
-        text_pool: &'b TextPool,
-    ) -> RegionGenerator<'b> {
-        RegionGenerator {
-            distributions,
-            text_pool,
-        }
-    }
-
-    /// Returns an iterator over the region rows
-    pub fn iter(&self) -> RegionGeneratorIterator<'a> {
-        RegionGeneratorIterator::new(self.distributions.regions(), self.text_pool)
-    }
-}
-
-impl<'a> IntoIterator for &'a RegionGenerator<'a> {
-    type Item = Region<'a>;
-    type IntoIter = RegionGeneratorIterator<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
-
-/// Iterator that generates Region rows
-#[derive(Debug)]
-pub struct RegionGeneratorIterator<'a> {
-    regions: &'a Distribution,
-    comment_random: RandomText<'a>,
-    index: usize,
-}
-
-impl<'a> RegionGeneratorIterator<'a> {
-    const COMMENT_AVERAGE_LENGTH: i32 = 72;
-
-    fn new(regions: &'a Distribution, text_pool: &'a TextPool) -> Self {
-        RegionGeneratorIterator {
-            regions,
-            comment_random: RandomText::new(
-                1500869201,
-                text_pool,
-                Self::COMMENT_AVERAGE_LENGTH as f64,
-            ),
-            index: 0,
-        }
-    }
-}
-
-impl<'a> Iterator for RegionGeneratorIterator<'a> {
-    type Item = Region<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index >= self.regions.size() {
-            return None;
-        }
-
-        let region = Region {
-            r_regionkey: self.index as i64,
-            r_name: self.regions.get_value(self.index),
-            r_comment: self.comment_random.next_value(),
-        };
-
-        self.comment_random.row_finished();
-        self.index += 1;
-
-        Some(region)
-    }
-}
+// /// Generator for Nation table data
+// #[derive(Debug, Clone)]
+// pub struct NationGenerator<'a> {
+//     distributions: &'a Distributions,
+//     text_pool: &'a TextPool,
+// }
+//
+// impl Default for NationGenerator<'_> {
+//     fn default() -> Self {
+//         // arguments are ignored
+//         Self::new(1.0, 1, 1)
+//     }
+// }
+//
+// impl<'a> NationGenerator<'a> {
+//     /// Creates a new NationGenerator with default distributions and text pool
+//     ///
+//     /// Nations does not depend on the scale factor or the part number. The signature of
+//     /// this method is provided to be consistent with the other generators, but the
+//     /// parameters are ignored. You can use [`NationGenerator::default`] to create a
+//     /// default generator.
+//     ///
+//     /// The generator's lifetime is `&'static` because it references global
+//     /// [`Distribution]`s and thus can be shared safely between threads.
+//     pub fn new(_scale_factor: f64, _vehicle: i32, _vehicle_count: i32) -> NationGenerator<'static> {
+//         // Note: use explicit lifetime to ensure this remains `&'static`
+//         Self::new_with_distributions_and_text_pool(
+//             Distributions::static_default(),
+//             TextPool::get_or_init_default(),
+//         )
+//     }
+//
+//     /// Creates a NationGenerator with the specified distributions and text pool
+//     pub fn new_with_distributions_and_text_pool<'b>(
+//         distributions: &'b Distributions,
+//         text_pool: &'b TextPool,
+//     ) -> NationGenerator<'b> {
+//         NationGenerator {
+//             distributions,
+//             text_pool,
+//         }
+//     }
+//
+//     /// Returns an iterator over the nation rows
+//     pub fn iter(&self) -> NationGeneratorIterator<'a> {
+//         NationGeneratorIterator::new(self.distributions.nations(), self.text_pool)
+//     }
+// }
+//
+// impl<'a> IntoIterator for NationGenerator<'a> {
+//     type Item = Nation<'a>;
+//     type IntoIter = NationGeneratorIterator<'a>;
+//
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.iter()
+//     }
+// }
+//
+// /// The NATION table
+// ///
+// /// The Display trait is implemented to format the line item data as a string
+// /// in the default TPC-H 'tbl' format.
+// ///
+// /// ```text
+// /// 0|ALGERIA|0| haggle. carefully final deposits detect slyly agai|
+// /// 1|ARGENTINA|1|al foxes promise slyly according to the regular accounts. bold requests alon|
+// /// ```
+// #[derive(Debug, Clone, PartialEq, Eq)]
+// pub struct Nation<'a> {
+//     /// Primary key (0-24)
+//     pub n_nationkey: i64,
+//     /// Nation name
+//     pub n_name: &'a str,
+//     /// Foreign key to REGION
+//     pub n_regionkey: i64,
+//     /// Variable length comment
+//     pub n_comment: &'a str,
+// }
+//
+// impl Display for Nation<'_> {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(
+//             f,
+//             "{}|{}|{}|{}|",
+//             self.n_nationkey, self.n_name, self.n_regionkey, self.n_comment
+//         )
+//     }
+// }
+//
+// impl<'a> Nation<'a> {
+//     /// Create a new `nation` record with the specified values.
+//     pub fn new(n_nationkey: i64, n_name: &'a str, n_regionkey: i64, n_comment: &'a str) -> Self {
+//         Nation {
+//             n_nationkey,
+//             n_name,
+//             n_regionkey,
+//             n_comment,
+//         }
+//     }
+// }
+//
+// /// Iterator that generates Nation rows
+// #[derive(Debug)]
+// pub struct NationGeneratorIterator<'a> {
+//     nations: &'a Distribution,
+//     comment_random: RandomText<'a>,
+//     index: usize,
+// }
+//
+// impl<'a> NationGeneratorIterator<'a> {
+//     const COMMENT_AVERAGE_LENGTH: i32 = 72;
+//
+//     fn new(nations: &'a Distribution, text_pool: &'a TextPool) -> Self {
+//         NationGeneratorIterator {
+//             nations,
+//             comment_random: RandomText::new(
+//                 606179079,
+//                 text_pool,
+//                 Self::COMMENT_AVERAGE_LENGTH as f64,
+//             ),
+//             index: 0,
+//         }
+//     }
+// }
+//
+// impl<'a> Iterator for NationGeneratorIterator<'a> {
+//     type Item = Nation<'a>;
+//
+//     fn next(&mut self) -> Option<Self::Item> {
+//         if self.index >= self.nations.size() {
+//             return None;
+//         }
+//
+//         let nation = Nation {
+//             // n_nationkey
+//             n_nationkey: self.index as i64,
+//             // n_name
+//             n_name: self.nations.get_value(self.index),
+//             // n_regionkey
+//             n_regionkey: self.nations.get_weight(self.index) as i64,
+//             // n_comment
+//             n_comment: self.comment_random.next_value(),
+//         };
+//
+//         self.comment_random.row_finished();
+//         self.index += 1;
+//
+//         Some(nation)
+//     }
+// }
+//
+// /// The REGION table
+// ///
+// /// The Display trait is implemented to format the line item data as a string
+// /// in the default TPC-H 'tbl' format.
+// ///
+// /// ```text
+// /// 0|AFRICA|lar deposits. blithely final packages cajole. regular waters are final requests. regular accounts are according to |
+// /// 1|AMERICA|hs use ironic, even requests. s|
+// /// ```
+// #[derive(Debug, Clone, PartialEq, Eq)]
+// pub struct Region<'a> {
+//     /// Primary key (0-4)
+//     pub r_regionkey: i64,
+//     /// Region name (AFRICA, AMERICA, ASIA, EUROPE, MIDDLE EAST)
+//     pub r_name: &'a str,
+//     /// Variable length comment
+//     pub r_comment: &'a str,
+// }
+//
+// impl Display for Region<'_> {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         write!(
+//             f,
+//             "{}|{}|{}|",
+//             self.r_regionkey, self.r_name, self.r_comment
+//         )
+//     }
+// }
+//
+// impl<'a> Region<'a> {
+//     /// Creates a new `region` record with the specified values.
+//     pub fn new(r_regionkey: i64, r_name: &'a str, r_comment: &'a str) -> Self {
+//         Region {
+//             r_regionkey,
+//             r_name,
+//             r_comment,
+//         }
+//     }
+// }
+//
+// /// Generator for Region table data
+// #[derive(Debug, Clone)]
+// pub struct RegionGenerator<'a> {
+//     distributions: &'a Distributions,
+//     text_pool: &'a TextPool,
+// }
+//
+// impl Default for RegionGenerator<'_> {
+//     fn default() -> Self {
+//         // arguments are ignored
+//         Self::new(1.0, 1, 1)
+//     }
+// }
+//
+// impl<'a> RegionGenerator<'a> {
+//     /// Creates a new RegionGenerator with default distributions and text pool
+//     ///
+//     /// Regions does not depend on the scale factor or the part number. The signature of
+//     /// this method is provided to be consistent with the other generators, but the
+//     /// parameters are ignored. You can use [`RegionGenerator::default`] to create a
+//     /// default generator.
+//     ///
+//     /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
+//     /// more details.
+//     pub fn new(_scale_factor: f64, _vehicle: i32, _vehicle_count: i32) -> RegionGenerator<'static> {
+//         // Note: use explicit lifetime to ensure this remains `&'static`
+//         Self::new_with_distributions_and_text_pool(
+//             Distributions::static_default(),
+//             TextPool::get_or_init_default(),
+//         )
+//     }
+//
+//     /// Creates a RegionGenerator with the specified distributions and text pool
+//     pub fn new_with_distributions_and_text_pool<'b>(
+//         distributions: &'b Distributions,
+//         text_pool: &'b TextPool,
+//     ) -> RegionGenerator<'b> {
+//         RegionGenerator {
+//             distributions,
+//             text_pool,
+//         }
+//     }
+//
+//     /// Returns an iterator over the region rows
+//     pub fn iter(&self) -> RegionGeneratorIterator<'a> {
+//         RegionGeneratorIterator::new(self.distributions.regions(), self.text_pool)
+//     }
+// }
+//
+// impl<'a> IntoIterator for &'a RegionGenerator<'a> {
+//     type Item = Region<'a>;
+//     type IntoIter = RegionGeneratorIterator<'a>;
+//
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.iter()
+//     }
+// }
+//
+// /// Iterator that generates Region rows
+// #[derive(Debug)]
+// pub struct RegionGeneratorIterator<'a> {
+//     regions: &'a Distribution,
+//     comment_random: RandomText<'a>,
+//     index: usize,
+// }
+//
+// impl<'a> RegionGeneratorIterator<'a> {
+//     const COMMENT_AVERAGE_LENGTH: i32 = 72;
+//
+//     fn new(regions: &'a Distribution, text_pool: &'a TextPool) -> Self {
+//         RegionGeneratorIterator {
+//             regions,
+//             comment_random: RandomText::new(
+//                 1500869201,
+//                 text_pool,
+//                 Self::COMMENT_AVERAGE_LENGTH as f64,
+//             ),
+//             index: 0,
+//         }
+//     }
+// }
+//
+// impl<'a> Iterator for RegionGeneratorIterator<'a> {
+//     type Item = Region<'a>;
+//
+//     fn next(&mut self) -> Option<Self::Item> {
+//         if self.index >= self.regions.size() {
+//             return None;
+//         }
+//
+//         let region = Region {
+//             r_regionkey: self.index as i64,
+//             r_name: self.regions.get_value(self.index),
+//             r_comment: self.comment_random.next_value(),
+//         };
+//
+//         self.comment_random.row_finished();
+//         self.index += 1;
+//
+//         Some(region)
+//     }
+// }
 
 /// A Vehicle Manufacturer, formatted as `"Manufacturer#<n>"`
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1105,868 +1105,868 @@ impl<'a> Iterator for CustomerGeneratorIterator<'a> {
     }
 }
 
-/// A clerk name, formatted as `"Clerk#<n>"`
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ClerkName(i32);
-
-impl ClerkName {
-    /// Creates a new ClerkName with the given value
-    pub fn new(value: i32) -> Self {
-        ClerkName(value)
-    }
-}
-
-impl Display for ClerkName {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Clerk#{:09}", self.0)
-    }
-}
-
-/// Order status (F=final, O=open, P=pending)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd)]
-pub enum OrderStatus {
-    /// Fulfilled - all line items shipped
-    Fulfilled,
-    /// Open - no line items shipped
-    Open,
-    /// Partially fulfilled - some line items shipped
-    Pending,
-}
-
-impl OrderStatus {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            OrderStatus::Fulfilled => "F",
-            OrderStatus::Open => "O",
-            OrderStatus::Pending => "P",
-        }
-    }
-}
-
-impl Display for OrderStatus {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-/// The ORDERS table
-///
-/// The Display trait is implemented to format the line item data as a string
-/// in the default TPC-H 'tbl' format.
-///
-/// ```text
-/// 1|37|O|131251.81|1996-01-02|5-LOW|Clerk#000000951|0|nstructions sleep furiously among |
-///  2|79|O|40183.29|1996-12-01|1-URGENT|Clerk#000000880|0| foxes. pending accounts at the pending, silent asymptot|
-/// ```
-#[derive(Debug, Clone, PartialEq)]
-pub struct Order<'a> {
-    /// Primary key
-    pub o_orderkey: i64,
-    /// Foreign key to CUSTOMER
-    pub o_custkey: i64,
-    /// Order status (F=final, O=open, P=pending)
-    pub o_orderstatus: OrderStatus,
-    /// Order total price
-    pub o_totalprice: TPCHDecimal,
-    /// Order date
-    pub o_orderdate: TPCHDate,
-    /// Order priority
-    pub o_orderpriority: &'a str,
-    /// Clerk who processed the order.
-    pub o_clerk: ClerkName,
-    /// Order shipping priority
-    pub o_shippriority: i32,
-    /// Variable length comment
-    pub o_comment: &'a str,
-}
-
-impl Display for Order<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}|{}|{}|{}|{}|{}|{}|{}|{}|",
-            self.o_orderkey,
-            self.o_custkey,
-            self.o_orderstatus,
-            self.o_totalprice,
-            self.o_orderdate,
-            self.o_orderpriority,
-            self.o_clerk,
-            self.o_shippriority,
-            self.o_comment
-        )
-    }
-}
-
-/// Generator for Order table data
-#[derive(Debug, Clone)]
-pub struct OrderGenerator<'a> {
-    scale_factor: f64,
-    part: i32,
-    part_count: i32,
-    distributions: &'a Distributions,
-    text_pool: &'a TextPool,
-}
-
-impl<'a> OrderGenerator<'a> {
-    /// Base scale for order generation
-    pub const SCALE_BASE: i32 = 1_500_000;
-
-    // Constants for order generation
-    const CUSTOMER_MORTALITY: i32 = 3; // portion with no orders
-    const ORDER_DATE_MIN: i32 = dates::MIN_GENERATE_DATE;
-    const ORDER_DATE_MAX: i32 =
-        Self::ORDER_DATE_MIN + (dates::TOTAL_DATE_RANGE - LineItemGenerator::ITEM_SHIP_DAYS - 1);
-    const CLERK_SCALE_BASE: i32 = 1000;
-
-    const LINE_COUNT_MIN: i32 = 1;
-    pub const LINE_COUNT_MAX: i32 = 7;
-
-    const COMMENT_AVERAGE_LENGTH: i32 = 49;
-
-    const ORDER_KEY_SPARSE_BITS: i32 = 2;
-    const ORDER_KEY_SPARSE_KEEP: i32 = 3;
-    /// Creates a new OrderGenerator with the given scale factor
-    ///
-    /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
-    /// more details.
-    pub fn new(scale_factor: f64, part: i32, part_count: i32) -> OrderGenerator<'static> {
-        // Note: use explicit lifetime to ensure this remains `&'static`
-        Self::new_with_distributions_and_text_pool(
-            scale_factor,
-            part,
-            part_count,
-            Distributions::static_default(),
-            TextPool::get_or_init_default(),
-        )
-    }
-
-    /// Creates a OrderGenerator with specified distributions and text pool
-    pub fn new_with_distributions_and_text_pool<'b>(
-        scale_factor: f64,
-        part: i32,
-        part_count: i32,
-        distributions: &'b Distributions,
-        text_pool: &'b TextPool,
-    ) -> OrderGenerator<'b> {
-        OrderGenerator {
-            scale_factor,
-            part,
-            part_count,
-            distributions,
-            text_pool,
-        }
-    }
-
-    /// Return the row count for the given scale factor and generator part count
-    pub fn calculate_row_count(scale_factor: f64, part: i32, part_count: i32) -> i64 {
-        GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, part, part_count)
-    }
-
-    /// Returns an iterator over the order rows
-    pub fn iter(&self) -> OrderGeneratorIterator<'a> {
-        OrderGeneratorIterator::new(
-            self.distributions,
-            self.text_pool,
-            self.scale_factor,
-            GenerateUtils::calculate_start_index(
-                Self::SCALE_BASE,
-                self.scale_factor,
-                self.part,
-                self.part_count,
-            ),
-            Self::calculate_row_count(self.scale_factor, self.part, self.part_count),
-        )
-    }
-
-    /// Creates the order date random generator
-    pub fn create_order_date_random() -> RandomBoundedInt {
-        RandomBoundedInt::new(1066728069, Self::ORDER_DATE_MIN, Self::ORDER_DATE_MAX)
-    }
-
-    /// Creates the line count random generator
-    pub fn create_line_count_random() -> RandomBoundedInt {
-        RandomBoundedInt::new(1434868289, Self::LINE_COUNT_MIN, Self::LINE_COUNT_MAX)
-    }
-
-    /// Creates an order key from an index
-    pub fn make_order_key(order_index: i64) -> i64 {
-        let low_bits = order_index & ((1 << Self::ORDER_KEY_SPARSE_KEEP) - 1);
-
-        let mut ok = order_index;
-        ok >>= Self::ORDER_KEY_SPARSE_KEEP;
-        ok <<= Self::ORDER_KEY_SPARSE_BITS;
-        ok <<= Self::ORDER_KEY_SPARSE_KEEP;
-        ok += low_bits;
-
-        ok
-    }
-}
-
-impl<'a> IntoIterator for &'a OrderGenerator<'a> {
-    type Item = Order<'a>;
-    type IntoIter = OrderGeneratorIterator<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
-
-/// Iterator that generates Order rows
-#[derive(Debug)]
-pub struct OrderGeneratorIterator<'a> {
-    order_date_random: RandomBoundedInt,
-    line_count_random: RandomBoundedInt,
-    customer_key_random: RandomBoundedLong,
-    order_priority_random: RandomString<'a>,
-    clerk_random: RandomBoundedInt,
-    comment_random: RandomText<'a>,
-
-    // For line item simulation to determine order status
-    line_quantity_random: RandomBoundedInt,
-    line_discount_random: RandomBoundedInt,
-    line_tax_random: RandomBoundedInt,
-    line_vehicle_key_random: RandomBoundedLong,
-    line_ship_date_random: RandomBoundedInt,
-
-    start_index: i64,
-    row_count: i64,
-    max_customer_key: i64,
-
-    index: i64,
-}
-impl<'a> OrderGeneratorIterator<'a> {
-    fn new(
-        distributions: &'a Distributions,
-        text_pool: &'a TextPool,
-        scale_factor: f64,
-        start_index: i64,
-        row_count: i64,
-    ) -> Self {
-        let mut order_date_random = OrderGenerator::create_order_date_random();
-        let mut line_count_random = OrderGenerator::create_line_count_random();
-
-        let max_customer_key = (CustomerGenerator::SCALE_BASE as f64 * scale_factor) as i64;
-
-        let mut customer_key_random =
-            RandomBoundedLong::new(851767375, scale_factor >= 30000.0, 1, max_customer_key);
-
-        let mut order_priority_random =
-            RandomString::new(591449447, distributions.order_priority());
-
-        let max_clerk = (scale_factor * OrderGenerator::CLERK_SCALE_BASE as f64)
-            .max(OrderGenerator::CLERK_SCALE_BASE as f64) as i32;
-        let mut clerk_random = RandomBoundedInt::new(1171034773, 1, max_clerk);
-
-        let mut comment_random = RandomText::new(
-            276090261,
-            text_pool,
-            OrderGenerator::COMMENT_AVERAGE_LENGTH as f64,
-        );
-
-        // For line item simulation
-        let mut line_quantity_random = LineItemGenerator::create_quantity_random();
-        let mut line_discount_random = LineItemGenerator::create_discount_random();
-        let mut line_tax_random = LineItemGenerator::create_tax_random();
-        let mut line_vehicle_key_random =
-            LineItemGenerator::create_vehicle_key_random(scale_factor);
-        let mut line_ship_date_random = LineItemGenerator::create_ship_date_random();
-
-        // Advance all generators to the starting position
-        order_date_random.advance_rows(start_index);
-        line_count_random.advance_rows(start_index);
-        customer_key_random.advance_rows(start_index);
-        order_priority_random.advance_rows(start_index);
-        clerk_random.advance_rows(start_index);
-        comment_random.advance_rows(start_index);
-
-        line_quantity_random.advance_rows(start_index);
-        line_discount_random.advance_rows(start_index);
-        line_tax_random.advance_rows(start_index);
-        line_vehicle_key_random.advance_rows(start_index);
-        line_ship_date_random.advance_rows(start_index);
-
-        OrderGeneratorIterator {
-            order_date_random,
-            line_count_random,
-            customer_key_random,
-            order_priority_random,
-            clerk_random,
-            comment_random,
-            line_quantity_random,
-            line_discount_random,
-            line_tax_random,
-            line_vehicle_key_random,
-            line_ship_date_random,
-            start_index,
-            row_count,
-            max_customer_key,
-            index: 0,
-        }
-    }
-
-    /// Creates an order with the given index
-    fn make_order(&mut self, index: i64) -> Order<'a> {
-        let order_key = OrderGenerator::make_order_key(index);
-
-        let order_date = self.order_date_random.next_value();
-
-        // generate customer key, taking into account customer mortality rate
-        let mut customer_key = self.customer_key_random.next_value();
-        let mut delta = 1;
-        while customer_key % OrderGenerator::CUSTOMER_MORTALITY as i64 == 0 {
-            customer_key += delta;
-            customer_key = customer_key.min(self.max_customer_key);
-            delta *= -1;
-        }
-
-        let mut total_price = 0;
-        let mut shipped_count = 0;
-
-        let line_count = self.line_count_random.next_value();
-        for _ in 0..line_count {
-            let quantity = self.line_quantity_random.next_value();
-            let discount = self.line_discount_random.next_value();
-            let tax = self.line_tax_random.next_value();
-
-            let vehicle_key = self.line_vehicle_key_random.next_value();
-
-            let vehicle_price = VehicleGeneratorIterator::calculate_vehicle_price(vehicle_key);
-            let extended_price = vehicle_price * quantity as i64;
-            let discounted_price = extended_price * (100 - discount as i64);
-            total_price += ((discounted_price / 100) * (100 + tax as i64)) / 100;
-
-            let ship_date = self.line_ship_date_random.next_value() + order_date;
-            if TPCHDate::is_in_past(ship_date) {
-                shipped_count += 1;
-            }
-        }
-
-        let order_status = if shipped_count == line_count {
-            OrderStatus::Fulfilled
-        } else if shipped_count > 0 {
-            OrderStatus::Pending
-        } else {
-            OrderStatus::Open
-        };
-
-        let clerk_id = self.clerk_random.next_value();
-        let clerk_name = ClerkName::new(clerk_id);
-
-        Order {
-            o_orderkey: order_key,
-            o_custkey: customer_key,
-            o_orderstatus: order_status,
-            o_totalprice: TPCHDecimal(total_price),
-            o_orderdate: TPCHDate::new(order_date, 0, 0),
-            o_orderpriority: self.order_priority_random.next_value(),
-            o_clerk: clerk_name,
-            o_shippriority: 0, // Fixed value per TPC-H spec
-            o_comment: self.comment_random.next_value(),
-        }
-    }
-}
-
-impl<'a> Iterator for OrderGeneratorIterator<'a> {
-    type Item = Order<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index >= self.row_count {
-            return None;
-        }
-
-        let order = self.make_order(self.start_index + self.index + 1);
-
-        self.order_date_random.row_finished();
-        self.line_count_random.row_finished();
-        self.customer_key_random.row_finished();
-        self.order_priority_random.row_finished();
-        self.clerk_random.row_finished();
-        self.comment_random.row_finished();
-
-        self.line_quantity_random.row_finished();
-        self.line_discount_random.row_finished();
-        self.line_tax_random.row_finished();
-        self.line_vehicle_key_random.row_finished();
-        self.line_ship_date_random.row_finished();
-
-        self.index += 1;
-
-        Some(order)
-    }
-}
-
-/// The LINEITEM table
-///
-/// The Display trait is implemented to format the line item data as a string
-/// in the default TPC-H 'tbl' format.
-///
-/// Example
-/// ```text
-/// 1|156|4|1|17|17954.55|0.04|0.02|N|O|1996-03-13|1996-02-12|1996-03-22|DELIVER IN PERSON|TRUCK|egular courts above the|
-/// 1|68|9|2|36|34850.16|0.09|0.06|N|O|1996-04-12|1996-02-28|1996-04-20|TAKE BACK RETURN|MAIL|ly final dependencies: slyly bold |
-/// ```
-#[derive(Debug, Clone, PartialEq)]
-pub struct LineItem<'a> {
-    /// Foreign key to ORDERS
-    pub l_orderkey: i64,
-    /// Foreign key to VEHICLE
-    pub l_vehiclekey: i64,
-    /// Foreign key to Driver
-    pub l_suppkey: i64,
-    /// Line item number within order
-    pub l_linenumber: i32,
-    /// Quantity ordered
-    // TODO: Spec has this as decimal.
-    pub l_quantity: i64,
-    /// Extended price (l_quantity * p_retailprice)
-    pub l_extendedprice: TPCHDecimal,
-    /// Discount percentage
-    pub l_discount: TPCHDecimal,
-    /// Tax percentage
-    pub l_tax: TPCHDecimal,
-    /// Return flag (R=returned, A=accepted, null=pending)
-    pub l_returnflag: &'a str,
-    /// Line status (O=ordered, F=fulfilled)
-    pub l_linestatus: &'static str,
-    /// Date shipped
-    pub l_shipdate: TPCHDate,
-    /// Date committed to ship
-    pub l_commitdate: TPCHDate,
-    /// Date received
-    pub l_receiptdate: TPCHDate,
-    /// Shipping instructions
-    pub l_shipinstruct: &'a str,
-    /// Shipping mode
-    pub l_shipmode: &'a str,
-    /// Variable length comment
-    pub l_comment: &'a str,
-}
-
-impl Display for LineItem<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|",
-            self.l_orderkey,
-            self.l_vehiclekey,
-            self.l_suppkey,
-            self.l_linenumber,
-            self.l_quantity,
-            self.l_extendedprice,
-            self.l_discount,
-            self.l_tax,
-            self.l_returnflag,
-            self.l_linestatus,
-            self.l_shipdate,
-            self.l_commitdate,
-            self.l_receiptdate,
-            self.l_shipinstruct,
-            self.l_shipmode,
-            self.l_comment
-        )
-    }
-}
-
-/// Generator for LineItem table data
-#[derive(Debug, Clone)]
-pub struct LineItemGenerator<'a> {
-    scale_factor: f64,
-    part: i32,
-    part_count: i32,
-    distributions: &'a Distributions,
-    text_pool: &'a TextPool,
-}
-
-impl<'a> LineItemGenerator<'a> {
-    // Constants for line item generation
-    const QUANTITY_MIN: i32 = 1;
-    const QUANTITY_MAX: i32 = 50;
-    const TAX_MIN: TPCHDecimal = TPCHDecimal(0); // 0.00
-    const TAX_MAX: TPCHDecimal = TPCHDecimal(8); // 0.08
-    const DISCOUNT_MIN: TPCHDecimal = TPCHDecimal(0); // 0.00
-    const DISCOUNT_MAX: TPCHDecimal = TPCHDecimal(10); // 0.10
-    const VEHICLE_KEY_MIN: i32 = 1;
-    const SHIP_DATE_MIN: i32 = 1;
-    const SHIP_DATE_MAX: i32 = 121;
-    const COMMIT_DATE_MIN: i32 = 30;
-    const COMMIT_DATE_MAX: i32 = 90;
-    const RECEIPT_DATE_MIN: i32 = 1;
-    const RECEIPT_DATE_MAX: i32 = 30;
-
-    pub const ITEM_SHIP_DAYS: i32 = Self::SHIP_DATE_MAX + Self::RECEIPT_DATE_MAX;
-
-    const COMMENT_AVERAGE_LENGTH: i32 = 27;
-
-    /// Creates a new LineItemGenerator with the given scale factor
-    ///
-    /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
-    /// more details.
-    pub fn new(scale_factor: f64, part: i32, part_count: i32) -> LineItemGenerator<'static> {
-        Self::new_with_distributions_and_text_pool(
-            scale_factor,
-            part,
-            part_count,
-            Distributions::static_default(),
-            TextPool::get_or_init_default(),
-        )
-    }
-
-    /// Creates a LineItemGenerator with specified distributions and text pool
-    pub fn new_with_distributions_and_text_pool<'b>(
-        scale_factor: f64,
-        part: i32,
-        part_count: i32,
-        distributions: &'b Distributions,
-        text_pool: &'b TextPool,
-    ) -> LineItemGenerator<'b> {
-        LineItemGenerator {
-            scale_factor,
-            part,
-            part_count,
-            distributions,
-            text_pool,
-        }
-    }
-
-    /// Returns an iterator over the line item rows
-    pub fn iter(&self) -> LineItemGeneratorIterator<'a> {
-        LineItemGeneratorIterator::new(
-            self.distributions,
-            self.text_pool,
-            self.scale_factor,
-            GenerateUtils::calculate_start_index(
-                OrderGenerator::SCALE_BASE,
-                self.scale_factor,
-                self.part,
-                self.part_count,
-            ),
-            GenerateUtils::calculate_row_count(
-                OrderGenerator::SCALE_BASE,
-                self.scale_factor,
-                self.part,
-                self.part_count,
-            ),
-        )
-    }
-
-    /// Creates a quantity random generator
-    pub fn create_quantity_random() -> RandomBoundedInt {
-        RandomBoundedInt::new_with_seeds_per_row(
-            209208115,
-            Self::QUANTITY_MIN,
-            Self::QUANTITY_MAX,
-            OrderGenerator::LINE_COUNT_MAX,
-        )
-    }
-
-    /// Creates a discount random generator
-    pub fn create_discount_random() -> RandomBoundedInt {
-        RandomBoundedInt::new_with_seeds_per_row(
-            554590007,
-            Self::DISCOUNT_MIN.0 as i32,
-            Self::DISCOUNT_MAX.0 as i32,
-            OrderGenerator::LINE_COUNT_MAX,
-        )
-    }
-
-    /// Creates a tax random generator
-    pub fn create_tax_random() -> RandomBoundedInt {
-        RandomBoundedInt::new_with_seeds_per_row(
-            721958466,
-            Self::TAX_MIN.0 as i32,
-            Self::TAX_MAX.0 as i32,
-            OrderGenerator::LINE_COUNT_MAX,
-        )
-    }
-
-    /// Creates a vehicle key random generator
-    pub fn create_vehicle_key_random(scale_factor: f64) -> RandomBoundedLong {
-        // If scale_factor >= 30000, use long `RandomBoundedLong` otherwise
-        // use `RandomBoundedInt` to avoid overflow.
-        RandomBoundedLong::new_with_seeds_per_row(
-            1808217256,
-            scale_factor >= 30000.0,
-            Self::VEHICLE_KEY_MIN as i64,
-            (VehicleGenerator::SCALE_BASE as f64 * scale_factor) as i64,
-            OrderGenerator::LINE_COUNT_MAX,
-        )
-    }
-
-    /// Creates a ship date random generator
-    pub fn create_ship_date_random() -> RandomBoundedInt {
-        RandomBoundedInt::new_with_seeds_per_row(
-            1769349045,
-            Self::SHIP_DATE_MIN,
-            Self::SHIP_DATE_MAX,
-            OrderGenerator::LINE_COUNT_MAX,
-        )
-    }
-}
-
-impl<'a> IntoIterator for &'a LineItemGenerator<'a> {
-    type Item = LineItem<'a>;
-    type IntoIter = LineItemGeneratorIterator<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
-
-/// Iterator that generates LineItem rows
-#[derive(Debug)]
-pub struct LineItemGeneratorIterator<'a> {
-    order_date_random: RandomBoundedInt,
-    line_count_random: RandomBoundedInt,
-
-    quantity_random: RandomBoundedInt,
-    discount_random: RandomBoundedInt,
-    tax_random: RandomBoundedInt,
-
-    line_vehicle_key_random: RandomBoundedLong,
-
-    driver_number_random: RandomBoundedInt,
-
-    ship_date_random: RandomBoundedInt,
-    commit_date_random: RandomBoundedInt,
-    receipt_date_random: RandomBoundedInt,
-
-    returned_flag_random: RandomString<'a>,
-    ship_instructions_random: RandomString<'a>,
-    ship_mode_random: RandomString<'a>,
-
-    comment_random: RandomText<'a>,
-
-    scale_factor: f64,
-    start_index: i64,
-    row_count: i64,
-
-    index: i64,
-    order_date: i32,
-    line_count: i32,
-    line_number: i32,
-}
-
-impl<'a> LineItemGeneratorIterator<'a> {
-    fn new(
-        distributions: &'a Distributions,
-        text_pool: &'a TextPool,
-        scale_factor: f64,
-        start_index: i64,
-        row_count: i64,
-    ) -> Self {
-        let mut order_date_random = OrderGenerator::create_order_date_random();
-        let mut line_count_random = OrderGenerator::create_line_count_random();
-
-        let mut quantity_random = LineItemGenerator::create_quantity_random();
-        let mut discount_random = LineItemGenerator::create_discount_random();
-        let mut tax_random = LineItemGenerator::create_tax_random();
-
-        let mut line_vehicle_key_random =
-            LineItemGenerator::create_vehicle_key_random(scale_factor);
-
-        let mut driver_number_random = RandomBoundedInt::new_with_seeds_per_row(
-            2095021727,
-            0,
-            3,
-            OrderGenerator::LINE_COUNT_MAX,
-        );
-
-        let mut ship_date_random = LineItemGenerator::create_ship_date_random();
-        let mut commit_date_random = RandomBoundedInt::new_with_seeds_per_row(
-            904914315,
-            LineItemGenerator::COMMIT_DATE_MIN,
-            LineItemGenerator::COMMIT_DATE_MAX,
-            OrderGenerator::LINE_COUNT_MAX,
-        );
-        let mut receipt_date_random = RandomBoundedInt::new_with_seeds_per_row(
-            373135028,
-            LineItemGenerator::RECEIPT_DATE_MIN,
-            LineItemGenerator::RECEIPT_DATE_MAX,
-            OrderGenerator::LINE_COUNT_MAX,
-        );
-
-        let mut returned_flag_random = RandomString::new_with_expected_row_count(
-            717419739,
-            distributions.return_flags(),
-            OrderGenerator::LINE_COUNT_MAX,
-        );
-        let mut ship_instructions_random = RandomString::new_with_expected_row_count(
-            1371272478,
-            distributions.ship_instructions(),
-            OrderGenerator::LINE_COUNT_MAX,
-        );
-        let mut ship_mode_random = RandomString::new_with_expected_row_count(
-            675466456,
-            distributions.ship_modes(),
-            OrderGenerator::LINE_COUNT_MAX,
-        );
-        let mut comment_random = RandomText::new_with_expected_row_count(
-            1095462486,
-            text_pool,
-            LineItemGenerator::COMMENT_AVERAGE_LENGTH as f64,
-            OrderGenerator::LINE_COUNT_MAX,
-        );
-
-        // Advance all generators to the starting position
-        order_date_random.advance_rows(start_index);
-        line_count_random.advance_rows(start_index);
-
-        quantity_random.advance_rows(start_index);
-        discount_random.advance_rows(start_index);
-        tax_random.advance_rows(start_index);
-
-        line_vehicle_key_random.advance_rows(start_index);
-
-        driver_number_random.advance_rows(start_index);
-
-        ship_date_random.advance_rows(start_index);
-        commit_date_random.advance_rows(start_index);
-        receipt_date_random.advance_rows(start_index);
-
-        returned_flag_random.advance_rows(start_index);
-        ship_instructions_random.advance_rows(start_index);
-        ship_mode_random.advance_rows(start_index);
-
-        comment_random.advance_rows(start_index);
-
-        // generate information for initial order
-        let order_date = order_date_random.next_value();
-        let line_count = line_count_random.next_value() - 1;
-
-        LineItemGeneratorIterator {
-            order_date_random,
-            line_count_random,
-            quantity_random,
-            discount_random,
-            tax_random,
-            line_vehicle_key_random,
-            driver_number_random,
-            ship_date_random,
-            commit_date_random,
-            receipt_date_random,
-            returned_flag_random,
-            ship_instructions_random,
-            ship_mode_random,
-            comment_random,
-            scale_factor,
-            start_index,
-            row_count,
-            index: 0,
-            order_date,
-            line_count,
-            line_number: 0,
-        }
-    }
-
-    /// Creates a line item with the given order index
-    fn make_line_item(&mut self, order_index: i64) -> LineItem<'a> {
-        let order_key = OrderGenerator::make_order_key(order_index);
-
-        let quantity = self.quantity_random.next_value();
-        let discount = self.discount_random.next_value();
-        let tax = self.tax_random.next_value();
-
-        let vehicle_key = self.line_vehicle_key_random.next_value();
-
-        // let driver_number = self.driver_number_random.next_value() as i64;
-        let driver_key = DriverGeneratorIterator::select_driver(
-            vehicle_key,
-            self.line_number as i64,
-            self.scale_factor,
-        );
-
-        let vehicle_price = VehicleGeneratorIterator::calculate_vehicle_price(vehicle_key);
-        let extended_price = vehicle_price * quantity as i64;
-
-        let mut ship_date = self.ship_date_random.next_value();
-        ship_date += self.order_date;
-        let mut commit_date = self.commit_date_random.next_value();
-        commit_date += self.order_date;
-        let mut receipt_date = self.receipt_date_random.next_value();
-        receipt_date += ship_date;
-
-        let returned_flag = if TPCHDate::is_in_past(receipt_date) {
-            self.returned_flag_random.next_value()
-        } else {
-            "N"
-        };
-
-        let status = if TPCHDate::is_in_past(ship_date) {
-            "F" // Fulfilled
-        } else {
-            "O" // Open
-        };
-
-        let ship_instructions = self.ship_instructions_random.next_value();
-        let ship_mode = self.ship_mode_random.next_value();
-        let comment = self.comment_random.next_value();
-
-        LineItem {
-            l_orderkey: order_key,
-            l_vehiclekey: vehicle_key,
-            l_suppkey: driver_key,
-            l_linenumber: self.line_number + 1,
-            l_quantity: quantity as i64,
-            l_extendedprice: TPCHDecimal(extended_price),
-            l_discount: TPCHDecimal(discount as i64),
-            l_tax: TPCHDecimal(tax as i64),
-            l_returnflag: returned_flag,
-            l_linestatus: status,
-            l_shipdate: TPCHDate::new(ship_date, 0, 0),
-            l_commitdate: TPCHDate::new(commit_date, 0, 0),
-            l_receiptdate: TPCHDate::new(receipt_date, 0, 0),
-            l_shipinstruct: ship_instructions,
-            l_shipmode: ship_mode,
-            l_comment: comment,
-        }
-    }
-}
-
-impl<'a> Iterator for LineItemGeneratorIterator<'a> {
-    type Item = LineItem<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index >= self.row_count {
-            return None;
-        }
-
-        let line_item = self.make_line_item(self.start_index + self.index + 1);
-        self.line_number += 1;
-
-        // advance next row only when all lines for the order have been produced
-        if self.line_number > self.line_count {
-            self.order_date_random.row_finished();
-            self.line_count_random.row_finished();
-
-            self.quantity_random.row_finished();
-            self.discount_random.row_finished();
-            self.tax_random.row_finished();
-
-            self.line_vehicle_key_random.row_finished();
-            self.driver_number_random.row_finished();
-
-            self.ship_date_random.row_finished();
-            self.commit_date_random.row_finished();
-            self.receipt_date_random.row_finished();
-
-            self.returned_flag_random.row_finished();
-            self.ship_instructions_random.row_finished();
-            self.ship_mode_random.row_finished();
-
-            self.comment_random.row_finished();
-
-            self.index += 1;
-
-            // generate information for next order
-            self.line_count = self.line_count_random.next_value() - 1;
-            self.order_date = self.order_date_random.next_value();
-            self.line_number = 0;
-        }
-
-        Some(line_item)
-    }
-}
+// /// A clerk name, formatted as `"Clerk#<n>"`
+// #[derive(Debug, Clone, Copy, PartialEq)]
+// pub struct ClerkName(i32);
+//
+// impl ClerkName {
+//     /// Creates a new ClerkName with the given value
+//     pub fn new(value: i32) -> Self {
+//         ClerkName(value)
+//     }
+// }
+//
+// impl Display for ClerkName {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f, "Clerk#{:09}", self.0)
+//     }
+// }
+//
+// /// Order status (F=final, O=open, P=pending)
+// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd)]
+// pub enum OrderStatus {
+//     /// Fulfilled - all line items shipped
+//     Fulfilled,
+//     /// Open - no line items shipped
+//     Open,
+//     /// Partially fulfilled - some line items shipped
+//     Pending,
+// }
+//
+// impl OrderStatus {
+//     pub fn as_str(&self) -> &'static str {
+//         match self {
+//             OrderStatus::Fulfilled => "F",
+//             OrderStatus::Open => "O",
+//             OrderStatus::Pending => "P",
+//         }
+//     }
+// }
+//
+// impl Display for OrderStatus {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f, "{}", self.as_str())
+//     }
+// }
+//
+// /// The ORDERS table
+// ///
+// /// The Display trait is implemented to format the line item data as a string
+// /// in the default TPC-H 'tbl' format.
+// ///
+// /// ```text
+// /// 1|37|O|131251.81|1996-01-02|5-LOW|Clerk#000000951|0|nstructions sleep furiously among |
+// ///  2|79|O|40183.29|1996-12-01|1-URGENT|Clerk#000000880|0| foxes. pending accounts at the pending, silent asymptot|
+// /// ```
+// #[derive(Debug, Clone, PartialEq)]
+// pub struct Order<'a> {
+//     /// Primary key
+//     pub o_orderkey: i64,
+//     /// Foreign key to CUSTOMER
+//     pub o_custkey: i64,
+//     /// Order status (F=final, O=open, P=pending)
+//     pub o_orderstatus: OrderStatus,
+//     /// Order total price
+//     pub o_totalprice: TPCHDecimal,
+//     /// Order date
+//     pub o_orderdate: TPCHDate,
+//     /// Order priority
+//     pub o_orderpriority: &'a str,
+//     /// Clerk who processed the order.
+//     pub o_clerk: ClerkName,
+//     /// Order shipping priority
+//     pub o_shippriority: i32,
+//     /// Variable length comment
+//     pub o_comment: &'a str,
+// }
+//
+// impl Display for Order<'_> {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(
+//             f,
+//             "{}|{}|{}|{}|{}|{}|{}|{}|{}|",
+//             self.o_orderkey,
+//             self.o_custkey,
+//             self.o_orderstatus,
+//             self.o_totalprice,
+//             self.o_orderdate,
+//             self.o_orderpriority,
+//             self.o_clerk,
+//             self.o_shippriority,
+//             self.o_comment
+//         )
+//     }
+// }
+//
+// /// Generator for Order table data
+// #[derive(Debug, Clone)]
+// pub struct OrderGenerator<'a> {
+//     scale_factor: f64,
+//     part: i32,
+//     part_count: i32,
+//     distributions: &'a Distributions,
+//     text_pool: &'a TextPool,
+// }
+//
+// impl<'a> OrderGenerator<'a> {
+//     /// Base scale for order generation
+//     pub const SCALE_BASE: i32 = 1_500_000;
+//
+//     // Constants for order generation
+//     const CUSTOMER_MORTALITY: i32 = 3; // portion with no orders
+//     const ORDER_DATE_MIN: i32 = dates::MIN_GENERATE_DATE;
+//     const ORDER_DATE_MAX: i32 =
+//         Self::ORDER_DATE_MIN + (dates::TOTAL_DATE_RANGE - LineItemGenerator::ITEM_SHIP_DAYS - 1);
+//     const CLERK_SCALE_BASE: i32 = 1000;
+//
+//     const LINE_COUNT_MIN: i32 = 1;
+//     pub const LINE_COUNT_MAX: i32 = 7;
+//
+//     const COMMENT_AVERAGE_LENGTH: i32 = 49;
+//
+//     const ORDER_KEY_SPARSE_BITS: i32 = 2;
+//     const ORDER_KEY_SPARSE_KEEP: i32 = 3;
+//     /// Creates a new OrderGenerator with the given scale factor
+//     ///
+//     /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
+//     /// more details.
+//     pub fn new(scale_factor: f64, part: i32, part_count: i32) -> OrderGenerator<'static> {
+//         // Note: use explicit lifetime to ensure this remains `&'static`
+//         Self::new_with_distributions_and_text_pool(
+//             scale_factor,
+//             part,
+//             part_count,
+//             Distributions::static_default(),
+//             TextPool::get_or_init_default(),
+//         )
+//     }
+//
+//     /// Creates a OrderGenerator with specified distributions and text pool
+//     pub fn new_with_distributions_and_text_pool<'b>(
+//         scale_factor: f64,
+//         part: i32,
+//         part_count: i32,
+//         distributions: &'b Distributions,
+//         text_pool: &'b TextPool,
+//     ) -> OrderGenerator<'b> {
+//         OrderGenerator {
+//             scale_factor,
+//             part,
+//             part_count,
+//             distributions,
+//             text_pool,
+//         }
+//     }
+//
+//     /// Return the row count for the given scale factor and generator part count
+//     pub fn calculate_row_count(scale_factor: f64, part: i32, part_count: i32) -> i64 {
+//         GenerateUtils::calculate_row_count(Self::SCALE_BASE, scale_factor, part, part_count)
+//     }
+//
+//     /// Returns an iterator over the order rows
+//     pub fn iter(&self) -> OrderGeneratorIterator<'a> {
+//         OrderGeneratorIterator::new(
+//             self.distributions,
+//             self.text_pool,
+//             self.scale_factor,
+//             GenerateUtils::calculate_start_index(
+//                 Self::SCALE_BASE,
+//                 self.scale_factor,
+//                 self.part,
+//                 self.part_count,
+//             ),
+//             Self::calculate_row_count(self.scale_factor, self.part, self.part_count),
+//         )
+//     }
+//
+//     /// Creates the order date random generator
+//     pub fn create_order_date_random() -> RandomBoundedInt {
+//         RandomBoundedInt::new(1066728069, Self::ORDER_DATE_MIN, Self::ORDER_DATE_MAX)
+//     }
+//
+//     /// Creates the line count random generator
+//     pub fn create_line_count_random() -> RandomBoundedInt {
+//         RandomBoundedInt::new(1434868289, Self::LINE_COUNT_MIN, Self::LINE_COUNT_MAX)
+//     }
+//
+//     /// Creates an order key from an index
+//     pub fn make_order_key(order_index: i64) -> i64 {
+//         let low_bits = order_index & ((1 << Self::ORDER_KEY_SPARSE_KEEP) - 1);
+//
+//         let mut ok = order_index;
+//         ok >>= Self::ORDER_KEY_SPARSE_KEEP;
+//         ok <<= Self::ORDER_KEY_SPARSE_BITS;
+//         ok <<= Self::ORDER_KEY_SPARSE_KEEP;
+//         ok += low_bits;
+//
+//         ok
+//     }
+// }
+//
+// impl<'a> IntoIterator for &'a OrderGenerator<'a> {
+//     type Item = Order<'a>;
+//     type IntoIter = OrderGeneratorIterator<'a>;
+//
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.iter()
+//     }
+// }
+//
+// /// Iterator that generates Order rows
+// #[derive(Debug)]
+// pub struct OrderGeneratorIterator<'a> {
+//     order_date_random: RandomBoundedInt,
+//     line_count_random: RandomBoundedInt,
+//     customer_key_random: RandomBoundedLong,
+//     order_priority_random: RandomString<'a>,
+//     clerk_random: RandomBoundedInt,
+//     comment_random: RandomText<'a>,
+//
+//     // For line item simulation to determine order status
+//     line_quantity_random: RandomBoundedInt,
+//     line_discount_random: RandomBoundedInt,
+//     line_tax_random: RandomBoundedInt,
+//     line_vehicle_key_random: RandomBoundedLong,
+//     line_ship_date_random: RandomBoundedInt,
+//
+//     start_index: i64,
+//     row_count: i64,
+//     max_customer_key: i64,
+//
+//     index: i64,
+// }
+// impl<'a> OrderGeneratorIterator<'a> {
+//     fn new(
+//         distributions: &'a Distributions,
+//         text_pool: &'a TextPool,
+//         scale_factor: f64,
+//         start_index: i64,
+//         row_count: i64,
+//     ) -> Self {
+//         let mut order_date_random = OrderGenerator::create_order_date_random();
+//         let mut line_count_random = OrderGenerator::create_line_count_random();
+//
+//         let max_customer_key = (CustomerGenerator::SCALE_BASE as f64 * scale_factor) as i64;
+//
+//         let mut customer_key_random =
+//             RandomBoundedLong::new(851767375, scale_factor >= 30000.0, 1, max_customer_key);
+//
+//         let mut order_priority_random =
+//             RandomString::new(591449447, distributions.order_priority());
+//
+//         let max_clerk = (scale_factor * OrderGenerator::CLERK_SCALE_BASE as f64)
+//             .max(OrderGenerator::CLERK_SCALE_BASE as f64) as i32;
+//         let mut clerk_random = RandomBoundedInt::new(1171034773, 1, max_clerk);
+//
+//         let mut comment_random = RandomText::new(
+//             276090261,
+//             text_pool,
+//             OrderGenerator::COMMENT_AVERAGE_LENGTH as f64,
+//         );
+//
+//         // For line item simulation
+//         let mut line_quantity_random = LineItemGenerator::create_quantity_random();
+//         let mut line_discount_random = LineItemGenerator::create_discount_random();
+//         let mut line_tax_random = LineItemGenerator::create_tax_random();
+//         let mut line_vehicle_key_random =
+//             LineItemGenerator::create_vehicle_key_random(scale_factor);
+//         let mut line_ship_date_random = LineItemGenerator::create_ship_date_random();
+//
+//         // Advance all generators to the starting position
+//         order_date_random.advance_rows(start_index);
+//         line_count_random.advance_rows(start_index);
+//         customer_key_random.advance_rows(start_index);
+//         order_priority_random.advance_rows(start_index);
+//         clerk_random.advance_rows(start_index);
+//         comment_random.advance_rows(start_index);
+//
+//         line_quantity_random.advance_rows(start_index);
+//         line_discount_random.advance_rows(start_index);
+//         line_tax_random.advance_rows(start_index);
+//         line_vehicle_key_random.advance_rows(start_index);
+//         line_ship_date_random.advance_rows(start_index);
+//
+//         OrderGeneratorIterator {
+//             order_date_random,
+//             line_count_random,
+//             customer_key_random,
+//             order_priority_random,
+//             clerk_random,
+//             comment_random,
+//             line_quantity_random,
+//             line_discount_random,
+//             line_tax_random,
+//             line_vehicle_key_random,
+//             line_ship_date_random,
+//             start_index,
+//             row_count,
+//             max_customer_key,
+//             index: 0,
+//         }
+//     }
+//
+//     /// Creates an order with the given index
+//     fn make_order(&mut self, index: i64) -> Order<'a> {
+//         let order_key = OrderGenerator::make_order_key(index);
+//
+//         let order_date = self.order_date_random.next_value();
+//
+//         // generate customer key, taking into account customer mortality rate
+//         let mut customer_key = self.customer_key_random.next_value();
+//         let mut delta = 1;
+//         while customer_key % OrderGenerator::CUSTOMER_MORTALITY as i64 == 0 {
+//             customer_key += delta;
+//             customer_key = customer_key.min(self.max_customer_key);
+//             delta *= -1;
+//         }
+//
+//         let mut total_price = 0;
+//         let mut shipped_count = 0;
+//
+//         let line_count = self.line_count_random.next_value();
+//         for _ in 0..line_count {
+//             let quantity = self.line_quantity_random.next_value();
+//             let discount = self.line_discount_random.next_value();
+//             let tax = self.line_tax_random.next_value();
+//
+//             let vehicle_key = self.line_vehicle_key_random.next_value();
+//
+//             let vehicle_price = VehicleGeneratorIterator::calculate_vehicle_price(vehicle_key);
+//             let extended_price = vehicle_price * quantity as i64;
+//             let discounted_price = extended_price * (100 - discount as i64);
+//             total_price += ((discounted_price / 100) * (100 + tax as i64)) / 100;
+//
+//             let ship_date = self.line_ship_date_random.next_value() + order_date;
+//             if TPCHDate::is_in_past(ship_date) {
+//                 shipped_count += 1;
+//             }
+//         }
+//
+//         let order_status = if shipped_count == line_count {
+//             OrderStatus::Fulfilled
+//         } else if shipped_count > 0 {
+//             OrderStatus::Pending
+//         } else {
+//             OrderStatus::Open
+//         };
+//
+//         let clerk_id = self.clerk_random.next_value();
+//         let clerk_name = ClerkName::new(clerk_id);
+//
+//         Order {
+//             o_orderkey: order_key,
+//             o_custkey: customer_key,
+//             o_orderstatus: order_status,
+//             o_totalprice: TPCHDecimal(total_price),
+//             o_orderdate: TPCHDate::new(order_date, 0, 0),
+//             o_orderpriority: self.order_priority_random.next_value(),
+//             o_clerk: clerk_name,
+//             o_shippriority: 0, // Fixed value per TPC-H spec
+//             o_comment: self.comment_random.next_value(),
+//         }
+//     }
+// }
+//
+// impl<'a> Iterator for OrderGeneratorIterator<'a> {
+//     type Item = Order<'a>;
+//
+//     fn next(&mut self) -> Option<Self::Item> {
+//         if self.index >= self.row_count {
+//             return None;
+//         }
+//
+//         let order = self.make_order(self.start_index + self.index + 1);
+//
+//         self.order_date_random.row_finished();
+//         self.line_count_random.row_finished();
+//         self.customer_key_random.row_finished();
+//         self.order_priority_random.row_finished();
+//         self.clerk_random.row_finished();
+//         self.comment_random.row_finished();
+//
+//         self.line_quantity_random.row_finished();
+//         self.line_discount_random.row_finished();
+//         self.line_tax_random.row_finished();
+//         self.line_vehicle_key_random.row_finished();
+//         self.line_ship_date_random.row_finished();
+//
+//         self.index += 1;
+//
+//         Some(order)
+//     }
+// }
+//
+// /// The LINEITEM table
+// ///
+// /// The Display trait is implemented to format the line item data as a string
+// /// in the default TPC-H 'tbl' format.
+// ///
+// /// Example
+// /// ```text
+// /// 1|156|4|1|17|17954.55|0.04|0.02|N|O|1996-03-13|1996-02-12|1996-03-22|DELIVER IN PERSON|TRUCK|egular courts above the|
+// /// 1|68|9|2|36|34850.16|0.09|0.06|N|O|1996-04-12|1996-02-28|1996-04-20|TAKE BACK RETURN|MAIL|ly final dependencies: slyly bold |
+// /// ```
+// #[derive(Debug, Clone, PartialEq)]
+// pub struct LineItem<'a> {
+//     /// Foreign key to ORDERS
+//     pub l_orderkey: i64,
+//     /// Foreign key to VEHICLE
+//     pub l_vehiclekey: i64,
+//     /// Foreign key to Driver
+//     pub l_suppkey: i64,
+//     /// Line item number within order
+//     pub l_linenumber: i32,
+//     /// Quantity ordered
+//     // TODO: Spec has this as decimal.
+//     pub l_quantity: i64,
+//     /// Extended price (l_quantity * p_retailprice)
+//     pub l_extendedprice: TPCHDecimal,
+//     /// Discount percentage
+//     pub l_discount: TPCHDecimal,
+//     /// Tax percentage
+//     pub l_tax: TPCHDecimal,
+//     /// Return flag (R=returned, A=accepted, null=pending)
+//     pub l_returnflag: &'a str,
+//     /// Line status (O=ordered, F=fulfilled)
+//     pub l_linestatus: &'static str,
+//     /// Date shipped
+//     pub l_shipdate: TPCHDate,
+//     /// Date committed to ship
+//     pub l_commitdate: TPCHDate,
+//     /// Date received
+//     pub l_receiptdate: TPCHDate,
+//     /// Shipping instructions
+//     pub l_shipinstruct: &'a str,
+//     /// Shipping mode
+//     pub l_shipmode: &'a str,
+//     /// Variable length comment
+//     pub l_comment: &'a str,
+// }
+//
+// impl Display for LineItem<'_> {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(
+//             f,
+//             "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|",
+//             self.l_orderkey,
+//             self.l_vehiclekey,
+//             self.l_suppkey,
+//             self.l_linenumber,
+//             self.l_quantity,
+//             self.l_extendedprice,
+//             self.l_discount,
+//             self.l_tax,
+//             self.l_returnflag,
+//             self.l_linestatus,
+//             self.l_shipdate,
+//             self.l_commitdate,
+//             self.l_receiptdate,
+//             self.l_shipinstruct,
+//             self.l_shipmode,
+//             self.l_comment
+//         )
+//     }
+// }
+//
+// /// Generator for LineItem table data
+// #[derive(Debug, Clone)]
+// pub struct LineItemGenerator<'a> {
+//     scale_factor: f64,
+//     part: i32,
+//     part_count: i32,
+//     distributions: &'a Distributions,
+//     text_pool: &'a TextPool,
+// }
+//
+// impl<'a> LineItemGenerator<'a> {
+//     // Constants for line item generation
+//     const QUANTITY_MIN: i32 = 1;
+//     const QUANTITY_MAX: i32 = 50;
+//     const TAX_MIN: TPCHDecimal = TPCHDecimal(0); // 0.00
+//     const TAX_MAX: TPCHDecimal = TPCHDecimal(8); // 0.08
+//     const DISCOUNT_MIN: TPCHDecimal = TPCHDecimal(0); // 0.00
+//     const DISCOUNT_MAX: TPCHDecimal = TPCHDecimal(10); // 0.10
+//     const VEHICLE_KEY_MIN: i32 = 1;
+//     const SHIP_DATE_MIN: i32 = 1;
+//     const SHIP_DATE_MAX: i32 = 121;
+//     const COMMIT_DATE_MIN: i32 = 30;
+//     const COMMIT_DATE_MAX: i32 = 90;
+//     const RECEIPT_DATE_MIN: i32 = 1;
+//     const RECEIPT_DATE_MAX: i32 = 30;
+//
+//     pub const ITEM_SHIP_DAYS: i32 = Self::SHIP_DATE_MAX + Self::RECEIPT_DATE_MAX;
+//
+//     const COMMENT_AVERAGE_LENGTH: i32 = 27;
+//
+//     /// Creates a new LineItemGenerator with the given scale factor
+//     ///
+//     /// Note the generator's lifetime is `&'static`. See [`NationGenerator`] for
+//     /// more details.
+//     pub fn new(scale_factor: f64, part: i32, part_count: i32) -> LineItemGenerator<'static> {
+//         Self::new_with_distributions_and_text_pool(
+//             scale_factor,
+//             part,
+//             part_count,
+//             Distributions::static_default(),
+//             TextPool::get_or_init_default(),
+//         )
+//     }
+//
+//     /// Creates a LineItemGenerator with specified distributions and text pool
+//     pub fn new_with_distributions_and_text_pool<'b>(
+//         scale_factor: f64,
+//         part: i32,
+//         part_count: i32,
+//         distributions: &'b Distributions,
+//         text_pool: &'b TextPool,
+//     ) -> LineItemGenerator<'b> {
+//         LineItemGenerator {
+//             scale_factor,
+//             part,
+//             part_count,
+//             distributions,
+//             text_pool,
+//         }
+//     }
+//
+//     /// Returns an iterator over the line item rows
+//     pub fn iter(&self) -> LineItemGeneratorIterator<'a> {
+//         LineItemGeneratorIterator::new(
+//             self.distributions,
+//             self.text_pool,
+//             self.scale_factor,
+//             GenerateUtils::calculate_start_index(
+//                 OrderGenerator::SCALE_BASE,
+//                 self.scale_factor,
+//                 self.part,
+//                 self.part_count,
+//             ),
+//             GenerateUtils::calculate_row_count(
+//                 OrderGenerator::SCALE_BASE,
+//                 self.scale_factor,
+//                 self.part,
+//                 self.part_count,
+//             ),
+//         )
+//     }
+//
+//     /// Creates a quantity random generator
+//     pub fn create_quantity_random() -> RandomBoundedInt {
+//         RandomBoundedInt::new_with_seeds_per_row(
+//             209208115,
+//             Self::QUANTITY_MIN,
+//             Self::QUANTITY_MAX,
+//             OrderGenerator::LINE_COUNT_MAX,
+//         )
+//     }
+//
+//     /// Creates a discount random generator
+//     pub fn create_discount_random() -> RandomBoundedInt {
+//         RandomBoundedInt::new_with_seeds_per_row(
+//             554590007,
+//             Self::DISCOUNT_MIN.0 as i32,
+//             Self::DISCOUNT_MAX.0 as i32,
+//             OrderGenerator::LINE_COUNT_MAX,
+//         )
+//     }
+//
+//     /// Creates a tax random generator
+//     pub fn create_tax_random() -> RandomBoundedInt {
+//         RandomBoundedInt::new_with_seeds_per_row(
+//             721958466,
+//             Self::TAX_MIN.0 as i32,
+//             Self::TAX_MAX.0 as i32,
+//             OrderGenerator::LINE_COUNT_MAX,
+//         )
+//     }
+//
+//     /// Creates a vehicle key random generator
+//     pub fn create_vehicle_key_random(scale_factor: f64) -> RandomBoundedLong {
+//         // If scale_factor >= 30000, use long `RandomBoundedLong` otherwise
+//         // use `RandomBoundedInt` to avoid overflow.
+//         RandomBoundedLong::new_with_seeds_per_row(
+//             1808217256,
+//             scale_factor >= 30000.0,
+//             Self::VEHICLE_KEY_MIN as i64,
+//             (VehicleGenerator::SCALE_BASE as f64 * scale_factor) as i64,
+//             OrderGenerator::LINE_COUNT_MAX,
+//         )
+//     }
+//
+//     /// Creates a ship date random generator
+//     pub fn create_ship_date_random() -> RandomBoundedInt {
+//         RandomBoundedInt::new_with_seeds_per_row(
+//             1769349045,
+//             Self::SHIP_DATE_MIN,
+//             Self::SHIP_DATE_MAX,
+//             OrderGenerator::LINE_COUNT_MAX,
+//         )
+//     }
+// }
+//
+// impl<'a> IntoIterator for &'a LineItemGenerator<'a> {
+//     type Item = LineItem<'a>;
+//     type IntoIter = LineItemGeneratorIterator<'a>;
+//
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.iter()
+//     }
+// }
+//
+// /// Iterator that generates LineItem rows
+// #[derive(Debug)]
+// pub struct LineItemGeneratorIterator<'a> {
+//     order_date_random: RandomBoundedInt,
+//     line_count_random: RandomBoundedInt,
+//
+//     quantity_random: RandomBoundedInt,
+//     discount_random: RandomBoundedInt,
+//     tax_random: RandomBoundedInt,
+//
+//     line_vehicle_key_random: RandomBoundedLong,
+//
+//     driver_number_random: RandomBoundedInt,
+//
+//     ship_date_random: RandomBoundedInt,
+//     commit_date_random: RandomBoundedInt,
+//     receipt_date_random: RandomBoundedInt,
+//
+//     returned_flag_random: RandomString<'a>,
+//     ship_instructions_random: RandomString<'a>,
+//     ship_mode_random: RandomString<'a>,
+//
+//     comment_random: RandomText<'a>,
+//
+//     scale_factor: f64,
+//     start_index: i64,
+//     row_count: i64,
+//
+//     index: i64,
+//     order_date: i32,
+//     line_count: i32,
+//     line_number: i32,
+// }
+//
+// impl<'a> LineItemGeneratorIterator<'a> {
+//     fn new(
+//         distributions: &'a Distributions,
+//         text_pool: &'a TextPool,
+//         scale_factor: f64,
+//         start_index: i64,
+//         row_count: i64,
+//     ) -> Self {
+//         let mut order_date_random = OrderGenerator::create_order_date_random();
+//         let mut line_count_random = OrderGenerator::create_line_count_random();
+//
+//         let mut quantity_random = LineItemGenerator::create_quantity_random();
+//         let mut discount_random = LineItemGenerator::create_discount_random();
+//         let mut tax_random = LineItemGenerator::create_tax_random();
+//
+//         let mut line_vehicle_key_random =
+//             LineItemGenerator::create_vehicle_key_random(scale_factor);
+//
+//         let mut driver_number_random = RandomBoundedInt::new_with_seeds_per_row(
+//             2095021727,
+//             0,
+//             3,
+//             OrderGenerator::LINE_COUNT_MAX,
+//         );
+//
+//         let mut ship_date_random = LineItemGenerator::create_ship_date_random();
+//         let mut commit_date_random = RandomBoundedInt::new_with_seeds_per_row(
+//             904914315,
+//             LineItemGenerator::COMMIT_DATE_MIN,
+//             LineItemGenerator::COMMIT_DATE_MAX,
+//             OrderGenerator::LINE_COUNT_MAX,
+//         );
+//         let mut receipt_date_random = RandomBoundedInt::new_with_seeds_per_row(
+//             373135028,
+//             LineItemGenerator::RECEIPT_DATE_MIN,
+//             LineItemGenerator::RECEIPT_DATE_MAX,
+//             OrderGenerator::LINE_COUNT_MAX,
+//         );
+//
+//         let mut returned_flag_random = RandomString::new_with_expected_row_count(
+//             717419739,
+//             distributions.return_flags(),
+//             OrderGenerator::LINE_COUNT_MAX,
+//         );
+//         let mut ship_instructions_random = RandomString::new_with_expected_row_count(
+//             1371272478,
+//             distributions.ship_instructions(),
+//             OrderGenerator::LINE_COUNT_MAX,
+//         );
+//         let mut ship_mode_random = RandomString::new_with_expected_row_count(
+//             675466456,
+//             distributions.ship_modes(),
+//             OrderGenerator::LINE_COUNT_MAX,
+//         );
+//         let mut comment_random = RandomText::new_with_expected_row_count(
+//             1095462486,
+//             text_pool,
+//             LineItemGenerator::COMMENT_AVERAGE_LENGTH as f64,
+//             OrderGenerator::LINE_COUNT_MAX,
+//         );
+//
+//         // Advance all generators to the starting position
+//         order_date_random.advance_rows(start_index);
+//         line_count_random.advance_rows(start_index);
+//
+//         quantity_random.advance_rows(start_index);
+//         discount_random.advance_rows(start_index);
+//         tax_random.advance_rows(start_index);
+//
+//         line_vehicle_key_random.advance_rows(start_index);
+//
+//         driver_number_random.advance_rows(start_index);
+//
+//         ship_date_random.advance_rows(start_index);
+//         commit_date_random.advance_rows(start_index);
+//         receipt_date_random.advance_rows(start_index);
+//
+//         returned_flag_random.advance_rows(start_index);
+//         ship_instructions_random.advance_rows(start_index);
+//         ship_mode_random.advance_rows(start_index);
+//
+//         comment_random.advance_rows(start_index);
+//
+//         // generate information for initial order
+//         let order_date = order_date_random.next_value();
+//         let line_count = line_count_random.next_value() - 1;
+//
+//         LineItemGeneratorIterator {
+//             order_date_random,
+//             line_count_random,
+//             quantity_random,
+//             discount_random,
+//             tax_random,
+//             line_vehicle_key_random,
+//             driver_number_random,
+//             ship_date_random,
+//             commit_date_random,
+//             receipt_date_random,
+//             returned_flag_random,
+//             ship_instructions_random,
+//             ship_mode_random,
+//             comment_random,
+//             scale_factor,
+//             start_index,
+//             row_count,
+//             index: 0,
+//             order_date,
+//             line_count,
+//             line_number: 0,
+//         }
+//     }
+//
+//     /// Creates a line item with the given order index
+//     fn make_line_item(&mut self, order_index: i64) -> LineItem<'a> {
+//         let order_key = OrderGenerator::make_order_key(order_index);
+//
+//         let quantity = self.quantity_random.next_value();
+//         let discount = self.discount_random.next_value();
+//         let tax = self.tax_random.next_value();
+//
+//         let vehicle_key = self.line_vehicle_key_random.next_value();
+//
+//         // let driver_number = self.driver_number_random.next_value() as i64;
+//         let driver_key = DriverGeneratorIterator::select_driver(
+//             vehicle_key,
+//             self.line_number as i64,
+//             self.scale_factor,
+//         );
+//
+//         let vehicle_price = VehicleGeneratorIterator::calculate_vehicle_price(vehicle_key);
+//         let extended_price = vehicle_price * quantity as i64;
+//
+//         let mut ship_date = self.ship_date_random.next_value();
+//         ship_date += self.order_date;
+//         let mut commit_date = self.commit_date_random.next_value();
+//         commit_date += self.order_date;
+//         let mut receipt_date = self.receipt_date_random.next_value();
+//         receipt_date += ship_date;
+//
+//         let returned_flag = if TPCHDate::is_in_past(receipt_date) {
+//             self.returned_flag_random.next_value()
+//         } else {
+//             "N"
+//         };
+//
+//         let status = if TPCHDate::is_in_past(ship_date) {
+//             "F" // Fulfilled
+//         } else {
+//             "O" // Open
+//         };
+//
+//         let ship_instructions = self.ship_instructions_random.next_value();
+//         let ship_mode = self.ship_mode_random.next_value();
+//         let comment = self.comment_random.next_value();
+//
+//         LineItem {
+//             l_orderkey: order_key,
+//             l_vehiclekey: vehicle_key,
+//             l_suppkey: driver_key,
+//             l_linenumber: self.line_number + 1,
+//             l_quantity: quantity as i64,
+//             l_extendedprice: TPCHDecimal(extended_price),
+//             l_discount: TPCHDecimal(discount as i64),
+//             l_tax: TPCHDecimal(tax as i64),
+//             l_returnflag: returned_flag,
+//             l_linestatus: status,
+//             l_shipdate: TPCHDate::new(ship_date, 0, 0),
+//             l_commitdate: TPCHDate::new(commit_date, 0, 0),
+//             l_receiptdate: TPCHDate::new(receipt_date, 0, 0),
+//             l_shipinstruct: ship_instructions,
+//             l_shipmode: ship_mode,
+//             l_comment: comment,
+//         }
+//     }
+// }
+//
+// impl<'a> Iterator for LineItemGeneratorIterator<'a> {
+//     type Item = LineItem<'a>;
+//
+//     fn next(&mut self) -> Option<Self::Item> {
+//         if self.index >= self.row_count {
+//             return None;
+//         }
+//
+//         let line_item = self.make_line_item(self.start_index + self.index + 1);
+//         self.line_number += 1;
+//
+//         // advance next row only when all lines for the order have been produced
+//         if self.line_number > self.line_count {
+//             self.order_date_random.row_finished();
+//             self.line_count_random.row_finished();
+//
+//             self.quantity_random.row_finished();
+//             self.discount_random.row_finished();
+//             self.tax_random.row_finished();
+//
+//             self.line_vehicle_key_random.row_finished();
+//             self.driver_number_random.row_finished();
+//
+//             self.ship_date_random.row_finished();
+//             self.commit_date_random.row_finished();
+//             self.receipt_date_random.row_finished();
+//
+//             self.returned_flag_random.row_finished();
+//             self.ship_instructions_random.row_finished();
+//             self.ship_mode_random.row_finished();
+//
+//             self.comment_random.row_finished();
+//
+//             self.index += 1;
+//
+//             // generate information for next order
+//             self.line_count = self.line_count_random.next_value() - 1;
+//             self.order_date = self.order_date_random.next_value();
+//             self.line_number = 0;
+//         }
+//
+//         Some(line_item)
+//     }
+// }
 
 /// The TRIP table (fact table)
 ///
@@ -2043,6 +2043,7 @@ impl TripGenerator {
     const SCALE_BASE: i32 = 6_000_000;
 
     // Constants for trip generation
+    const CUSTOMER_MORTALITY: i32 = 3; // portion with no orders
     const FARE_MIN_PER_MILE: i32 = 150; // $1.50 per mile
     const FARE_MAX_PER_MILE: i32 = 300; // $3.00 per mile
     const TIP_PERCENT_MIN: i32 = 0; // 0% tip
@@ -2229,7 +2230,7 @@ impl TripGeneratorIterator {
         // generate customer key, taking into account customer mortality rate
         let mut customer_key = self.customer_key_random.next_value();
         let mut delta = 1;
-        while customer_key % OrderGenerator::CUSTOMER_MORTALITY as i64 == 0 {
+        while customer_key % TripGenerator::CUSTOMER_MORTALITY as i64 == 0 {
             customer_key += delta;
             customer_key = customer_key.min(self.max_customer_key);
             delta *= -1;
@@ -2373,6 +2374,7 @@ impl Display for Building<'_> {
 }
 
 /// Generator for [`Building`]s
+#[derive(Debug, Clone)]
 pub struct BuildingGenerator<'a> {
     scale_factor: f64,
     part: i32,
@@ -2538,23 +2540,23 @@ impl<'a> Iterator for BuildingGeneratorIterator<'a> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_nation_generator() {
-        let generator = NationGenerator::default();
-        let nations: Vec<_> = generator.iter().collect();
-
-        // TPC-H typically has 25 nations
-        assert_eq!(nations.len(), 25);
-    }
-
-    #[test]
-    fn test_region_generator() {
-        let generator = RegionGenerator::default();
-        let regions: Vec<_> = generator.iter().collect();
-
-        // TPC-H typically has 5 regions
-        assert_eq!(regions.len(), 5);
-    }
+    // #[test]
+    // fn test_nation_generator() {
+    //     let generator = NationGenerator::default();
+    //     let nations: Vec<_> = generator.iter().collect();
+    //
+    //     // TPC-H typically has 25 nations
+    //     assert_eq!(nations.len(), 25);
+    // }
+    //
+    // #[test]
+    // fn test_region_generator() {
+    //     let generator = RegionGenerator::default();
+    //     let regions: Vec<_> = generator.iter().collect();
+    //
+    //     // TPC-H typically has 5 regions
+    //     assert_eq!(regions.len(), 5);
+    // }
 
     #[test]
     fn test_vehicle_generation() {
@@ -2623,46 +2625,46 @@ mod tests {
         assert_eq!(first.to_string(), expected_pattern);
     }
 
-    #[test]
-    fn test_order_generation() {
-        // Create a generator with a small scale factor
-        let generator = OrderGenerator::new(0.01, 1, 1);
-        let orders: Vec<_> = generator.iter().collect();
-
-        // Should have 0.01 * 1,500,000 = 15,000 orders
-        assert_eq!(orders.len(), 15000);
-
-        // Check first order
-        let first = &orders[0];
-        assert_eq!(first.o_orderkey, OrderGenerator::make_order_key(1));
-        assert!(first.o_custkey > 0);
-        assert!(first.o_totalprice > TPCHDecimal::ZERO);
-
-        // Check order status distribution
-        let status_counts =
-            orders
-                .iter()
-                .fold(std::collections::HashMap::new(), |mut acc, order| {
-                    *acc.entry(&order.o_orderstatus).or_insert(0) += 1;
-                    acc
-                });
-
-        // Should have multiple order statuses
-        assert!(status_counts.len() >= 2);
-
-        // Check customer key distribution - no customer with mortality factor
-        assert!(orders
-            .iter()
-            .all(|o| o.o_custkey % OrderGenerator::CUSTOMER_MORTALITY as i64 != 0));
-
-        // Check order key sparsity
-        for (i, order) in orders.iter().enumerate() {
-            assert_eq!(
-                order.o_orderkey,
-                OrderGenerator::make_order_key(i as i64 + 1)
-            );
-        }
-    }
+    // #[test]
+    // fn test_order_generation() {
+    //     // Create a generator with a small scale factor
+    //     let generator = OrderGenerator::new(0.01, 1, 1);
+    //     let orders: Vec<_> = generator.iter().collect();
+    //
+    //     // Should have 0.01 * 1,500,000 = 15,000 orders
+    //     assert_eq!(orders.len(), 15000);
+    //
+    //     // Check first order
+    //     let first = &orders[0];
+    //     assert_eq!(first.o_orderkey, OrderGenerator::make_order_key(1));
+    //     assert!(first.o_custkey > 0);
+    //     assert!(first.o_totalprice > TPCHDecimal::ZERO);
+    //
+    //     // Check order status distribution
+    //     let status_counts =
+    //         orders
+    //             .iter()
+    //             .fold(std::collections::HashMap::new(), |mut acc, order| {
+    //                 *acc.entry(&order.o_orderstatus).or_insert(0) += 1;
+    //                 acc
+    //             });
+    //
+    //     // Should have multiple order statuses
+    //     assert!(status_counts.len() >= 2);
+    //
+    //     // Check customer key distribution - no customer with mortality factor
+    //     assert!(orders
+    //         .iter()
+    //         .all(|o| o.o_custkey % OrderGenerator::CUSTOMER_MORTALITY as i64 != 0));
+    //
+    //     // Check order key sparsity
+    //     for (i, order) in orders.iter().enumerate() {
+    //         assert_eq!(
+    //             order.o_orderkey,
+    //             OrderGenerator::make_order_key(i as i64 + 1)
+    //         );
+    //     }
+    // }
 
     #[test]
     fn test_trip_generation() {
@@ -2740,80 +2742,80 @@ mod tests {
         assert_eq!(first.to_string(), "2|blush|POLYGON ((-102.2154579691 40.5193652499, -102.2133112848 40.5193652499, -102.2133112848 40.5207006446, -102.2154579691 40.5207006446, -102.2154579691 40.5193652499))|")
     }
 
-    #[test]
-    fn test_make_order_key() {
-        // Test order key generation logic
-        assert_eq!(OrderGenerator::make_order_key(1), 1); // Low values are preserved
-        assert_eq!(OrderGenerator::make_order_key(8), 32); // 8 becomes 1000000
-        assert_eq!(OrderGenerator::make_order_key(9), 32 + 1); // 9 becomes 1000001
-        assert_eq!(OrderGenerator::make_order_key(10), 32 + 2); // 10 becomes 1000010
-    }
+    // #[test]
+    // fn test_make_order_key() {
+    //     // Test order key generation logic
+    //     assert_eq!(OrderGenerator::make_order_key(1), 1); // Low values are preserved
+    //     assert_eq!(OrderGenerator::make_order_key(8), 32); // 8 becomes 1000000
+    //     assert_eq!(OrderGenerator::make_order_key(9), 32 + 1); // 9 becomes 1000001
+    //     assert_eq!(OrderGenerator::make_order_key(10), 32 + 2); // 10 becomes 1000010
+    // }
 
-    #[test]
-    fn test_line_item_generation() {
-        // Create a generator with a small scale factor
-        let generator = LineItemGenerator::new(0.01, 1, 1);
-        let line_items: Vec<_> = generator.iter().collect();
-
-        // Check first line item
-        let first = &line_items[0];
-        assert_eq!(first.l_orderkey, OrderGenerator::make_order_key(1));
-        assert_eq!(first.l_linenumber, 1);
-        assert!(first.l_vehiclekey > 0);
-        assert!(first.l_suppkey > 0);
-
-        assert!(first.l_quantity >= LineItemGenerator::QUANTITY_MIN as i64);
-        assert!(first.l_quantity <= LineItemGenerator::QUANTITY_MAX as i64);
-
-        assert!(first.l_discount >= LineItemGenerator::DISCOUNT_MIN);
-        assert!(first.l_discount <= LineItemGenerator::DISCOUNT_MAX);
-
-        assert!(first.l_tax >= LineItemGenerator::TAX_MIN);
-        assert!(first.l_tax <= LineItemGenerator::TAX_MAX);
-
-        // Verify line numbers are sequential per order
-        let mut order_lines = std::collections::HashMap::new();
-        for line in &line_items {
-            order_lines
-                .entry(line.l_orderkey)
-                .or_insert_with(Vec::new)
-                .push(line.l_linenumber);
-        }
-
-        // Check each order's line numbers
-        for (_, lines) in order_lines {
-            let mut sorted_lines = lines.clone();
-            sorted_lines.sort();
-
-            // Line numbers should start at 1 and be sequential
-            for (i, line_num) in sorted_lines.iter().enumerate() {
-                assert_eq!(*line_num, (i + 1) as i32);
-            }
-        }
-
-        // Verify return flags and line status distributions
-        let return_flags: std::collections::HashSet<_> =
-            line_items.iter().map(|l| &l.l_returnflag).collect();
-
-        assert!(return_flags.len() > 1);
-
-        let line_statuses: std::collections::HashSet<_> =
-            line_items.iter().map(|l| &l.l_linestatus).collect();
-
-        assert!(!line_statuses.is_empty());
-    }
-
-    #[test]
-    fn check_iter_static_lifetimes() {
-        // Lifetimes of iterators should be independent of the generator that
-        // created it. This test case won't compile if that's not the case.
-
-        let _iter: NationGeneratorIterator<'static> = NationGenerator::default().iter();
-        let _iter: RegionGeneratorIterator<'static> = RegionGenerator::default().iter();
-        let _iter: VehicleGeneratorIterator<'static> = VehicleGenerator::new(0.1, 1, 1).iter();
-        let _iter: DriverGeneratorIterator<'static> = DriverGenerator::new(0.1, 1, 1).iter();
-        let _iter: CustomerGeneratorIterator<'static> = CustomerGenerator::new(0.1, 1, 1).iter();
-        let _iter: OrderGeneratorIterator<'static> = OrderGenerator::new(0.1, 1, 1).iter();
-        let _iter: LineItemGeneratorIterator<'static> = LineItemGenerator::new(0.1, 1, 1).iter();
-    }
+    // #[test]
+    // fn test_line_item_generation() {
+    //     // Create a generator with a small scale factor
+    //     let generator = LineItemGenerator::new(0.01, 1, 1);
+    //     let line_items: Vec<_> = generator.iter().collect();
+    //
+    //     // Check first line item
+    //     let first = &line_items[0];
+    //     assert_eq!(first.l_orderkey, OrderGenerator::make_order_key(1));
+    //     assert_eq!(first.l_linenumber, 1);
+    //     assert!(first.l_vehiclekey > 0);
+    //     assert!(first.l_suppkey > 0);
+    //
+    //     assert!(first.l_quantity >= LineItemGenerator::QUANTITY_MIN as i64);
+    //     assert!(first.l_quantity <= LineItemGenerator::QUANTITY_MAX as i64);
+    //
+    //     assert!(first.l_discount >= LineItemGenerator::DISCOUNT_MIN);
+    //     assert!(first.l_discount <= LineItemGenerator::DISCOUNT_MAX);
+    //
+    //     assert!(first.l_tax >= LineItemGenerator::TAX_MIN);
+    //     assert!(first.l_tax <= LineItemGenerator::TAX_MAX);
+    //
+    //     // Verify line numbers are sequential per order
+    //     let mut order_lines = std::collections::HashMap::new();
+    //     for line in &line_items {
+    //         order_lines
+    //             .entry(line.l_orderkey)
+    //             .or_insert_with(Vec::new)
+    //             .push(line.l_linenumber);
+    //     }
+    //
+    //     // Check each order's line numbers
+    //     for (_, lines) in order_lines {
+    //         let mut sorted_lines = lines.clone();
+    //         sorted_lines.sort();
+    //
+    //         // Line numbers should start at 1 and be sequential
+    //         for (i, line_num) in sorted_lines.iter().enumerate() {
+    //             assert_eq!(*line_num, (i + 1) as i32);
+    //         }
+    //     }
+    //
+    //     // Verify return flags and line status distributions
+    //     let return_flags: std::collections::HashSet<_> =
+    //         line_items.iter().map(|l| &l.l_returnflag).collect();
+    //
+    //     assert!(return_flags.len() > 1);
+    //
+    //     let line_statuses: std::collections::HashSet<_> =
+    //         line_items.iter().map(|l| &l.l_linestatus).collect();
+    //
+    //     assert!(!line_statuses.is_empty());
+    // }
+    //
+    // #[test]
+    // fn check_iter_static_lifetimes() {
+    //     // Lifetimes of iterators should be independent of the generator that
+    //     // created it. This test case won't compile if that's not the case.
+    //
+    //     let _iter: NationGeneratorIterator<'static> = NationGenerator::default().iter();
+    //     let _iter: RegionGeneratorIterator<'static> = RegionGenerator::default().iter();
+    //     let _iter: VehicleGeneratorIterator<'static> = VehicleGenerator::new(0.1, 1, 1).iter();
+    //     let _iter: DriverGeneratorIterator<'static> = DriverGenerator::new(0.1, 1, 1).iter();
+    //     let _iter: CustomerGeneratorIterator<'static> = CustomerGenerator::new(0.1, 1, 1).iter();
+    //     let _iter: OrderGeneratorIterator<'static> = OrderGenerator::new(0.1, 1, 1).iter();
+    //     let _iter: LineItemGeneratorIterator<'static> = LineItemGenerator::new(0.1, 1, 1).iter();
+    // }
 }

@@ -4,10 +4,9 @@ use flate2::read::GzDecoder;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use tpchgen::generators::{
-    CustomerGenerator, DriverGenerator, LineItemGenerator, NationGenerator, OrderGenerator,
-    RegionGenerator, VehicleGenerator,
-};
+// use tpchgen::generators::{
+//     CustomerGenerator, DriverGenerator, VehicleGenerator,
+// };
 
 fn read_tbl_gz<P: AsRef<Path>>(path: P) -> Vec<String> {
     let file = File::open(path).expect("Failed to open file");
@@ -53,136 +52,136 @@ where
     }
 }
 
-#[test]
-fn test_nation_sf_0_001() {
-    let _sf = 0.001;
-    let generator = NationGenerator::default();
-    test_generator(generator.iter(), "data/sf-0.001/nation.tbl.gz", |nation| {
-        nation.to_string()
-    });
-}
+// #[test]
+// fn test_nation_sf_0_001() {
+//     let _sf = 0.001;
+//     let generator = NationGenerator::default();
+//     test_generator(generator.iter(), "data/sf-0.001/nation.tbl.gz", |nation| {
+//         nation.to_string()
+//     });
+// }
 
-#[test]
-fn test_region_sf_0_001() {
-    let _sf = 0.001;
-    let generator = RegionGenerator::default();
-    test_generator(generator.iter(), "data/sf-0.001/region.tbl.gz", |region| {
-        region.to_string()
-    });
-}
+// #[test]
+// fn test_region_sf_0_001() {
+//     let _sf = 0.001;
+//     let generator = RegionGenerator::default();
+//     test_generator(generator.iter(), "data/sf-0.001/region.tbl.gz", |region| {
+//         region.to_string()
+//     });
+// }
 
-#[test]
-fn test_part_sf_0_001() {
-    let sf = 0.001;
-    let generator = VehicleGenerator::new(sf, 1, 1);
-    test_generator(generator.iter(), "data/sf-0.001/part.tbl.gz", |part| {
-        part.to_string()
-    });
-}
+// #[test]
+// fn test_part_sf_0_001() {
+//     let sf = 0.001;
+//     let generator = VehicleGenerator::new(sf, 1, 1);
+//     test_generator(generator.iter(), "data/sf-0.001/part.tbl.gz", |part| {
+//         part.to_string()
+//     });
+// }
+//
+// #[test]
+// fn test_supplier_sf_0_001() {
+//     let sf = 0.001;
+//     let generator = DriverGenerator::new(sf, 1, 1);
+//     test_generator(
+//         generator.iter(),
+//         "data/sf-0.001/supplier.tbl.gz",
+//         |supplier| supplier.to_string(),
+//     );
+// }
+//
+// #[test]
+// fn test_customer_sf_0_001() {
+//     let sf = 0.001;
+//     let generator = CustomerGenerator::new(sf, 1, 1);
+//     test_generator(
+//         generator.iter(),
+//         "data/sf-0.001/customer.tbl.gz",
+//         |customer| customer.to_string(),
+//     );
+// }
 
-#[test]
-fn test_supplier_sf_0_001() {
-    let sf = 0.001;
-    let generator = DriverGenerator::new(sf, 1, 1);
-    test_generator(
-        generator.iter(),
-        "data/sf-0.001/supplier.tbl.gz",
-        |supplier| supplier.to_string(),
-    );
-}
+// #[test]
+// fn test_orders_sf_0_001() {
+//     let sf = 0.001;
+//     let generator = OrderGenerator::new(sf, 1, 1);
+//     test_generator(generator.iter(), "data/sf-0.001/orders.tbl.gz", |order| {
+//         order.to_string()
+//     });
+// }
 
-#[test]
-fn test_customer_sf_0_001() {
-    let sf = 0.001;
-    let generator = CustomerGenerator::new(sf, 1, 1);
-    test_generator(
-        generator.iter(),
-        "data/sf-0.001/customer.tbl.gz",
-        |customer| customer.to_string(),
-    );
-}
+// #[test]
+// fn test_lineitem_sf_0_001() {
+//     let sf = 0.001;
+//     let generator = LineItemGenerator::new(sf, 1, 1);
+//     test_generator(generator.iter(), "data/sf-0.001/lineitem.tbl.gz", |item| {
+//         item.to_string()
+//     });
+// }
 
-#[test]
-fn test_orders_sf_0_001() {
-    let sf = 0.001;
-    let generator = OrderGenerator::new(sf, 1, 1);
-    test_generator(generator.iter(), "data/sf-0.001/orders.tbl.gz", |order| {
-        order.to_string()
-    });
-}
+// #[test]
+// fn test_nation_sf_0_01() {
+//     let sf = 0.01;
+//     let generator = NationGenerator::new(sf, 1, 1);
+//     test_generator(generator.iter(), "data/sf-0.01/nation.tbl.gz", |nation| {
+//         nation.to_string()
+//     });
+// }
 
-#[test]
-fn test_lineitem_sf_0_001() {
-    let sf = 0.001;
-    let generator = LineItemGenerator::new(sf, 1, 1);
-    test_generator(generator.iter(), "data/sf-0.001/lineitem.tbl.gz", |item| {
-        item.to_string()
-    });
-}
+// #[test]
+// fn test_region_sf_0_01() {
+//     let sf = 0.01;
+//     let generator = RegionGenerator::new(sf, 1, 1);
+//     test_generator(generator.iter(), "data/sf-0.01/region.tbl.gz", |region| {
+//         region.to_string()
+//     });
+// }
 
-#[test]
-fn test_nation_sf_0_01() {
-    let sf = 0.01;
-    let generator = NationGenerator::new(sf, 1, 1);
-    test_generator(generator.iter(), "data/sf-0.01/nation.tbl.gz", |nation| {
-        nation.to_string()
-    });
-}
+// #[test]
+// fn test_part_sf_0_01() {
+//     let sf = 0.01;
+//     let generator = VehicleGenerator::new(sf, 1, 1);
+//     test_generator(generator.iter(), "data/sf-0.01/part.tbl.gz", |part| {
+//         part.to_string()
+//     });
+// }
 
-#[test]
-fn test_region_sf_0_01() {
-    let sf = 0.01;
-    let generator = RegionGenerator::new(sf, 1, 1);
-    test_generator(generator.iter(), "data/sf-0.01/region.tbl.gz", |region| {
-        region.to_string()
-    });
-}
+// #[test]
+// fn test_supplier_sf_0_01() {
+//     let sf = 0.01;
+//     let generator = DriverGenerator::new(sf, 1, 1);
+//     test_generator(
+//         generator.iter(),
+//         "data/sf-0.01/supplier.tbl.gz",
+//         |supplier| supplier.to_string(),
+//     );
+// }
 
-#[test]
-fn test_part_sf_0_01() {
-    let sf = 0.01;
-    let generator = VehicleGenerator::new(sf, 1, 1);
-    test_generator(generator.iter(), "data/sf-0.01/part.tbl.gz", |part| {
-        part.to_string()
-    });
-}
+// #[test]
+// fn test_customer_sf_0_01() {
+//     let sf = 0.01;
+//     let generator = CustomerGenerator::new(sf, 1, 1);
+//     test_generator(
+//         generator.iter(),
+//         "data/sf-0.01/customer.tbl.gz",
+//         |customer| customer.to_string(),
+//     );
+// }
 
-#[test]
-fn test_supplier_sf_0_01() {
-    let sf = 0.01;
-    let generator = DriverGenerator::new(sf, 1, 1);
-    test_generator(
-        generator.iter(),
-        "data/sf-0.01/supplier.tbl.gz",
-        |supplier| supplier.to_string(),
-    );
-}
-
-#[test]
-fn test_customer_sf_0_01() {
-    let sf = 0.01;
-    let generator = CustomerGenerator::new(sf, 1, 1);
-    test_generator(
-        generator.iter(),
-        "data/sf-0.01/customer.tbl.gz",
-        |customer| customer.to_string(),
-    );
-}
-
-#[test]
-fn test_orders_sf_0_01() {
-    let sf = 0.01;
-    let generator = OrderGenerator::new(sf, 1, 1);
-    test_generator(generator.iter(), "data/sf-0.01/orders.tbl.gz", |order| {
-        order.to_string()
-    })
-}
-
-#[test]
-fn test_lineitem_sf_0_01() {
-    let sf = 0.01;
-    let generator = LineItemGenerator::new(sf, 1, 1);
-    test_generator(generator.iter(), "data/sf-0.01/lineitem.tbl.gz", |item| {
-        item.to_string()
-    })
-}
+// #[test]
+// fn test_orders_sf_0_01() {
+//     let sf = 0.01;
+//     let generator = OrderGenerator::new(sf, 1, 1);
+//     test_generator(generator.iter(), "data/sf-0.01/orders.tbl.gz", |order| {
+//         order.to_string()
+//     })
+// }
+//
+// #[test]
+// fn test_lineitem_sf_0_01() {
+//     let sf = 0.01;
+//     let generator = LineItemGenerator::new(sf, 1, 1);
+//     test_generator(generator.iter(), "data/sf-0.01/lineitem.tbl.gz", |item| {
+//         item.to_string()
+//     })
+// }

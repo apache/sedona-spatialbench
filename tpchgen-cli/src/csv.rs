@@ -1,13 +1,9 @@
 //! Implementations of [`Source`] for generating data in TBL format
 use super::generate::Source;
 use std::io::Write;
-use tpchgen::csv::{
-    BuildingCsv, CustomerCsv, DriverCsv, LineItemCsv, NationCsv, OrderCsv, RegionCsv, TripCsv,
-    VehicleCsv,
-};
+use tpchgen::csv::{BuildingCsv, CustomerCsv, DriverCsv, TripCsv, VehicleCsv};
 use tpchgen::generators::{
-    BuildingGenerator, CustomerGenerator, DriverGenerator, LineItemGenerator, NationGenerator,
-    OrderGenerator, RegionGenerator, TripGenerator, VehicleGenerator,
+    BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
 };
 
 /// Define a Source that writes the table in CSV format
@@ -43,12 +39,12 @@ macro_rules! define_csv_source {
 }
 
 // Define .csv sources for all tables
-define_csv_source!(NationCsvSource, NationGenerator<'static>, NationCsv);
-define_csv_source!(RegionCsvSource, RegionGenerator<'static>, RegionCsv);
+// define_csv_source!(NationCsvSource, NationGenerator<'static>, NationCsv);
+// define_csv_source!(RegionCsvSource, RegionGenerator<'static>, RegionCsv);
 define_csv_source!(VehicleCsvSource, VehicleGenerator<'static>, VehicleCsv);
 define_csv_source!(DriverCsvSource, DriverGenerator<'static>, DriverCsv);
 define_csv_source!(CustomerCsvSource, CustomerGenerator<'static>, CustomerCsv);
-define_csv_source!(OrderCsvSource, OrderGenerator<'static>, OrderCsv);
-define_csv_source!(LineItemCsvSource, LineItemGenerator<'static>, LineItemCsv);
+// define_csv_source!(OrderCsvSource, OrderGenerator<'static>, OrderCsv);
+// define_csv_source!(LineItemCsvSource, LineItemGenerator<'static>, LineItemCsv);
 define_csv_source!(TripCsvSource, TripGenerator, TripCsv);
 define_csv_source!(BuildingCsvSource, BuildingGenerator<'static>, BuildingCsv);

@@ -3,8 +3,7 @@
 use super::generate::Source;
 use std::io::Write;
 use tpchgen::generators::{
-    BuildingGenerator, CustomerGenerator, DriverGenerator, LineItemGenerator, NationGenerator,
-    OrderGenerator, RegionGenerator, TripGenerator, VehicleGenerator,
+    BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
 };
 
 /// Define a Source that writes the table in TBL format
@@ -38,12 +37,12 @@ macro_rules! define_tbl_source {
 }
 
 // Define .tbl sources for all tables
-define_tbl_source!(NationTblSource, NationGenerator<'static>);
-define_tbl_source!(RegionTblSource, RegionGenerator<'static>);
+// define_tbl_source!(NationTblSource, NationGenerator<'static>);
+// define_tbl_source!(RegionTblSource, RegionGenerator<'static>);
 define_tbl_source!(VehicleTblSource, VehicleGenerator<'static>);
 define_tbl_source!(DriverTblSource, DriverGenerator<'static>);
 define_tbl_source!(CustomerTblSource, CustomerGenerator<'static>);
-define_tbl_source!(OrderTblSource, OrderGenerator<'static>);
-define_tbl_source!(LineItemTblSource, LineItemGenerator<'static>);
+// define_tbl_source!(OrderTblSource, OrderGenerator<'static>);
+// define_tbl_source!(LineItemTblSource, LineItemGenerator<'static>);
 define_tbl_source!(TripTblSource, TripGenerator);
 define_tbl_source!(BuildingTblSource, BuildingGenerator<'static>);
