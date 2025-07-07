@@ -1,145 +1,156 @@
-# tpchgen-rs
+# SpatialBench
 
-[![Apache licensed][license-badge]][license-url]
-[![Build Status][actions-badge]][actions-url]
+SpatialBench is a high-performance geospatial benchmark for generating synthetic spatial data at scale. Inspired by the Star Schema Benchmark (SSB) and real-world mobility data like the NYC TLC dataset, SpatialBench is designed to evaluate spatial query performance in modern data platforms.
 
-[license-badge]: https://img.shields.io/badge/license-Apache%20v2-blue.svg
-[license-url]: https://github.com/clflushopt/tpchgen-rs/blob/main/LICENSE
-[actions-badge]: https://github.com/clflushopt/tpchgen-rs/actions/workflows/rust.yml/badge.svg
-[actions-url]: https://github.com/clflushopt/tpchgen-rs/actions?query=branch%3Amain
+Built in Rust and powered by Apache Arrow, SpatialBench brings fast, scalable, and streaming-friendly data generation for spatial workloads—minimal dependencies, blazing speed.
 
-Blazing fast [TPCH] benchmark data generator, in pure Rust with zero dependencies.
+SpatialBench provides a reproducible and scalable way to evaluate the performance of spatial data engines using realistic synthetic workloads.
 
-[TPCH]: https://www.tpc.org/tpch/
+Goals:
 
-## Features
+- Establish a fair and extensible benchmark suite for spatial data processing.
+- Help users compare engines and frameworks across different data scales.
+- Support open standards and foster collaboration in the spatial computing community.
 
-1. Blazing Speed 🚀
-2. Obsessively Tested 📋
-3. Fully parallel, streaming, constant memory usage 🧠
+## Data Model
 
-## Try it now!
+SpatialBench defines a spatial star schema with the following tables:
 
-### Install Using Python
-Install this tool with Python:
-```shell
-pip install tpchgen-cli
-```
+| Table      | Type         | Abbr. | Description                                 | Spatial Attributes        | Cardinality per SF       |
+|------------|--------------|-------|---------------------------------------------|----------------------------|--------------------------|
+| Trip       | Fact Table   | `t_`  | Individual trip records                     | pickup & dropoff points    | 6M × SF                  |
+| Customer   | Dimension    | `c_`  | Trip customer info                          | None                       | 30K × SF                 |
+| Driver     | Dimension    | `s_`  | Trip driver info                            | None                       | 500 × SF                 |
+| Vehicle    | Dimension    | `v_`  | Trip vehicle info                           | None                       | 100 × SF                 |
+| Zone       | Dimension    | `z_`  | Administrative zones                        | Polygon                    | ~236K (fixed)            |
+| Building   | Dimension    | `b_`  | Building footprints                         | Polygon                    | 20K × (1 + log₂(SF))     |
 
-```shell
-# create Scale Factor 10 (3.6GB, 8 files, 60M rows in lineitem) in 5 seconds on a modern laptop
-tpchgen-cli -s 10 --format=parquet
-```
 
-### Install Using Rust
-[Install Rust](https://www.rust-lang.org/tools/install) and this tool:
-
-```shell
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-cargo install tpchgen-cli
-```
-
-```shell
-# create Scale Factor 10 (3.6GB, 8 files, 60M rows in lineitem) in 5 seconds on a modern laptop
-tpchgen-cli -s 10 --format=parquet
-```
-
-Or watch this [awesome demo](https://www.youtube.com/watch?v=UYIC57hlL14) recorded by [@alamb](https://github.com/alamb)
-and the companion blog post in the [Datafusion blog](https://datafusion.apache.org/blog/2025/04/10/fastest-tpch-generator/).
-
-### Examples
-
-```shell
-
-# Create a scale factor 10 dataset in the native table format.
-tpchgen-cli -s 10 --output-dir sf10
-
-# Create a scale factor 1 dataset in Parquet format.
-tpchgen-cli -s 1 --output-dir sf1-parquet --format=parquet
-
-# Create a scale factor 1 (default) partitioned dataset for the region, nation, orders
-# and customer tables.
-tpchgen-cli --tables region,nation,orders,customer --output-dir sf1-partitioned --parts 10 --part 2
-
-# Create a scale factor 1 partitioned into separate folders.
-#
-# Each folder will have a single partition of rows, the partition size will depend on the scale
-# factor. For tables that have less rows than the minimum partition size like "nation" or "region"
-# the generator will produce the same file in each part.
-#
-# $ md5sum part-*/{nation,region}.tbl
-# 2f588e0b7fa72939b498c2abecd9fbbe  part-1/nation.tbl
-# 2f588e0b7fa72939b498c2abecd9fbbe  part-2/nation.tbl
-# c235841b00d29ad4f817771fcc851207  part-1/region.tbl
-# c235841b00d29ad4f817771fcc851207  part-2/region.tbl
-for PART in `seq 1 2`; do
-  mkdir part-$PART
-  tpchgen-cli --tables region,nation,orders,customer --output-dir part-$PART --parts 10 --part $PART
-done
-```
+![image.png](images/data_model.png)
 
 ## Performance
 
-| Scale Factor | `tpchgen-cli` | DuckDB     | DuckDB (proprietary) |
-| ------------ | ------------- | ---------- | -------------------- |
-| 1            | `0:02.24`     | `0:12.29`  | `0:10.68`            |
-| 10           | `0:09.97`     | `1:46.80`  | `1:41.14`            |
-| 100          | `1:14.22`     | `17:48.27` | `16:40.88`           |
-| 1000         | `10:26.26`    | N/A (OOM)  | N/A (OOM)            |
+SpatialBench inherits its speed and efficiency from the tpchgen-rs project, which is one of the fastest open-source data generators available.
 
-- DuckDB (proprietary) is the time required to create TPCH data using the
-  proprietary DuckDB format
-- Creating Scale Factor 1000 data in DuckDB [requires 647 GB of memory],
-  which is why it is not included in the table above.
+Key performance benefits:
+- Zero-copy, streaming architecture: Generates data in constant memory, suitable for very large datasets.
+- Multithreaded from the ground up: Leverages all CPU cores for high-throughput generation.
+- Arrow-native output: Supports fast serialization to Parquet and other formats without bottlenecks.
+- Fast geometry generation: The Spider module generates millions of spatial geometries per second, with deterministic output and affine transforms.
 
-[required 647 GB of memory]: https://duckdb.org/docs/stable/extensions/tpch.html#resource-usage-of-the-data-generator
+## How is SpatialBench dbgen built?
 
-Times to create TPCH tables in Parquet format using `tpchgen-cli` and `duckdb` for various scale factors.
+SpatialBench is a Rust-based fork of the tpchgen-rs project. It preserves the original’s high-performance, multi-threaded, streaming architecture, while extending it with a spatial star schema and geometry generation logic.
 
-![Parquet Generation Performance](parquet-performance.png)
+You can build the SpatialBench data generator using Cargo:
 
-[`tpchgen-cli`](./tpchgen-cli/README.md) is more than 10x faster than the next
-fastest TPCH generator we know of. On a 2023 Mac M3 Max laptop, it easily
-generates data faster than can be written to SSD. See
-[BENCHMARKS.md](./benchmarks/BENCHMARKS.md) for more details on performance and
-benchmarking.
+```bash
+cargo build --release
+```
 
-## Testing
+Alternatively, install it directly using:
 
-This crate has extensive tests to ensure correctness and produces exactly the
-same, byte-for-byte output as the original [`dbgen`] implementation. We compare
-the output of this crate with [`dbgen`] as part of every checkin. See
-[TESTING.md](TESTING.md) for more details on testing methodology
+```bash
+cargo install --path .
+```
 
-## Crates
+### Notes
 
-- [`tpchgen`](tpchgen): the core data generator logic for TPC-H. It has no
-  dependencies and is easy to embed in other Rust project. 
+- The core generator logic lives in the tpchgen crate.
+- Geometry-aware logic is in tpchgen-arrow and integrated via Arrow-based schemas.
+- The spatial extension modules like the Spider geometry generator reside in [spider.rs](https://github.com/wherobots/sedona-spatialbench/blob/main/tpchgen/src/spider.rs).
+- The generator supports output formats like .tbl and Apache Parquet via the Arrow writer.
 
-- [`tpchgen-arrow`](tpchgen-arrow) generates TPC-H data in [Apache Arrow]
-  format. It depends on the arrow-rs library
+For contribution or debugging, refer to the [ARCHITECTURE.md](https://github.com/wherobots/sedona-spatialbench/blob/main/ARCHITECTURE.md) guide.
 
-- [`tpchgen-cli`](tpchgen-cli) is a [`dbgen`] compatible CLI tool that generates
-  benchmark dataset using multiple processes.
+## Usage
 
-[Apache Arrow]: https://arrow.apache.org/
-[`dbgen`]: https://github.com/electrum/tpch-dbgen
+#### Generate All Tables (Scale Factor 1)
 
-## Contributing
+```bash
+tpchgen-cli -s 1 --format=parquet
+```
 
-Pull requests are welcome. For major changes, please open an issue first for
-discussion. See our [contributors guide](CONTRIBUTING.md) for more details.
+#### Generate Individual Tables
 
-## Architecture
+```bash
+tpchgen-cli -s 1 --format=parquet --tables trip,building --output-dir sf1-parquet
+```
 
-Please see [architecture guide](ARCHITECTURE.md) for details on how the code
-is structured.
+#### Partitioned Output Example
 
-## License
+```bash
+for PART in $(seq 1 4); do
+  mkdir part-$PART
+  tpchgen-cli -s 10 --tables trip,building --output-dir part-$PART --parts 4 --part $PART
+done
+```
 
-The project is licensed under the [APACHE 2.0](LICENSE) license.
+## SedonaBench Spider Data Generator
 
-## References
+SpatialBench includes a synthetic spatial data generator ([spider.rs](https://github.com/wherobots/sedona-spatialbench/blob/main/tpchgen/src/spider.rs)) for creating:
+- Points
+- Rectangles (boxes)
+- Polygons
 
-- The TPC-H Specification, see the specification [page](https://www.tpc.org/tpc_documents_current_versions/current_specifications5.asp).
-- The Original `dbgen` Implementation you must submit an official request to access the software `dbgen` at their official [website](https://www.tpc.org/tpch/)
+This generator is inspired by techniques from the paper [SpiderWeb: A Spatial Data Generator on the Web](https://dl.acm.org/doi/10.1145/3397536.3422351) by Katiyar et al., SIGSPATIAL 2020.
+
+### Supported Distribution Types
+
+| Type         | Description                                                   |
+|--------------|---------------------------------------------------------------|
+| `UNIFORM`    | Uniformly distributed points in `[0,1]²`                      |
+| `NORMAL`     | 2D Gaussian distribution with configurable `mu` and `sigma`   |
+| `DIAGONAL`   | Points clustered along a diagonal                             |
+| `BIT`        | Points in a grid with `2^digits` resolution                   |
+| `SIERPINSKI` | Fractal pattern using Sierpinski triangle                     |
+
+![image.png](images/spatial_distributions.png)
+
+## Configuring Spider Geometry Generation
+
+SpatialBench uses a flexible and extensible SpiderConfig struct (defined in Rust) to control how spatial geometries are generated for synthetic datasets. These configurations are defined in code, often using presets in spider_preset.rs.
+
+#### SpiderConfig Fields
+
+| Field | Type               | Description                                                                    |
+|-------|--------------------|--------------------------------------------------------------------------------|
+| `dist_type` | `DistributionType` | Type of distribution to use (Uniform, Normal, Diagonal, Bit, Sierpinski, etc.) |
+| `geom_type` | `GeomType`         | Geometry to generate: Point, Box, or Polygon                                   |
+| `dim` | `i32`              | Number of dimensions (usually 2)                                               |
+| `seed` | `u32`              | Random seed for reproducibility                                                |
+| `affine` | `Option<[f64; 6]>` | Optional 2D affine transform (scale, rotate, shift)                            |
+| `width`, `height` | `f64`              | For `box` geometries, bounding box size                                        |
+| `maxseg` | `i32`              | Maximum number of segments for polygon shapes                                  |
+| `polysize` | `f64`              | Radius or size of the polygon                                                  |
+| `params` | `DistributionParams` | Additional parameters based on distribution type                               |
+
+#### Supported DistributionParams Variants
+
+| Varient        | Field                  | Description                                                                |
+|----------------|------------------------|----------------------------------------------------------------------------|
+| `None`         | `--`                   | For distributions like Uniform or Sierpinski that don’t require parameters |
+| `Normal`       | `mu`, `sigma`          | Controls center and spread for 2D Gaussian                                 |
+| `Diagonal`     | `percentage`, `buffer` | Mix of diagonal-aligned points and noisy buffer                            |
+| `Bit`          | `probability`, `digits` | Recursive binary split with resolution control                             |
+
+#### Example: USA Mainland Mapping
+
+The affine transform maps generated coordinates from the local unit square [0,1]² into real-world extents. For example, the following affine matrix maps coordinates to the continental USA bounding box:
+
+```rust
+let affine = Some([
+    58.368269, 0.0, -125.244606,  // scale X to ~58°, offset to ~-125°
+    0.0, 25.175375, 24.006328     // scale Y to ~25°, offset to ~24°
+]);
+```
+
+This maps:
+- x = 0 → -125.24, x = 1 → -66.87
+- y = 0 → 24.00, y = 1 → 49.18
+
+
+## Acknowledgements
+- [TPC-H](https://www.tpc.org/tpch/)
+- [SpiderWeb: A Spatial Data Generator on the Web](https://dl.acm.org/doi/10.1145/3397536.3422351)
+- [tpchgen-rs for inspiration and baseline performance](https://datafusion.apache.org/blog/2025/04/10/fastest-tpch-generator/)
