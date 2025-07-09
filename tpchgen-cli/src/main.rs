@@ -63,10 +63,12 @@ use std::time::Instant;
 use tpchgen::distribution::Distributions;
 use tpchgen::generators::{
     BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
+    ZoneGenerator,
 };
 use tpchgen::text::TextPool;
 use tpchgen_arrow::{
     BuildingArrow, CustomerArrow, DriverArrow, RecordBatchIterator, TripArrow, VehicleArrow,
+    ZoneArrow,
 };
 
 #[derive(Parser)]
@@ -138,6 +140,7 @@ enum Table {
     // Lineitem,
     Trip,
     Building,
+    Zone,
 }
 
 impl Display for Table {
@@ -180,6 +183,7 @@ impl TypedValueParser for TableValueParser {
                 // clap::builder::PossibleValue::new("lineitem").help("LineItem table (alias: L)"),
                 clap::builder::PossibleValue::new("trip").help("Trip table (alias: T)"),
                 clap::builder::PossibleValue::new("building").help("Building table (alias: b)"),
+                clap::builder::PossibleValue::new("zone").help("Zone table (alias: z)"),
             ]
             .into_iter(),
         ))
@@ -206,6 +210,7 @@ impl FromStr for Table {
             // "L" | "lineitem" => Ok(Table::Lineitem),
             "T" | "trip" => Ok(Table::Trip),
             "b" | "building" => Ok(Table::Building),
+            "z" | "zone" => Ok(Table::Zone),
             _ => Err("Invalid table name {s}"),
         }
     }
@@ -223,6 +228,7 @@ impl Table {
             // Table::Lineitem => "lineitem",
             Table::Trip => "trip",
             Table::Building => "building",
+            Table::Zone => "zone",
         }
     }
 }
@@ -327,6 +333,7 @@ impl Cli {
                 // Table::Lineitem => self.generate_lineitem().await?,
                 Table::Trip => self.generate_trip().await?,
                 Table::Building => self.generate_building().await?,
+                Table::Zone => self.generate_zone().await?,
             }
         }
 
@@ -406,6 +413,14 @@ impl Cli {
         BuildingCsvSource,
         BuildingArrow
     );
+    define_generate!(
+        generate_zone,
+        Table::Zone,
+        ZoneGenerator,
+        ZoneTblSource,
+        ZoneCsvSource,
+        ZoneArrow
+    );
 
     /// return the output filename for the given table
     fn output_filename(&self, table: Table) -> String {
@@ -474,6 +489,10 @@ impl Cli {
                 115,
                 BuildingGenerator::calculate_row_count(self.scale_factor, 1, 1),
             ),
+            Table::Zone => {
+                let generator = ZoneGenerator::new(self.scale_factor, 1, 1);
+                (115, generator.calculate_row_count())
+            }
         };
         // target chunks of about 16MB (use 15MB to ensure we don't exceed the target size)
         let target_chunk_size_bytes = 15 * 1024 * 1024;

@@ -5,13 +5,14 @@ use arrow::array::RecordBatch;
 use arrow::datatypes::SchemaRef;
 use std::io::Write;
 use std::sync::Arc;
-use tpchgen::csv::{BuildingCsv, CustomerCsv, DriverCsv, TripCsv, VehicleCsv};
+use tpchgen::csv::{BuildingCsv, CustomerCsv, DriverCsv, TripCsv, VehicleCsv, ZoneCsv};
 use tpchgen::generators::{
     Building, BuildingGenerator, Customer, CustomerGenerator, Driver, DriverGenerator, Trip,
-    TripGenerator, Vehicle, VehicleGenerator,
+    TripGenerator, Vehicle, VehicleGenerator, Zone, ZoneGenerator,
 };
 use tpchgen_arrow::{
     BuildingArrow, CustomerArrow, DriverArrow, RecordBatchIterator, TripArrow, VehicleArrow,
+    ZoneArrow,
 };
 
 /// Macro that defines tests for tbl for a given type
@@ -50,6 +51,8 @@ test_row_type!(trip_tbl, TripGenerator, TripArrow, Test::tbl());
 test_row_type!(trip_csv, TripGenerator, TripArrow, Test::csv());
 test_row_type!(building_tbl, BuildingGenerator, BuildingArrow, Test::tbl());
 test_row_type!(building_csv, BuildingGenerator, BuildingArrow, Test::csv());
+test_row_type!(zone_tbl, ZoneGenerator, ZoneArrow, Test::tbl());
+test_row_type!(zone_csv, ZoneGenerator, ZoneArrow, Test::csv());
 
 /// Common trait for writing rows in TBL and CSV format
 trait RowType {
@@ -87,6 +90,7 @@ impl_row_type!(Vehicle<'_>, VehicleCsv);
 impl_row_type!(Driver, DriverCsv);
 impl_row_type!(Trip, TripCsv);
 impl_row_type!(Building<'_>, BuildingCsv);
+impl_row_type!(Zone, ZoneCsv);
 
 #[derive(Debug, Clone, Copy)]
 #[allow(clippy::upper_case_acronyms)]

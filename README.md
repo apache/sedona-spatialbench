@@ -25,6 +25,10 @@ SpatialBench defines a spatial star schema with the following tables:
 | Zone       | Dimension    | `z_`  | Administrative zones                        | Polygon                    | ~236K (fixed)            |
 | Building   | Dimension    | `b_`  | Building footprints                         | Polygon                    | 20K × (1 + log₂(SF))     |
 
+!!!note
+
+    Unlike other tables in the benchmark, the Zone table does not scale with the scale factor. It is a fixed-size reference table representing administrative boundaries and is derived from the Overture Maps Divisions theme, release version 2025-06-25.0.
+    This ensures consistency and realism for spatial join workloads such as point-in-polygon or zone-based aggregations.
 
 ![image.png](images/data_model.png)
 
@@ -33,10 +37,10 @@ SpatialBench defines a spatial star schema with the following tables:
 SpatialBench inherits its speed and efficiency from the tpchgen-rs project, which is one of the fastest open-source data generators available.
 
 Key performance benefits:
-- Zero-copy, streaming architecture: Generates data in constant memory, suitable for very large datasets.
-- Multithreaded from the ground up: Leverages all CPU cores for high-throughput generation.
-- Arrow-native output: Supports fast serialization to Parquet and other formats without bottlenecks.
-- Fast geometry generation: The Spider module generates millions of spatial geometries per second, with deterministic output and affine transforms.
+- **Zero-copy, streaming architecture**: Generates data in constant memory, suitable for very large datasets.
+- **Multithreaded from the ground up**: Leverages all CPU cores for high-throughput generation.
+- **Arrow-native output**: Supports fast serialization to Parquet and other formats without bottlenecks.
+- **Fast geometry generation**: The Spider module generates millions of spatial geometries per second, with deterministic output and affine transforms.
 
 ## How is SpatialBench dbgen built?
 

@@ -4,6 +4,7 @@ use super::generate::Source;
 use std::io::Write;
 use tpchgen::generators::{
     BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
+    ZoneGenerator,
 };
 
 /// Define a Source that writes the table in TBL format
@@ -46,3 +47,4 @@ define_tbl_source!(CustomerTblSource, CustomerGenerator<'static>);
 // define_tbl_source!(LineItemTblSource, LineItemGenerator<'static>);
 define_tbl_source!(TripTblSource, TripGenerator);
 define_tbl_source!(BuildingTblSource, BuildingGenerator<'static>);
+define_tbl_source!(ZoneTblSource, ZoneGenerator);

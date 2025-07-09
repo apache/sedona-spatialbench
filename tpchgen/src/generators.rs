@@ -12,9 +12,10 @@ use crate::random::{RandomBoundedInt, RandomString, RandomStringSequence, Random
 use crate::spider::{spider_seed_for_index, SpiderGenerator};
 use crate::spider_presets::SpiderPresets;
 use crate::text::TextPool;
-use core::fmt;
+use duckdb::Connection;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+use std::fmt;
 use std::fmt::Display;
 
 // /// Generator for Nation table data
@@ -2360,7 +2361,7 @@ pub struct Building<'a> {
     /// Name of the building
     pub b_name: StringSequenceInstance<'a>,
     /// WKT representation of the building's polygon
-    pub b_polygonwkt: String,
+    pub b_boundary: String,
 }
 
 impl Display for Building<'_> {
@@ -2368,7 +2369,7 @@ impl Display for Building<'_> {
         write!(
             f,
             "{}|{}|{}|",
-            self.b_buildingkey, self.b_name, self.b_polygonwkt,
+            self.b_buildingkey, self.b_name, self.b_boundary,
         )
     }
 }
@@ -2513,7 +2514,7 @@ impl<'a> BuildingGeneratorIterator<'a> {
         Building {
             b_buildingkey: building_key,
             b_name: name,
-            b_polygonwkt: wkt,
+            b_boundary: wkt,
         }
     }
 }
@@ -2533,6 +2534,223 @@ impl<'a> Iterator for BuildingGeneratorIterator<'a> {
         self.index += 1;
 
         Some(building)
+    }
+}
+
+/// Represents a Zone in the dataset
+#[derive(Debug, Clone, PartialEq)]
+pub struct Zone {
+    /// Primary key
+    pub z_zonekey: i64,
+    /// GERS ID of the zone
+    pub z_gersid: String,
+    /// Name of the zone
+    pub z_name: String,
+    /// Subtype of the zone
+    pub z_subtype: String,
+    /// Boundary geometry in WKT format
+    pub z_boundary: String,
+}
+
+impl Display for Zone {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}|{}|{}|{}|{}|",
+            self.z_zonekey, self.z_gersid, self.z_name, self.z_subtype, self.z_boundary
+        )
+    }
+}
+
+/// Generator for [`Zone`]s that loads from a parquet file in S3
+#[derive(Debug, Clone)]
+pub struct ZoneGenerator {
+    zones: Vec<Zone>,
+    part: i32,
+    part_count: i32,
+}
+
+impl ZoneGenerator {
+    /// S3 URL for the zones parquet file
+    const OVERTURE_RELEASE_DATE: &'static str = "2025-06-25.0";
+    const OVERTURE_S3_BUCKET: &'static str = "overturemaps-us-west-2";
+    const OVERTURE_S3_PREFIX: &'static str = "release";
+
+    /// Gets the S3 URL for the zones parquet file
+    fn get_zones_parquet_url() -> String {
+        format!(
+            "s3://{}/{}/{}/theme=divisions/type=division_area/*",
+            Self::OVERTURE_S3_BUCKET,
+            Self::OVERTURE_S3_PREFIX,
+            Self::OVERTURE_RELEASE_DATE
+        )
+    }
+    // (OVERTURE_RELEASE_DATE,"s3://overturemaps-us-west-2/release/2025-06-25.0/theme=divisions/type=division_area/*");
+
+    /// Creates a new ZoneGenerator that loads data from S3
+    pub fn new(_scale_factor: f64, part: i32, part_count: i32) -> ZoneGenerator {
+        // Load zones from parquet file in S3
+        let zones = Self::load_zones_from_s3();
+
+        ZoneGenerator {
+            zones,
+            part,
+            part_count,
+        }
+    }
+
+    /// Loads zone data from S3 parquet file using DuckDB
+    fn load_zones_from_s3() -> Vec<Zone> {
+        // Create a connection to DuckDB
+        let conn = Connection::open_in_memory().expect("Failed to open DuckDB connection");
+
+        // Install and load required extensions
+        conn.execute("INSTALL httpfs;", [])
+            .expect("Failed to install httpfs");
+        conn.execute("LOAD httpfs;", [])
+            .expect("Failed to load httpfs");
+        conn.execute("INSTALL spatial;", [])
+            .expect("Failed to install spatial");
+        conn.execute("LOAD spatial;", [])
+            .expect("Failed to load spatial");
+
+        // Set S3 region
+        conn.execute("SET s3_region='us-west-2';", [])
+            .expect("Failed to set S3 region");
+
+        // Query the parquet file directly - Cast the division_id to BIGINT
+        let mut stmt = conn
+            .prepare(
+                "SELECT
+            id as z_gersid,
+            COALESCE(names.primary, '') as z_name,
+            subtype as z_subtype,
+            ST_AsText(geometry) as z_boundary
+         FROM read_parquet(?1, hive_partitioning=1)
+         WHERE subtype IN ('county', 'locality', 'neighbourhood')",
+            )
+            .expect("Failed to prepare query");
+
+        let zones_url = Self::get_zones_parquet_url();
+        let mut zones = Vec::new();
+        // Counter for primary key
+        let mut zone_id = 1;
+        let mut rows = stmt.query([&zones_url]).expect("Failed to execute query");
+
+        while let Ok(Some(row)) = rows.next() {
+            // Read the row values
+            let zone = Zone {
+                z_zonekey: zone_id,
+                z_gersid: row.get(0).expect("Failed to read gers_id"),
+                z_name: row.get(1).expect("Failed to read name"),
+                z_subtype: row.get(2).expect("Failed to read subtype"),
+                z_boundary: row.get(3).expect("Failed to read wkt"),
+            };
+
+            zones.push(zone);
+
+            zone_id += 1;
+        }
+
+        zones
+    }
+
+    /// Return the row count for the given part
+    pub fn calculate_row_count(&self) -> i64 {
+        let zone_count = self.zones.len() as i64;
+
+        if self.part_count <= 1 {
+            return zone_count;
+        }
+
+        // Partition the zones based on part number
+        let zones_per_part = (zone_count + self.part_count as i64 - 1) / self.part_count as i64;
+        let start = (self.part - 1) as i64 * zones_per_part;
+        let end = std::cmp::min(start + zones_per_part, zone_count);
+
+        end - start
+    }
+
+    /// Returns an iterator over the zone rows
+    pub fn iter(&self) -> ZoneGeneratorIterator {
+        let zone_count = self.zones.len() as i64;
+
+        // If there's only one part, return all zones
+        if self.part_count <= 1 {
+            return ZoneGeneratorIterator {
+                zones: self.zones.clone(),
+                end_index: zone_count,
+                current_index: 0,
+            };
+        }
+
+        // Otherwise, calculate the correct range for this part
+        let zones_per_part = (zone_count + self.part_count as i64 - 1) / self.part_count as i64;
+        let start = (self.part - 1) as i64 * zones_per_part;
+        let end = std::cmp::min(start + zones_per_part, zone_count);
+
+        ZoneGeneratorIterator {
+            zones: self.zones.clone(),
+            end_index: end,
+            current_index: start,
+        }
+    }
+}
+
+impl IntoIterator for ZoneGenerator {
+    type Item = Zone;
+    type IntoIter = ZoneGeneratorIterator;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let zone_count = self.zones.len() as i64;
+
+        // If there's only one part, return all zones
+        if self.part_count <= 1 {
+            return ZoneGeneratorIterator {
+                zones: self.zones,
+                end_index: zone_count,
+                current_index: 0,
+            };
+        }
+
+        // Otherwise, calculate the correct range for this part
+        let zones_per_part = (zone_count + self.part_count as i64 - 1) / self.part_count as i64;
+        let start = (self.part - 1) as i64 * zones_per_part;
+        let end = std::cmp::min(start + zones_per_part, zone_count);
+
+        ZoneGeneratorIterator {
+            zones: self.zones,
+            end_index: end,
+            current_index: start,
+        }
+    }
+}
+
+/// Iterator that provides access to Zone rows
+#[derive(Debug)]
+pub struct ZoneGeneratorIterator {
+    zones: Vec<Zone>,
+    end_index: i64,
+    current_index: i64,
+}
+
+impl Iterator for ZoneGeneratorIterator {
+    type Item = Zone;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current_index >= self.end_index {
+            return None;
+        }
+
+        let index = self.current_index as usize;
+        self.current_index += 1;
+
+        Some(self.zones[index].clone())
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = (self.end_index - self.current_index) as usize;
+        (remaining, Some(remaining))
     }
 }
 
@@ -2732,7 +2950,7 @@ mod tests {
         // Verify the string format matches the expected pattern
         let expected_pattern = format!(
             "{}|{}|{}|",
-            first.b_buildingkey, first.b_name, first.b_polygonwkt,
+            first.b_buildingkey, first.b_name, first.b_boundary,
         );
         assert_eq!(first.to_string(), expected_pattern);
 
@@ -2740,6 +2958,23 @@ mod tests {
         let first = &buildings[1];
         assert_eq!(first.b_buildingkey, 2);
         assert_eq!(first.to_string(), "2|blush|POLYGON ((-102.2154579691 40.5193652499, -102.2133112848 40.5193652499, -102.2133112848 40.5207006446, -102.2154579691 40.5207006446, -102.2154579691 40.5193652499))|")
+    }
+
+    #[test]
+    fn test_zone_generation() {
+        // Create a generator with a small scale factor
+        let generator = ZoneGenerator::new(0.1, 1, 1);
+        let zones: Vec<_> = generator.into_iter().collect();
+
+        assert_eq!(zones.len(), 596124);
+
+        // Check first Driver
+        let first = &zones[0];
+        assert_eq!(first.z_zonekey, 1);
+        assert_eq!(
+            first.to_string(),
+            "1|54bea793-2dc6-47b0-a4c1-5b96f17e66a3|Chatham Islands Territory|county|MULTIPOLYGON (((-176.2418754 -44.4327352, -176.2396744 -44.4349882, -176.2379244 -44.4330281, -176.2384204 -44.4312342, -176.2418754 -44.4327352)), ((-176.165218 -44.3563138, -176.1650533 -44.3413916, -176.1773808 -44.3358569, -176.18558 -44.3493409, -176.165218 -44.3563138)), ((-176.2463812 -44.3292996, -176.25687 -44.3447818, -176.2382722 -44.3507201, -176.2271372 -44.334208, -176.2025537 -44.3268945, -176.1995124 -44.3032479, -176.1894168 -44.2905304, -176.1546655 -44.2729494, -176.1543592 -44.2622464, -176.1668675 -44.2627428, -176.2124976 -44.2246559, -176.2245928 -44.2243162, -176.2372613 -44.2406153, -176.2769252 -44.2421415, -176.2395516 -44.263888, -176.2417039 -44.2735979, -176.2691625 -44.2863288, -176.2553936 -44.2884505, -176.2622322 -44.3009838, -176.2521515 -44.3107401, -176.2678921 -44.3248335, -176.2463812 -44.3292996)), ((-176.297042 -44.2627484, -176.2970605 -44.271482, -176.308416 -44.2767738, -176.30451 -44.2786311, -176.2876219 -44.271221, -176.2884382 -44.2644401, -176.297042 -44.2627484)), ((-176.311021 -44.2776918, -176.3197114 -44.2773151, -176.3172254 -44.2808867, -176.3114786 -44.2791776, -176.311021 -44.2776918)), ((-176.4329417 -43.9302024, -176.434683 -43.9323456, -176.4358817 -43.9328894, -176.4248878 -43.9322684, -176.4240868 -43.9263484, -176.4293038 -43.9296644, -176.4329417 -43.9302024)), ((-176.4366331 -43.932187, -176.4254624 -43.9253712, -176.4357067 -43.9274744, -176.4395046 -43.924925, -176.431559 -43.9215259, -176.4501784 -43.9244548, -176.4366331 -43.932187)), ((-176.4221969 -43.9245679, -176.4301156 -43.9208746, -176.4286529 -43.9224899, -176.4247589 -43.9249689, -176.4221969 -43.9245679)), ((-176.0122633 -44.2211147, -176.0169196 -44.2212224, -176.0172737 -44.2238519, -176.0110402 -44.2232676, -176.0122633 -44.2211147)), ((-175.8363587 -43.9616887, -175.8316702 -43.9639051, -175.8325821 -43.9613374, -175.8403122 -43.96143, -175.8363587 -43.9616887)), ((-176.5805133 -43.9628137, -176.6577306 -43.9996222, -176.6816746 -44.0078554, -176.6819025 -44.0216983, -176.6555137 -44.0420854, -176.6535827 -44.0641028, -176.6627075 -44.0706876, -176.6472202 -44.0772149, -176.6482685 -44.1062905, -176.6332454 -44.1112189, -176.6344814 -44.1241196, -176.6251597 -44.1198404, -176.5802089 -44.1320647, -176.5352034 -44.1132252, -176.5259311 -44.0986506, -176.4902811 -44.0906884, -176.4779756 -44.074619, -176.3932346 -44.0542143, -176.3285232 -44.0523985, -176.3258468 -44.0324594, -176.3743192 -44.0247789, -176.3959332 -44.0078081, -176.4136647 -43.9650693, -176.4172982 -43.9231882, -176.4199639 -43.9345978, -176.4232254 -43.9283748, -176.4244747 -43.9344138, -176.4298436 -43.938434, -176.4360367 -43.9679546, -176.4410401 -43.9602786, -176.4537499 -43.9649097, -176.4831926 -43.9525823, -176.4845702 -43.9415779, -176.4693064 -43.9288806, -176.4738001 -43.9161582, -176.5130964 -43.8876185, -176.5246124 -43.8538033, -176.5021658 -43.8407763, -176.5053096 -43.8348007, -176.4925828 -43.8303367, -176.4936369 -43.8234235, -176.4769766 -43.8277633, -176.466096 -43.8157384, -176.4428597 -43.8083236, -176.5410893 -43.7931335, -176.561453 -43.7740155, -176.5603003 -43.7607367, -176.5491478 -43.7519493, -176.5536843 -43.7425943, -176.520317 -43.7414966, -176.4999809 -43.7638354, -176.4773028 -43.7471847, -176.4358565 -43.7509692, -176.3957003 -43.7659852, -176.3646614 -43.7996962, -176.3662033 -43.8106932, -176.3978873 -43.8170845, -176.4080029 -43.8385784, -176.4213734 -43.8474284, -176.4294934 -43.8370633, -176.4171578 -43.8859652, -176.4290023 -43.9172323, -176.4177344 -43.9228849, -176.399475 -43.8665767, -176.3380995 -43.7916862, -176.2813702 -43.7632283, -176.2578486 -43.7629063, -176.2402717 -43.7746028, -176.2414922 -43.7581816, -176.2279886 -43.7433642, -176.1928104 -43.7365193, -176.2057026 -43.7282804, -176.2240727 -43.7348098, -176.2477363 -43.7270672, -176.2583391 -43.7366095, -176.2731865 -43.7285687, -176.277161 -43.7408033, -176.3016636 -43.7467317, -176.3483297 -43.7334095, -176.3681377 -43.7447463, -176.4407111 -43.7473247, -176.4890017 -43.7362258, -176.4978517 -43.7267419, -176.4922146 -43.7204555, -176.542068 -43.7210361, -176.6278764 -43.6926892, -176.6298091 -43.7024581, -176.6408829 -43.7035705, -176.6330032 -43.7120605, -176.6342174 -43.728201, -176.6618696 -43.7491356, -176.7473638 -43.7659103, -176.7916533 -43.7593083, -176.8035098 -43.7444319, -176.8177995 -43.7470612, -176.8249839 -43.7574442, -176.8123011 -43.7638809, -176.8113123 -43.7842118, -176.8734487 -43.7925704, -176.8785701 -43.7998532, -176.8718562 -43.8058852, -176.8795072 -43.8111477, -176.8738255 -43.8161383, -176.8936805 -43.8242597, -176.8714382 -43.831084, -176.8830472 -43.8405841, -176.8603826 -43.8382775, -176.8476351 -43.8451111, -176.8444812 -43.8366599, -176.8164895 -43.8454823, -176.7867661 -43.8383359, -176.7937225 -43.82125, -176.7556898 -43.8335995, -176.7428873 -43.8266872, -176.7158227 -43.8303507, -176.7012793 -43.822413, -176.7076715 -43.8085929, -176.6898211 -43.817584, -176.6883066 -43.7997224, -176.6698068 -43.808094, -176.6635902 -43.7973837, -176.6574547 -43.808606, -176.6458048 -43.8042609, -176.6408711 -43.8106787, -176.6082074 -43.8123215, -176.5525149 -43.8736975, -176.5340115 -43.9161587, -176.537922 -43.9433111, -176.5561114 -43.9528147, -176.5728145 -43.9419216, -176.5805133 -43.9628137)), ((-176.4284402 -43.8264365, -176.4317505 -43.8259564, -176.4360006 -43.8315037, -176.4286262 -43.8315055, -176.4284402 -43.8264365)), ((-176.4388969 -43.8287886, -176.4361344 -43.8290511, -176.4333404 -43.8255371, -176.4380225 -43.8267176, -176.4388969 -43.8287886)))|"
+        )
     }
 
     // #[test]

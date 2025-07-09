@@ -13,6 +13,7 @@ license = { workspace = true }
 # See ../ARCHITECTURE.md for more details
 [dependencies]
 rand = { version = "0.8", features = ["small_rng"] }
+duckdb = { version = "1.3.0", features = ["bundled"] }
 
 [dev-dependencies]
 flate2 = "1.1.0"
