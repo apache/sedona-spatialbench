@@ -55,7 +55,7 @@ cargo build --release
 Alternatively, install it directly using:
 
 ```bash
-cargo install --path .
+cargo install --path ./tpchgen-cli
 ```
 
 ### Notes
