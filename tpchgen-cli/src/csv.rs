@@ -40,13 +40,9 @@ macro_rules! define_csv_source {
 }
 
 // Define .csv sources for all tables
-// define_csv_source!(NationCsvSource, NationGenerator<'static>, NationCsv);
-// define_csv_source!(RegionCsvSource, RegionGenerator<'static>, RegionCsv);
 define_csv_source!(VehicleCsvSource, VehicleGenerator<'static>, VehicleCsv);
 define_csv_source!(DriverCsvSource, DriverGenerator<'static>, DriverCsv);
 define_csv_source!(CustomerCsvSource, CustomerGenerator<'static>, CustomerCsv);
-// define_csv_source!(OrderCsvSource, OrderGenerator<'static>, OrderCsv);
-// define_csv_source!(LineItemCsvSource, LineItemGenerator<'static>, LineItemCsv);
 define_csv_source!(TripCsvSource, TripGenerator, TripCsv);
 define_csv_source!(BuildingCsvSource, BuildingGenerator<'static>, BuildingCsv);
 define_csv_source!(ZoneCsvSource, ZoneGenerator, ZoneCsv);

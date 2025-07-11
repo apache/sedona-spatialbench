@@ -131,13 +131,9 @@ struct Cli {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum Table {
-    // Nation,
-    // Region,
     Vehicle,
     Driver,
     Customer,
-    // Orders,
-    // Lineitem,
     Trip,
     Building,
     Zone,
@@ -174,13 +170,9 @@ impl TypedValueParser for TableValueParser {
     ) -> Option<Box<dyn Iterator<Item = clap::builder::PossibleValue> + '_>> {
         Some(Box::new(
             [
-                // clap::builder::PossibleValue::new("region").help("Region table (alias: r)"),
-                // clap::builder::PossibleValue::new("nation").help("Nation table (alias: n)"),
                 clap::builder::PossibleValue::new("driver").help("Driver table (alias: d)"),
                 clap::builder::PossibleValue::new("customer").help("Customer table (alias: c)"),
                 clap::builder::PossibleValue::new("vehicle").help("Vehicle table (alias: V)"),
-                // clap::builder::PossibleValue::new("orders").help("Orders table (alias: O)"),
-                // clap::builder::PossibleValue::new("lineitem").help("LineItem table (alias: L)"),
                 clap::builder::PossibleValue::new("trip").help("Trip table (alias: T)"),
                 clap::builder::PossibleValue::new("building").help("Building table (alias: b)"),
                 clap::builder::PossibleValue::new("zone").help("Zone table (alias: z)"),
@@ -201,13 +193,9 @@ impl FromStr for Table {
     /// only support the exclusive abbreviations.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            // "n" | "nation" => Ok(Table::Nation),
-            // "r" | "region" => Ok(Table::Region),
             "d" | "driver" => Ok(Table::Driver),
             "V" | "vehicle" => Ok(Table::Vehicle),
             "c" | "customer" => Ok(Table::Customer),
-            // "O" | "orders" => Ok(Table::Orders),
-            // "L" | "lineitem" => Ok(Table::Lineitem),
             "T" | "trip" => Ok(Table::Trip),
             "b" | "building" => Ok(Table::Building),
             "z" | "zone" => Ok(Table::Zone),
@@ -219,13 +207,9 @@ impl FromStr for Table {
 impl Table {
     fn name(&self) -> &'static str {
         match self {
-            // Table::Nation => "nation",
-            // Table::Region => "region",
             Table::Vehicle => "vehicle",
             Table::Driver => "driver",
             Table::Customer => "customer",
-            // Table::Orders => "orders",
-            // Table::Lineitem => "lineitem",
             Table::Trip => "trip",
             Table::Building => "building",
             Table::Zone => "zone",
@@ -300,13 +284,9 @@ impl Cli {
             tables.clone()
         } else {
             vec![
-                // Table::Nation,
-                // Table::Region,
                 Table::Vehicle,
                 Table::Driver,
                 Table::Customer,
-                // Table::Orders,
-                // Table::Lineitem,
                 Table::Trip,
                 Table::Building,
             ]
@@ -324,13 +304,9 @@ impl Cli {
         // Generate each table
         for table in tables {
             match table {
-                // Table::Nation => self.generate_nation().await?,
-                // Table::Region => self.generate_region().await?,
                 Table::Vehicle => self.generate_vehicle().await?,
                 Table::Driver => self.generate_driver().await?,
                 Table::Customer => self.generate_customer().await?,
-                // Table::Orders => self.generate_orders().await?,
-                // Table::Lineitem => self.generate_lineitem().await?,
                 Table::Trip => self.generate_trip().await?,
                 Table::Building => self.generate_building().await?,
                 Table::Zone => self.generate_zone().await?,
@@ -340,23 +316,6 @@ impl Cli {
         info!("Generation complete!");
         Ok(())
     }
-
-    // define_generate!(
-    //     generate_nation,
-    //     Table::Nation,
-    //     NationGenerator,
-    //     NationTblSource,
-    //     NationCsvSource,
-    //     NationArrow
-    // );
-    // define_generate!(
-    //     generate_region,
-    //     Table::Region,
-    //     RegionGenerator,
-    //     RegionTblSource,
-    //     RegionCsvSource,
-    //     RegionArrow
-    // );
     define_generate!(
         generate_vehicle,
         Table::Vehicle,
@@ -381,22 +340,6 @@ impl Cli {
         CustomerCsvSource,
         CustomerArrow
     );
-    // define_generate!(
-    //     generate_orders,
-    //     Table::Orders,
-    //     OrderGenerator,
-    //     OrderTblSource,
-    //     OrderCsvSource,
-    //     OrderArrow
-    // );
-    // define_generate!(
-    //     generate_lineitem,
-    //     Table::Lineitem,
-    //     LineItemGenerator,
-    //     LineItemTblSource,
-    //     LineItemCsvSource,
-    //     LineItemArrow
-    // );
     define_generate!(
         generate_trip,
         Table::Trip,
@@ -455,8 +398,6 @@ impl Cli {
         // Avg row size is an estimate of the average row size in bytes from the first 100 rows
         // of the table in tbl format
         let (avg_row_size_bytes, row_count) = match table {
-            // Table::Nation => (88, 1),
-            // Table::Region => (77, 1),
             Table::Vehicle => (
                 115,
                 VehicleGenerator::calculate_row_count(self.scale_factor, 1, 1),
@@ -469,18 +410,6 @@ impl Cli {
                 160,
                 CustomerGenerator::calculate_row_count(self.scale_factor, 1, 1),
             ),
-            // Table::Orders => (
-            //     114,
-            //     OrderGenerator::calculate_row_count(self.scale_factor, 1, 1),
-            // ),
-            // Table::Lineitem => {
-            //     // there are on average 4 line items per order.
-            //     // For example, in SF=10,
-            //     // * orders has 15,000,000 rows
-            //     // * lineitem has around 60,000,000 rows
-            //     let row_count = 4 * OrderGenerator::calculate_row_count(self.scale_factor, 1, 1);
-            //     (128, row_count)
-            // },
             &Table::Trip => (
                 130,
                 TripGenerator::calculate_row_count(self.scale_factor, 1, 1),

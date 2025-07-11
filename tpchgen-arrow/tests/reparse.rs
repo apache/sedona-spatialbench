@@ -35,16 +35,8 @@ macro_rules! test_row_type {
 
 test_row_type!(customer_tbl, CustomerGenerator, CustomerArrow, Test::tbl());
 test_row_type!(customer_csv, CustomerGenerator, CustomerArrow, Test::csv());
-// test_row_type!(lineitem_tbl, LineItemGenerator, LineItemArrow, Test::tbl());
-// test_row_type!(lineitem_csv, LineItemGenerator, LineItemArrow, Test::csv());
-// test_row_type!(nation_tbl, NationGenerator, NationArrow, Test::tbl());
-// test_row_type!(nation_csv, NationGenerator, NationArrow, Test::csv());
-// test_row_type!(order_tbl, OrderGenerator, OrderArrow, Test::tbl());
-// test_row_type!(order_csv, OrderGenerator, OrderArrow, Test::csv());
 test_row_type!(vehicle_tbl, VehicleGenerator, VehicleArrow, Test::tbl());
 test_row_type!(vehicle_csv, VehicleGenerator, VehicleArrow, Test::csv());
-// test_row_type!(region_tbl, RegionGenerator, RegionArrow, Test::tbl());
-// test_row_type!(region_csv, RegionGenerator, RegionArrow, Test::csv());
 test_row_type!(driver_tbl, DriverGenerator, DriverArrow, Test::tbl());
 test_row_type!(driver_csv, DriverGenerator, DriverArrow, Test::csv());
 test_row_type!(trip_tbl, TripGenerator, TripArrow, Test::tbl());
@@ -82,11 +74,7 @@ macro_rules! impl_row_type {
 }
 
 impl_row_type!(Customer<'_>, CustomerCsv);
-// impl_row_type!(LineItem<'_>, LineItemCsv);
-// impl_row_type!(Nation<'_>, NationCsv);
-// impl_row_type!(Order<'_>, OrderCsv);
 impl_row_type!(Vehicle<'_>, VehicleCsv);
-// impl_row_type!(Region<'_>, RegionCsv);
 impl_row_type!(Driver, DriverCsv);
 impl_row_type!(Trip, TripCsv);
 impl_row_type!(Building<'_>, BuildingCsv);
