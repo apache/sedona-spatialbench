@@ -5,20 +5,19 @@ use crate::spider::{
 pub struct SpiderPresets;
 
 impl SpiderPresets {
+    const FULL_WORLD_AFFINE: [f64; 6] = [
+        360.0, // Scale X to cover full longitude range (-180° to 180°)
+        0.0, -180.0, // Offset X to start at -180° (west edge of map)
+        0.0, 180.0, // Scale Y to cover full latitude range (-90° to 90°)
+        -90.0, // Offset Y to start at -90° (south edge of map)
+    ];
     pub fn for_trip_pickups() -> SpiderGenerator {
         let config = SpiderConfig {
             dist_type: DistributionType::Uniform,
             geom_type: GeomType::Point,
             dim: 2,
             seed: 42,
-            affine: Some([
-                58.368269,
-                0.0,
-                -125.244606, // scale X to 58.37°, offset to -125.24°
-                0.0,
-                25.175375,
-                24.006328, // scale Y to 25.18°, offset to 24.00°
-            ]),
+            affine: Some(Self::FULL_WORLD_AFFINE),
 
             // geometry = box
             width: 0.0,
@@ -39,14 +38,7 @@ impl SpiderPresets {
             geom_type: GeomType::Point,
             dim: 2,
             seed: 42,
-            affine: Some([
-                58.368269,
-                0.0,
-                -125.244606, // scale X to 58.37°, offset to -125.24°
-                0.0,
-                25.175375,
-                24.006328, // scale Y to 25.18°, offset to 24.00°
-            ]),
+            affine: Some(Self::FULL_WORLD_AFFINE),
 
             // geometry = box
             width: 0.0,
@@ -70,14 +62,7 @@ impl SpiderPresets {
             geom_type: GeomType::Point,
             dim: 2,
             seed: 42,
-            affine: Some([
-                58.368269,
-                0.0,
-                -125.244606, // scale X to 58.37°, offset to -125.24°
-                0.0,
-                25.175375,
-                24.006328, // scale Y to 25.18°, offset to 24.00°
-            ]),
+            affine: Some(Self::FULL_WORLD_AFFINE),
 
             // geometry = box
             width: 0.0,
@@ -98,14 +83,7 @@ impl SpiderPresets {
             geom_type: GeomType::Point,
             dim: 2,
             seed: 42,
-            affine: Some([
-                58.368269,
-                0.0,
-                -125.244606, // scale X to 58.37°, offset to -125.24°
-                0.0,
-                25.175375,
-                24.006328, // scale Y to 25.18°, offset to 24.00°
-            ]),
+            affine: Some(Self::FULL_WORLD_AFFINE),
 
             // geometry = box
             width: 0.0,
@@ -129,14 +107,7 @@ impl SpiderPresets {
             geom_type: GeomType::Point,
             dim: 2,
             seed: 42,
-            affine: Some([
-                58.368269,
-                0.0,
-                -125.244606, // scale X to 58.37°, offset to -125.24°
-                0.0,
-                25.175375,
-                24.006328, // scale Y to 25.18°, offset to 24.00°
-            ]),
+            affine: Some(Self::FULL_WORLD_AFFINE),
 
             // geometry = box
             width: 0.0,
@@ -160,14 +131,7 @@ impl SpiderPresets {
             geom_type: GeomType::Box,
             dim: 2,
             seed: 12345,
-            affine: Some([
-                58.368269,
-                0.0,
-                -125.244606, // scale X to 58.37°, offset to -125.24°
-                0.0,
-                25.175375,
-                24.006328, // scale Y to 25.18°, offset to 24.00°
-            ]),
+            affine: Some(Self::FULL_WORLD_AFFINE),
 
             // geometry = box
             width: 0.00005,

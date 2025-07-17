@@ -1,4 +1,6 @@
 //! [`TPCHDate`] and date handling
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use std::{
     fmt::{Display, Formatter},
     sync::LazyLock,
@@ -94,6 +96,44 @@ impl GenerateUtils {
     }
 }
 
+/// Random time generator that produces hours and minutes
+#[derive(Debug, Clone)]
+pub struct RandomTimeOfDay {
+    rng: StdRng,
+}
+
+impl RandomTimeOfDay {
+    /// Creates a new RandomTimeOfDay generator with the given seed
+    pub fn new(seed: u64) -> Self {
+        RandomTimeOfDay {
+            rng: StdRng::seed_from_u64(seed),
+        }
+    }
+
+    /// Generates a random time of day as (hour, minute, second)
+    pub fn next_value(&mut self) -> (u8, u8, u8) {
+        let hour = self.rng.gen_range(0..24);
+        let minute = self.rng.gen_range(0..60);
+        let second = self.rng.gen_range(0..60);
+        (hour, minute, second)
+    }
+
+    /// Advances the generator by a given number of rows
+    pub fn advance_rows(&mut self, rows: i64) {
+        for _ in 0..rows {
+            self.next_value();
+        }
+    }
+
+    /// Mark this row as finished
+    ///
+    /// This is a no-op for this generator since it doesn't need row-specific state tracking
+    /// but is required to match the interface pattern used by other random generators
+    pub fn row_finished(&mut self) {
+        // No operation needed - StdRng doesn't require row-based state management
+    }
+}
+
 /// Represents a date (day/year)
 ///
 /// Example display: 1992-01-01
@@ -103,26 +143,26 @@ impl GenerateUtils {
 /// # Example
 /// ```
 /// # use tpchgen::dates::{TPCHDate, MIN_GENERATE_DATE};
-/// let date = TPCHDate::new(MIN_GENERATE_DATE + 41, 0, 0);
+/// let date = TPCHDate::new(MIN_GENERATE_DATE + 41, 0, 0, 0);
 /// // Convert the date to y/m/d fields
 /// assert_eq!((92,2,11), date.to_ymd());
 /// // format as a string using the Display impl
-/// assert_eq!("1992-02-11", date.to_string());
+/// assert_eq!("1992-02-11 00:00:00", date.to_string());
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct TPCHDate {
-    /// date index (0 based) from MIN_GENERATE_DATE
     date_index: i32,
     hour: u8,   // 0-23
     minute: u8, // 0-59
+    second: u8,
 }
 
 impl Display for TPCHDate {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {:02}:{:02}",
-            &DATE_TO_STRING[self.date_index as usize], self.hour, self.minute
+            "{} {:02}:{:02}:{:02}",
+            &DATE_TO_STRING[self.date_index as usize], self.hour, self.minute, self.second
         )
     }
 }
@@ -138,34 +178,18 @@ impl TPCHDate {
     pub const UNIX_EPOCH_OFFSET: i32 = 8035;
 
     /// Create a new TPCHDate from a generated date
-    pub fn new(generated_date: i32, hour: u8, minute: u8) -> Self {
+    pub fn new(generated_date: i32, hour: u8, minute: u8, second: u8) -> Self {
         Self {
             date_index: generated_date - MIN_GENERATE_DATE,
             hour,
             minute,
+            second,
         }
     }
 
-    // pub fn from_ymdhm(generated_date: i32, hour: u8, minute: u8) -> Self {
-    //     Self {
-    //         date_index: generated_date - MIN_GENERATE_DATE,
-    //         hour,
-    //         minute,
-    //     }
-    // }
-
-    // Example: add minutes to the datetime
-    pub fn add_minutes(&self, minutes: i32) -> Self {
-        let total_minutes = self.hour as i32 * 60 + self.minute as i32 + minutes;
-        let days_added = total_minutes.div_euclid(1440);
-        let new_minutes = total_minutes.rem_euclid(1440);
-        let new_hour = (new_minutes / 60) as u8;
-        let new_minute = (new_minutes % 60) as u8;
-        Self {
-            date_index: self.date_index + days_added,
-            hour: new_hour,
-            minute: new_minute,
-        }
+    /// Create a new date with a given day value and time components including seconds
+    pub fn new_with_time(day_value: i32, (hour, minute, second): (u8, u8, u8)) -> Self {
+        TPCHDate::new(day_value, hour, minute, second)
     }
 
     /// Returns the (year, month, day) of this date
@@ -275,34 +299,37 @@ mod test {
     use super::*;
     #[test]
     fn test_date_strings() {
-        let date = TPCHDate::new(MIN_GENERATE_DATE + 1, 0, 0);
-        assert_eq!(date.to_string(), "1992-01-02 00:00");
+        let date = TPCHDate::new(MIN_GENERATE_DATE + 1, 0, 0, 0);
+        assert_eq!(date.to_string(), "1992-01-02 00:00:00");
 
-        let date = TPCHDate::new(MIN_GENERATE_DATE + 1234, 0, 0);
-        assert_eq!(date.to_string(), "1995-05-19 00:00");
+        let date = TPCHDate::new(MIN_GENERATE_DATE + 1234, 0, 0, 0);
+        assert_eq!(date.to_string(), "1995-05-19 00:00:00");
 
-        let date = TPCHDate::new(MIN_GENERATE_DATE + TOTAL_DATE_RANGE - 1, 0, 0);
-        assert_eq!(date.to_string(), "1998-12-31 00:00");
+        let date = TPCHDate::new(MIN_GENERATE_DATE + TOTAL_DATE_RANGE - 1, 0, 0, 0);
+        assert_eq!(date.to_string(), "1998-12-31 00:00:00");
     }
 
-    // #[test]
-    // fn test_display_dates() {
-    //     for index in [1, 23, 321, 623, 1234, 2345, 2556] {
-    //         let date = TPCHDate::new(MIN_GENERATE_DATE + index, 0, 0);
-    //         let (y, m, dy) = date.to_ymd();
-    //         assert_eq!(format_ymd(y, m, dy), date.to_string());
-    //     }
-    // }
+    #[test]
+    fn test_display_dates() {
+        for index in [1, 23, 321, 623, 1234, 2345, 2556] {
+            let date = TPCHDate::new(MIN_GENERATE_DATE + index, 10, 30, 45);
+            let (y, m, dy) = date.to_ymd();
+            assert_eq!(
+                format!("{} 10:30:45", format_ymd(y, m, dy)),
+                date.to_string()
+            );
+        }
+    }
 
     #[test]
     fn test_date_epoch_consistency() {
         // Check that dates are actually machine some epochs.
-        let date = TPCHDate::new(MIN_GENERATE_DATE + 1, 0, 0);
+        let date = TPCHDate::new(MIN_GENERATE_DATE + 1, 0, 0, 0);
         assert_eq!(date.to_unix_epoch(), 8036);
 
-        let date = TPCHDate::new(MIN_GENERATE_DATE + 1234, 0, 0);
+        let date = TPCHDate::new(MIN_GENERATE_DATE + 1234, 0, 0, 0);
         // 1995-05-19 00:00:00 (12:00:00 AM)
-        assert_eq!(date.to_string(), "1995-05-19 00:00");
+        assert_eq!(date.to_string(), "1995-05-19 00:00:00");
         assert_eq!(date.to_unix_epoch(), 9269);
     }
 }

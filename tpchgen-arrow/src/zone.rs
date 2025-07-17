@@ -1,7 +1,8 @@
 use crate::conversions::string_view_array_from_display_iter;
 use crate::{DEFAULT_BATCH_SIZE, RecordBatchIterator};
-use arrow::array::{Int64Array, RecordBatch};
+use arrow::array::{BinaryArray, Int64Array, RecordBatch};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use geozero::{CoordDimensions, ToWkb};
 use std::sync::{Arc, LazyLock};
 use tpchgen::generators::{ZoneGenerator, ZoneGeneratorIterator};
 
@@ -15,7 +16,7 @@ use tpchgen::generators::{ZoneGenerator, ZoneGeneratorIterator};
 /// # use tpchgen_arrow::ZoneArrow;
 ///
 /// // Create a SF=1.0 generator and wrap it in an Arrow generator
-/// let generator = ZoneGenerator::new(1.0, 1, 1);
+/// let generator = ZoneGenerator::new(0.001, 1, 1);
 /// let mut arrow_generator = ZoneArrow::new(generator)
 ///   .with_batch_size(10);
 /// // Read the first 10 batches
@@ -63,15 +64,25 @@ impl Iterator for ZoneArrow {
 
         let z_zonekey = Int64Array::from_iter_values(rows.iter().map(|r| r.z_zonekey));
         let z_gersid = string_view_array_from_display_iter(rows.iter().map(|r| &r.z_gersid));
+        let z_country = string_view_array_from_display_iter(rows.iter().map(|r| &r.z_country));
+        let z_region = string_view_array_from_display_iter(rows.iter().map(|r| &r.z_region));
         let z_name = string_view_array_from_display_iter(rows.iter().map(|r| &r.z_name));
         let z_subtype = string_view_array_from_display_iter(rows.iter().map(|r| &r.z_subtype));
-        let z_boundary = string_view_array_from_display_iter(rows.iter().map(|r| &r.z_boundary));
+
+        // Convert geo::Polygon to WKB binary format
+        let z_boundary = BinaryArray::from_iter_values(rows.iter().map(|r| {
+            r.z_boundary
+                .to_wkb(CoordDimensions::xy())
+                .expect("Failed to encode WKB")
+        }));
 
         let batch = RecordBatch::try_new(
             Arc::clone(self.schema()),
             vec![
                 Arc::new(z_zonekey),
                 Arc::new(z_gersid),
+                Arc::new(z_country),
+                Arc::new(z_region),
                 Arc::new(z_name),
                 Arc::new(z_subtype),
                 Arc::new(z_boundary),
@@ -88,8 +99,10 @@ fn make_zone_schema() -> SchemaRef {
     Arc::new(Schema::new(vec![
         Field::new("z_zonekey", DataType::Int64, false),
         Field::new("z_gersid", DataType::Utf8View, false),
+        Field::new("z_country", DataType::Utf8View, false),
+        Field::new("z_region", DataType::Utf8View, false),
         Field::new("z_name", DataType::Utf8View, false),
         Field::new("z_subtype", DataType::Utf8View, false),
-        Field::new("z_boundary", DataType::Utf8View, false),
+        Field::new("z_boundary", DataType::Binary, false),
     ]))
 }

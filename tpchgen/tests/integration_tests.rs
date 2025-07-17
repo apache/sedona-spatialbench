@@ -4,9 +4,6 @@ use flate2::read::GzDecoder;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-// use tpchgen::generators::{
-//     CustomerGenerator, DriverGenerator, VehicleGenerator,
-// };
 
 fn read_tbl_gz<P: AsRef<Path>>(path: P) -> Vec<String> {
     let file = File::open(path).expect("Failed to open file");

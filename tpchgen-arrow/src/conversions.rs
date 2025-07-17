@@ -78,13 +78,13 @@ mod tests {
 
     #[test]
     fn test_to_arrow_date32() {
-        let value = TPCHDate::new(MIN_GENERATE_DATE, 0, 0);
+        let value = TPCHDate::new(MIN_GENERATE_DATE, 0, 0, 0);
         assert_eq!(to_arrow_date32(value), 8035);
 
-        let value = TPCHDate::new(MIN_GENERATE_DATE + 100, 0, 0);
+        let value = TPCHDate::new(MIN_GENERATE_DATE + 100, 0, 0, 0);
         assert_eq!(to_arrow_date32(value), 8135);
 
-        let value = TPCHDate::new(MIN_GENERATE_DATE + 1234, 0, 0);
+        let value = TPCHDate::new(MIN_GENERATE_DATE + 1234, 0, 0, 0);
         assert_eq!(to_arrow_date32(value), 9269);
     }
 }

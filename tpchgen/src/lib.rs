@@ -6,30 +6,30 @@
 //!
 //! # Example: TBL output format
 //! ```
-//! # use tpchgen::generators::LineItemGenerator;
-//! // Create Generator for the LINEITEM table at Scale Factor 1 (SF 1)
+//! # use tpchgen::generators::TripGenerator;
+//! // Create Generator for the TRIP table at Scale Factor 1 (SF 1)
 //! let scale_factor = 1.0;
 //! let part = 1;
 //! let num_parts = 1;
-//! let generator = LineItemGenerator::new(scale_factor, part, num_parts);
+//! let generator = TripGenerator::new(scale_factor, part, num_parts);
 //!
 //! // Output the first 3 rows in classic TPCH TBL format
 //! // (the generators are normal rust iterators and combine well with the Rust ecosystem)
-//! let lines: Vec<_> = generator.iter()
+//! let trips: Vec<_> = generator.iter()
 //!    .take(3)
-//!    .map(|line| line.to_string()) // use Display impl to get TBL format
+//!    .map(|trips| trips.to_string()) // use Display impl to get TBL format
 //!    .collect::<Vec<_>>();
 //!  assert_eq!(
-//!   lines.join("\n"),"\
-//!   1|155190|7706|1|17|21168.23|0.04|0.02|N|O|1996-03-13|1996-02-12|1996-03-22|DELIVER IN PERSON|TRUCK|egular courts above the|\n\
-//!   1|67310|7311|2|36|45983.16|0.09|0.06|N|O|1996-04-12|1996-02-28|1996-04-20|TAKE BACK RETURN|MAIL|ly final dependencies: slyly bold |\n\
-//!   1|63700|3701|3|8|13309.60|0.10|0.02|N|O|1996-01-29|1996-03-05|1996-01-31|TAKE BACK RETURN|REG AIR|riously. regular, express dep|"
+//!   trips.join("\n"),"\
+//!     1|21425|47|46|1997-07-24 06:58:22|1997-07-24 13:59:54|0.34|0.02|0.37|0.14|POINT(-172.96875 -90.0)|POINT(-172.98257407932567 -90.13982815963308)|\n\
+//!     2|17012|66|65|1997-12-24 08:47:14|1997-12-24 09:28:57|0.03|0.00|0.04|0.01|POINT(-168.046875 -21.09375)|POINT(-168.03314018997426 -21.091593427559978)|\n\
+//!     3|4454|68|67|1993-06-27 13:27:07|1993-06-27 13:34:51|0.00|0.00|0.00|0.00|POINT(-171.5625 -78.3984375)|POINT(-171.56429290849482 -78.40028771516948)|"
 //!   );
 //! ```
 //!
 //! The TPC-H dataset is composed of several tables with foreign key relations
 //! between them. For each table we implement and expose a generator that uses
-//! the iterator API to produce structs e.g [`LineItem`] that represent a single
+//! the iterator API to produce structs e.g [`Trip`] that represent a single
 //! row.
 //!
 //! For each struct type we expose several facilities that allow fast conversion
@@ -38,10 +38,10 @@
 //! This crate currently supports the following output formats:
 //!
 //! - TBL: The `Display` impl of the row structs produces the TPCH TBL format.
-//! - CSV: the [`csv`] module has formatters for CSV output (e.g. [`LineItemCsv`]).
+//! - CSV: the [`csv`] module has formatters for CSV output (e.g. [`TripCsv`]).
 //!
-//! [`LineItem`]: generators::LineItem
-//! [`LineItemCsv`]: csv::LineItemCsv
+//! [`Trip`]: generators::Trip
+//! [`TripCsv`]: csv::TripCsv
 //!
 //!
 //! The library was designed to be easily integrated in existing Rust projects as

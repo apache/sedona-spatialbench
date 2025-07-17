@@ -11,7 +11,8 @@ license = "Apache-2.0"
 [dependencies]
 arrow = { version = "54.0.0", default-features = false, features = ["prettyprint"] }
 tpchgen = { path = "../tpchgen", version = "1.1.0" }
-
+geo = { workspace = true }
+geozero = { workspace = true }
 [dev-dependencies]
 arrow-csv = "54.0.0"
 chrono = "0.4.39"

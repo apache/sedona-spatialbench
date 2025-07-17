@@ -1,7 +1,9 @@
 use crate::conversions::{decimal128_array_from_iter, to_arrow_date32};
 use crate::{DEFAULT_BATCH_SIZE, RecordBatchIterator};
-use arrow::array::{Date32Array, Int64Array, RecordBatch, StringViewArray};
+use arrow::array::{BinaryArray, Date32Array, Int64Array, RecordBatch};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use geo::Geometry;
+use geozero::{CoordDimensions, ToWkb};
 use std::sync::{Arc, LazyLock, Mutex};
 use tpchgen::generators::{Trip, TripGenerator, TripGeneratorIterator};
 
@@ -81,10 +83,16 @@ impl Iterator for TripArrow {
         let t_tip = decimal128_array_from_iter(rows.iter().map(|row| row.t_tip));
         let t_totalamount = decimal128_array_from_iter(rows.iter().map(|row| row.t_totalamount));
         let t_distance = decimal128_array_from_iter(rows.iter().map(|row| row.t_distance));
-        let t_pickuploc =
-            StringViewArray::from_iter_values(rows.iter().map(|row| row.t_pickuploc.clone()));
-        let t_dropoffloc =
-            StringViewArray::from_iter_values(rows.iter().map(|row| row.t_dropoffloc.clone()));
+        let t_pickuploc = BinaryArray::from_iter_values(rows.iter().map(|row| {
+            Geometry::Point(row.t_pickuploc)
+                .to_wkb(CoordDimensions::xy())
+                .expect("Failed to convert pickup location to WKB")
+        }));
+        let t_dropoffloc = BinaryArray::from_iter_values(rows.iter().map(|row| {
+            Geometry::Point(row.t_dropoffloc)
+                .to_wkb(CoordDimensions::xy())
+                .expect("Failed to convert dropoff location to WKB")
+        }));
 
         let batch = RecordBatch::try_new(
             Arc::clone(&self.schema),
@@ -124,7 +132,7 @@ fn make_trip_schema() -> SchemaRef {
         Field::new("t_tip", DataType::Decimal128(15, 5), false),
         Field::new("t_totalamount", DataType::Decimal128(15, 5), false),
         Field::new("t_distance", DataType::Decimal128(15, 5), false),
-        Field::new("t_pickuploc", DataType::Utf8View, false),
-        Field::new("t_dropoffloc", DataType::Utf8View, false),
+        Field::new("t_pickuploc", DataType::Binary, false),
+        Field::new("t_dropoffloc", DataType::Binary, false),
     ]))
 }

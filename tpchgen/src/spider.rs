@@ -1,3 +1,4 @@
+use geo::{coord, Geometry, LineString, Point, Polygon};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::f64::consts::PI;
@@ -57,7 +58,7 @@ impl SpiderGenerator {
         Self { config }
     }
 
-    pub fn generate(&self, index: u64) -> String {
+    pub fn generate(&self, index: u64) -> Geometry {
         let seed = spider_seed_for_index(index, self.config.seed as u64);
         let mut rng = StdRng::seed_from_u64(seed);
 
@@ -70,26 +71,26 @@ impl SpiderGenerator {
         }
     }
 
-    fn generate_uniform(&self, rng: &mut StdRng) -> String {
+    fn generate_uniform(&self, rng: &mut StdRng) -> Geometry {
         let x = rand_unit(rng);
         let y = rand_unit(rng);
 
         match self.config.geom_type {
-            GeomType::Point => generate_point_wkt((x, y), &self.config),
-            GeomType::Box => generate_box_wkt((x, y), &self.config, rng),
-            GeomType::Polygon => generate_polygon_wkt((x, y), &self.config, rng),
+            GeomType::Point => generate_point_geom((x, y), &self.config),
+            GeomType::Box => generate_box_geom((x, y), &self.config, rng),
+            GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng),
         }
     }
 
-    fn generate_normal(&self, rng: &mut StdRng) -> String {
+    fn generate_normal(&self, rng: &mut StdRng) -> Geometry {
         match self.config.params {
             DistributionParams::Normal { mu, sigma } => {
                 let x = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
                 let y = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
                 match self.config.geom_type {
-                    GeomType::Point => generate_point_wkt((x, y), &self.config),
-                    GeomType::Box => generate_box_wkt((x, y), &self.config, rng),
-                    GeomType::Polygon => generate_polygon_wkt((x, y), &self.config, rng),
+                    GeomType::Point => generate_point_geom((x, y), &self.config),
+                    GeomType::Box => generate_box_geom((x, y), &self.config, rng),
+                    GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng),
                 }
             }
             _ => panic!(
@@ -99,7 +100,7 @@ impl SpiderGenerator {
         }
     }
 
-    fn generate_diagonal(&self, rng: &mut StdRng) -> String {
+    fn generate_diagonal(&self, rng: &mut StdRng) -> Geometry {
         match self.config.params {
             DistributionParams::Diagonal { percentage, buffer } => {
                 let (x, y) = if rng.gen::<f64>() < percentage {
@@ -114,9 +115,9 @@ impl SpiderGenerator {
                 };
 
                 match self.config.geom_type {
-                    GeomType::Point => generate_point_wkt((x, y), &self.config),
-                    GeomType::Box => generate_box_wkt((x, y), &self.config, rng),
-                    GeomType::Polygon => generate_polygon_wkt((x, y), &self.config, rng),
+                    GeomType::Point => generate_point_geom((x, y), &self.config),
+                    GeomType::Box => generate_box_geom((x, y), &self.config, rng),
+                    GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng),
                 }
             }
             _ => panic!(
@@ -126,7 +127,7 @@ impl SpiderGenerator {
         }
     }
 
-    fn generate_bit(&self, rng: &mut StdRng) -> String {
+    fn generate_bit(&self, rng: &mut StdRng) -> Geometry {
         match self.config.params {
             DistributionParams::Bit {
                 probability,
@@ -136,9 +137,9 @@ impl SpiderGenerator {
                 let y = spider_bit(rng, probability, digits);
 
                 match self.config.geom_type {
-                    GeomType::Point => generate_point_wkt((x, y), &self.config),
-                    GeomType::Box => generate_box_wkt((x, y), &self.config, rng),
-                    GeomType::Polygon => generate_polygon_wkt((x, y), &self.config, rng),
+                    GeomType::Point => generate_point_geom((x, y), &self.config),
+                    GeomType::Box => generate_box_geom((x, y), &self.config, rng),
+                    GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng),
                 }
             }
             _ => panic!(
@@ -148,7 +149,7 @@ impl SpiderGenerator {
         }
     }
 
-    fn generate_sierpinski(&self, rng: &mut StdRng) -> String {
+    fn generate_sierpinski(&self, rng: &mut StdRng) -> Geometry {
         let (mut x, mut y) = (0.0, 0.0);
         let a = (0.0, 0.0);
         let b = (1.0, 0.0);
@@ -171,9 +172,9 @@ impl SpiderGenerator {
         }
 
         match self.config.geom_type {
-            GeomType::Point => generate_point_wkt((x, y), &self.config),
-            GeomType::Box => generate_box_wkt((x, y), &self.config, rng),
-            GeomType::Polygon => generate_polygon_wkt((x, y), &self.config, rng),
+            GeomType::Point => generate_point_geom((x, y), &self.config),
+            GeomType::Box => generate_box_geom((x, y), &self.config, rng),
+            GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng),
         }
     }
 }
@@ -218,6 +219,13 @@ fn spider_bit(rng: &mut StdRng, prob: f64, digits: u32) -> f64 {
         .sum()
 }
 
+pub fn generate_point_geom(center: (f64, f64), config: &SpiderConfig) -> Geometry {
+    let (x, y) = config
+        .affine
+        .map_or(center, |aff| apply_affine(center.0, center.1, &aff));
+    Geometry::Point(Point::new(x, y))
+}
+
 pub fn generate_point_wkt(center: (f64, f64), config: &SpiderConfig) -> String {
     let (x, y) = if let Some(aff) = &config.affine {
         apply_affine(center.0, center.1, aff)
@@ -225,6 +233,27 @@ pub fn generate_point_wkt(center: (f64, f64), config: &SpiderConfig) -> String {
         center
     };
     format!("POINT ({} {})", x, y)
+}
+
+pub fn generate_box_geom(center: (f64, f64), config: &SpiderConfig, rng: &mut StdRng) -> Geometry {
+    let half_width = rand_unit(rng) * config.width / 2.0;
+    let half_height = rand_unit(rng) * config.height / 2.0;
+
+    let corners = [
+        (center.0 - half_width, center.1 - half_height),
+        (center.0 + half_width, center.1 - half_height),
+        (center.0 + half_width, center.1 + half_height),
+        (center.0 - half_width, center.1 + half_height),
+        (center.0 - half_width, center.1 - half_height),
+    ];
+
+    let coords: Vec<_> = corners
+        .iter()
+        .map(|&(x, y)| config.affine.map_or((x, y), |aff| apply_affine(x, y, &aff)))
+        .map(|(x, y)| coord! { x: x, y: y })
+        .collect();
+
+    Geometry::Polygon(Polygon::new(LineString::from(coords), vec![]))
 }
 
 pub fn generate_box_wkt(center: (f64, f64), config: &SpiderConfig, rng: &mut StdRng) -> String {
@@ -252,6 +281,40 @@ pub fn generate_box_wkt(center: (f64, f64), config: &SpiderConfig, rng: &mut Std
         .collect();
 
     format!("POLYGON (({}))", coords.join(", "))
+}
+
+pub fn generate_polygon_geom(
+    center: (f64, f64),
+    config: &SpiderConfig,
+    rng: &mut StdRng,
+) -> Geometry {
+    let min_segs = 3;
+    let num_segments = if config.maxseg <= 3 {
+        3
+    } else {
+        rng.gen_range(0..=(config.maxseg - min_segs)) + min_segs
+    };
+
+    let mut angles: Vec<f64> = (0..num_segments)
+        .map(|_| rand_unit(rng) * 2.0 * PI)
+        .collect();
+    angles.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+    let mut coords = angles
+        .iter()
+        .map(|angle| {
+            let (x, y) = (
+                center.0 + config.polysize * angle.cos(),
+                center.1 + config.polysize * angle.sin(),
+            );
+            config.affine.map_or((x, y), |aff| apply_affine(x, y, &aff))
+        })
+        .map(|(x, y)| coord! { x: x, y: y })
+        .collect::<Vec<_>>();
+
+    coords.push(coords[0]); // close the ring
+
+    Geometry::Polygon(Polygon::new(LineString::from(coords), vec![]))
 }
 
 pub fn generate_polygon_wkt(center: (f64, f64), config: &SpiderConfig, rng: &mut StdRng) -> String {

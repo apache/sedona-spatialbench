@@ -90,7 +90,7 @@ for PART in $(seq 1 4); do
 done
 ```
 
-## SedonaBench Spider Data Generator
+## SpatialBench Spider Data Generator
 
 SpatialBench includes a synthetic spatial data generator ([spider.rs](https://github.com/wherobots/sedona-spatialbench/blob/main/tpchgen/src/spider.rs)) for creating:
 - Points

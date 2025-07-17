@@ -5,7 +5,7 @@
 //! files and then parsing them into Arrow.
 //!
 //! # Example
-//! ```
+
 // # use tpchgen::generators::LineItemGenerator;
 // # use tpchgen_arrow::LineItemArrow;
 // # use arrow::util::pretty::pretty_format_batches;
@@ -33,7 +33,7 @@
 //   "| 3          | 128449    | 3474      | 3            | 27.00      | 39890.88        | 0.06       | 0.07  | A            | F            | 1994-01-16 | 1993-11-22   | 1994-01-23    | DELIVER IN PERSON | SHIP       | nal foxes wake.                     |",
 //   "+------------+-----------+-----------+--------------+------------+-----------------+------------+-------+--------------+--------------+------------+--------------+---------------+-------------------+------------+-------------------------------------+"
 // ]);
-//! ```
+
 mod building;
 pub mod conversions;
 mod customer;

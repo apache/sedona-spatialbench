@@ -289,6 +289,7 @@ impl Cli {
                 Table::Customer,
                 Table::Trip,
                 Table::Building,
+                Table::Zone,
             ]
         };
 
@@ -399,23 +400,23 @@ impl Cli {
         // of the table in tbl format
         let (avg_row_size_bytes, row_count) = match table {
             Table::Vehicle => (
-                115,
+                64,
                 VehicleGenerator::calculate_row_count(self.scale_factor, 1, 1),
             ),
             Table::Driver => (
-                140,
+                80,
                 DriverGenerator::calculate_row_count(self.scale_factor, 1, 1),
             ),
             Table::Customer => (
-                160,
+                84,
                 CustomerGenerator::calculate_row_count(self.scale_factor, 1, 1),
             ),
             &Table::Trip => (
-                130,
+                144,
                 TripGenerator::calculate_row_count(self.scale_factor, 1, 1),
             ),
             Table::Building => (
-                115,
+                212,
                 BuildingGenerator::calculate_row_count(self.scale_factor, 1, 1),
             ),
             Table::Zone => {

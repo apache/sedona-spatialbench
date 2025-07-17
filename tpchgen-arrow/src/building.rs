@@ -1,7 +1,9 @@
 use crate::conversions::string_view_array_from_display_iter;
 use crate::{DEFAULT_BATCH_SIZE, RecordBatchIterator};
-use arrow::array::{Int64Array, RecordBatch, StringViewArray};
+use arrow::array::{BinaryArray, Int64Array, RecordBatch};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use geo::Geometry;
+use geozero::{CoordDimensions, ToWkb};
 use std::sync::{Arc, LazyLock};
 use tpchgen::generators::{BuildingGenerator, BuildingGeneratorIterator};
 
@@ -59,12 +61,17 @@ impl Iterator for BuildingArrow {
 
         let buildingkey = Int64Array::from_iter_values(rows.iter().map(|r| r.b_buildingkey));
         let name = string_view_array_from_display_iter(rows.iter().map(|r| &r.b_name));
-        let polygon_wkt =
-            StringViewArray::from_iter_values(rows.iter().map(|r| r.b_boundary.clone()));
+
+        // Convert geo::Polygon to WKB binary format
+        let wkb_array = BinaryArray::from_iter_values(rows.iter().map(|r| {
+            Geometry::Polygon(r.b_boundary.clone())
+                .to_wkb(CoordDimensions::xy())
+                .unwrap()
+        }));
 
         let batch = RecordBatch::try_new(
             Arc::clone(self.schema()),
-            vec![Arc::new(buildingkey), Arc::new(name), Arc::new(polygon_wkt)],
+            vec![Arc::new(buildingkey), Arc::new(name), Arc::new(wkb_array)],
         )
         .unwrap();
         Some(batch)
@@ -77,6 +84,6 @@ fn make_building_schema() -> SchemaRef {
     Arc::new(Schema::new(vec![
         Field::new("b_buildingkey", DataType::Int64, false),
         Field::new("b_name", DataType::Utf8View, false),
-        Field::new("b_boundary", DataType::Utf8View, false),
+        Field::new("b_boundary", DataType::Binary, false),
     ]))
 }
