@@ -13,11 +13,11 @@ limited by local disk I/O. For example:
 
 ```shell
 # Generate SF=100, about 100GB of data, piped to /dev/null, reporting statistics
-tpchgen-cli -s 100 --stdout | pv -arb > /dev/null
+spatialbench-cli -s 100 --stdout | pv -arb > /dev/null
 # Outputs something similar to
 # 106GiB [3.09GiB/s] (3.09GiB/s)
 # For parquet
-tpchgen-cli -s 100 --format=parquet --stdout | pv -arb > /dev/null
+spatialbench-cli -s 100 --format=parquet --stdout | pv -arb > /dev/null
 # 38.2GiB [ 865MiB/s] ( 865MiB/s)
 ```
 
@@ -49,7 +49,7 @@ single parquet file per table, with snappy page compression.
 Example command to create Scale Factor 10
 
 ```shell
-tpchgen-cli -s 10 --format=parquet
+spatialbench-cli -s 10 --format=parquet
 ```
 
 ## `parquet_duckdb.sh`
@@ -130,7 +130,7 @@ single, uncompressed tbl file per table.
 Example command for SF=10
 
 ```shell
-tpchgen-cli -s 10
+spatialbench-cli -s 10
 ```
 
 ## `tbl_tpchgen_1.sh`
@@ -145,7 +145,7 @@ Example command for SF=10
 
 ```shell
 # Scale factor 10
-tpchgen-cli -s 10 --num-threads=1
+spatialbench-cli -s 10 --num-threads=1
 ```
 
 ## `tbl_dbgen.sh`
@@ -248,9 +248,9 @@ dd if=/dev/zero of=/data/test1.img bs=1G count=10 oflag=dsync
 ## install `tpchgen-rs`
 ```shell
 cd /data
-git clone git@github.com:clflushopt/tpchgen-rs.git
-cd tpchgen-rs
-cargo install --path tpchgen-cli
+git clone git@github.com:clflushopt/spatialbench-rs.git
+cd spatialbench-rs
+cargo install --path spatialbench-cli
 ```
 
 

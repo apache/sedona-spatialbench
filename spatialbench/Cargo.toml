@@ -1,0 +1,21 @@
+[package]
+name = "spatialbench"
+authors = ["clflushopt", "alamb"]
+description = "Blazing fast pure Rust no dependency TPC-H data generation library."
+repository = "https://github.com/wherobots/sedona-spatialbench"
+readme = { workspace = true }
+version = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+
+# Designed to have no depdencies to make it easy to embed in other projects
+# See ../ARCHITECTURE.md for more details
+[dependencies]
+rand = { version = "0.8", features = ["small_rng"] }
+duckdb = { version = "1.3.0", features = ["bundled"] }
+geo = { workspace = true }
+geozero = { workspace = true }
+
+[dev-dependencies]
+flate2 = "1.1.0"

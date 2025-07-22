@@ -55,14 +55,14 @@ cargo build --release
 Alternatively, install it directly using:
 
 ```bash
-cargo install --path ./tpchgen-cli
+cargo install --path ./spatialbench-cli
 ```
 
 ### Notes
 
-- The core generator logic lives in the tpchgen crate.
-- Geometry-aware logic is in tpchgen-arrow and integrated via Arrow-based schemas.
-- The spatial extension modules like the Spider geometry generator reside in [spider.rs](https://github.com/wherobots/sedona-spatialbench/blob/main/tpchgen/src/spider.rs).
+- The core generator logic lives in the spatialbench crate.
+- Geometry-aware logic is in spatialbench-arrow and integrated via Arrow-based schemas.
+- The spatial extension modules like the Spider geometry generator reside in [spider.rs](https://github.com/wherobots/sedona-spatialbench/blob/main/spatialbench/src/spider.rs).
 - The generator supports output formats like .tbl and Apache Parquet via the Arrow writer.
 
 For contribution or debugging, refer to the [ARCHITECTURE.md](https://github.com/wherobots/sedona-spatialbench/blob/main/ARCHITECTURE.md) guide.
@@ -72,13 +72,13 @@ For contribution or debugging, refer to the [ARCHITECTURE.md](https://github.com
 #### Generate All Tables (Scale Factor 1)
 
 ```bash
-tpchgen-cli -s 1 --format=parquet
+spatialbench-cli -s 1 --format=parquet
 ```
 
 #### Generate Individual Tables
 
 ```bash
-tpchgen-cli -s 1 --format=parquet --tables trip,building --output-dir sf1-parquet
+spatialbench-cli -s 1 --format=parquet --tables trip,building --output-dir sf1-parquet
 ```
 
 #### Partitioned Output Example
@@ -86,13 +86,13 @@ tpchgen-cli -s 1 --format=parquet --tables trip,building --output-dir sf1-parque
 ```bash
 for PART in $(seq 1 4); do
   mkdir part-$PART
-  tpchgen-cli -s 10 --tables trip,building --output-dir part-$PART --parts 4 --part $PART
+  spatialbench-cli -s 10 --tables trip,building --output-dir part-$PART --parts 4 --part $PART
 done
 ```
 
 ## SpatialBench Spider Data Generator
 
-SpatialBench includes a synthetic spatial data generator ([spider.rs](https://github.com/wherobots/sedona-spatialbench/blob/main/tpchgen/src/spider.rs)) for creating:
+SpatialBench includes a synthetic spatial data generator ([spider.rs](https://github.com/wherobots/sedona-spatialbench/blob/main/spatialbench/src/spider.rs)) for creating:
 - Points
 - Rectangles (boxes)
 - Polygons

@@ -23,12 +23,12 @@ Blazing fast [TPCH] benchmark data generator, in pure Rust with zero dependencie
 ### Install Using Python
 Install this tool with Python:
 ```shell
-pip install tpchgen-cli
+pip install spatialbench-cli
 ```
 
 ```shell
 # create Scale Factor 10 (3.6GB, 8 files, 60M rows in lineitem) in 5 seconds on a modern laptop
-tpchgen-cli -s 10 --format=parquet
+spatialbench-cli -s 10 --format=parquet
 ```
 
 ### Install Using Rust
@@ -36,12 +36,12 @@ tpchgen-cli -s 10 --format=parquet
 
 ```shell
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-cargo install tpchgen-cli
+cargo install spatialbench-cli
 ```
 
 ```shell
 # create Scale Factor 10 (3.6GB, 8 files, 60M rows in lineitem) in 5 seconds on a modern laptop
-tpchgen-cli -s 10 --format=parquet
+spatialbench-cli -s 10 --format=parquet
 ```
 
 Or watch this [awesome demo](https://www.youtube.com/watch?v=UYIC57hlL14) recorded by [@alamb](https://github.com/alamb)
@@ -52,14 +52,14 @@ and the companion blog post in the [Datafusion blog](https://datafusion.apache.o
 ```shell
 
 # Create a scale factor 10 dataset in the native table format.
-tpchgen-cli -s 10 --output-dir sf10
+spatialbench-cli -s 10 --output-dir sf10
 
 # Create a scale factor 1 dataset in Parquet format.
-tpchgen-cli -s 1 --output-dir sf1-parquet --format=parquet
+spatialbench-cli -s 1 --output-dir sf1-parquet --format=parquet
 
 # Create a scale factor 1 (default) partitioned dataset for the region, nation, orders
 # and customer tables.
-tpchgen-cli --tables region,nation,orders,customer --output-dir sf1-partitioned --parts 10 --part 2
+spatialbench-cli --tables region,nation,orders,customer --output-dir sf1-partitioned --parts 10 --part 2
 
 # Create a scale factor 1 partitioned into separate folders.
 #
@@ -74,7 +74,7 @@ tpchgen-cli --tables region,nation,orders,customer --output-dir sf1-partitioned 
 # c235841b00d29ad4f817771fcc851207  part-2/region.tbl
 for PART in `seq 1 2`; do
   mkdir part-$PART
-  tpchgen-cli --tables region,nation,orders,customer --output-dir part-$PART --parts 10 --part $PART
+  spatialbench-cli --tables region,nation,orders,customer --output-dir part-$PART --parts 10 --part $PART
 done
 ```
 
@@ -98,7 +98,7 @@ Times to create TPCH tables in Parquet format using `tpchgen-cli` and `duckdb` f
 
 ![Parquet Generation Performance](parquet-performance.png)
 
-[`tpchgen-cli`](./tpchgen-cli/README.md) is more than 10x faster than the next
+[`tpchgen-cli`](spatialbench-cli/README.md) is more than 10x faster than the next
 fastest TPCH generator we know of. On a 2023 Mac M3 Max laptop, it easily
 generates data faster than can be written to SSD. See
 [BENCHMARKS.md](./benchmarks/BENCHMARKS.md) for more details on performance and
@@ -113,13 +113,13 @@ the output of this crate with [`dbgen`] as part of every checkin. See
 
 ## Crates
 
-- [`tpchgen`](tpchgen): the core data generator logic for TPC-H. It has no
+- [`tpchgen`](spatialbench): the core data generator logic for TPC-H. It has no
   dependencies and is easy to embed in other Rust project. 
 
-- [`tpchgen-arrow`](tpchgen-arrow) generates TPC-H data in [Apache Arrow]
+- [`tpchgen-arrow`](spatialbench-arrow) generates TPC-H data in [Apache Arrow]
   format. It depends on the arrow-rs library
 
-- [`tpchgen-cli`](tpchgen-cli) is a [`dbgen`] compatible CLI tool that generates
+- [`tpchgen-cli`](spatialbench-cli) is a [`dbgen`] compatible CLI tool that generates
   benchmark dataset using multiple processes.
 
 [Apache Arrow]: https://arrow.apache.org/
