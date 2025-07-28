@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "spatialbench-cli"
 dynamic = ["version"]
-description = "Python CLI for TPC-H data generator"
+description = "Python CLI for Spatial Bench data generator"
 requires-python = ">=3.8"
 
 [tool.maturin]
