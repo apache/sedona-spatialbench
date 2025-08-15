@@ -1092,7 +1092,9 @@ impl TripGeneratorIterator {
         let pickup_date = TPCHDate::new_with_time(pickup_date_value, pickup_time);
 
         // Get distance from KDE model (in miles with decimal precision)
-        let distance_value = self.distance_kde.generate(trip_key as u64);
+        let mut distance_value = self.distance_kde.generate(trip_key as u64);
+        // Hard code distance precision to 8 decimal places
+        distance_value = (distance_value * 100_000_000.0).round() / 100_000_000.0;
         let distance = TPCHDecimal((distance_value * 100.0) as i64);
 
         // Pickup
@@ -1109,8 +1111,13 @@ impl TripGeneratorIterator {
         let angle: f64 = angle_rng.gen::<f64>() * std::f64::consts::TAU;
 
         // Dropoff via polar projection
-        let dropoff_x = pickup_x + distance_value * angle.cos();
-        let dropoff_y = pickup_y + distance_value * angle.sin();
+        let mut dropoff_x = pickup_x + distance_value * angle.cos();
+        let mut dropoff_y = pickup_y + distance_value * angle.sin();
+
+        // Hard code coordinate precision to 8 decimal places - milimeter level precision for WGS 84
+        dropoff_x = (dropoff_x * 100_000_000.0).round() / 100_000_000.0;
+        dropoff_y = (dropoff_y * 100_000_000.0).round() / 100_000_000.0;
+
         let dropoffloc = Point::new(dropoff_x, dropoff_y);
 
         let fare_per_mile = self.fare_per_mile_random.next_value() as f64;
@@ -1726,7 +1733,7 @@ mod tests {
         // Check first Trip
         let first = &trips[1];
         assert_eq!(first.t_tripkey, 2);
-        assert_eq!(first.to_string(), "2|172|1|1|1997-12-24 08:47:14|1997-12-24 09:28:57|0.03|0.00|0.04|0.01|POINT(-168.046875 -21.09375)|POINT(-168.03314018997426 -21.091593427559978)|");
+        assert_eq!(first.to_string(), "2|172|1|1|1997-12-24 08:47:14|1997-12-24 09:28:57|0.03|0.00|0.04|0.01|POINT(-168.046875 -21.09375)|POINT(-168.03314019 -21.09159343)|");
     }
 
     #[test]
