@@ -164,7 +164,7 @@ impl<'a> VehicleGenerator<'a> {
     }
 }
 
-impl<'a> IntoIterator for &'a VehicleGenerator<'a> {
+impl<'a> IntoIterator for VehicleGenerator<'a> {
     type Item = Vehicle<'a>;
     type IntoIter = VehicleGeneratorIterator<'a>;
 
@@ -439,7 +439,7 @@ impl<'a> DriverGenerator<'a> {
     }
 }
 
-impl<'a> IntoIterator for &'a DriverGenerator<'a> {
+impl<'a> IntoIterator for DriverGenerator<'a> {
     type Item = Driver;
     type IntoIter = DriverGeneratorIterator<'a>;
 
@@ -551,8 +551,8 @@ impl<'a> DriverGeneratorIterator<'a> {
     /// Selects a driver for a vehicle, with drivers table 5x the size of vehicles table
     pub fn select_driver(vehicle_key: i64, driver_number: i64, scale_factor: f64) -> i64 {
         // Use supplier generator's scale base
-        let driver_count = (VehicleGenerator::SCALE_BASE as f64 * scale_factor) as i64;
-
+        let mut driver_count = (VehicleGenerator::SCALE_BASE as f64 * scale_factor) as i64;
+        driver_count = driver_count.max(1);
         ((vehicle_key
             + (driver_number
                 * ((driver_count / DriverGenerator::DRIVERS_PER_VEHICLE as i64)
@@ -713,7 +713,7 @@ impl<'a> CustomerGenerator<'a> {
     }
 }
 
-impl<'a> IntoIterator for &'a CustomerGenerator<'a> {
+impl<'a> IntoIterator for CustomerGenerator<'a> {
     type Item = Customer<'a>;
     type IntoIter = CustomerGeneratorIterator<'a>;
 
@@ -1732,11 +1732,11 @@ mod tests {
     #[test]
     fn test_building_generation() {
         // Create a generator with a small scale factor
-        let generator = BuildingGenerator::new(1.0, 1, 1);
+        let generator = BuildingGenerator::new(0.51, 1, 1);
         let buildings: Vec<_> = generator.iter().collect();
 
-        // Should have 0.01 * 20,000 = 200 buildings
-        assert_eq!(buildings.len(), 20_000);
+        // Should have 20000 * (1 + log2(0.51)) = 571 buildings
+        assert_eq!(buildings.len(), 571);
 
         // Check first building
         let first = &buildings[0];

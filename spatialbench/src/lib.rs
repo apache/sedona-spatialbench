@@ -1,4 +1,4 @@
-//! Rust TPCH Data Generator
+//! Rust Spatial Bench Data Generator
 //!
 //! This crate provides a native Rust implementation of functions and utilities
 //! necessary for generating the TPC-H benchmark dataset in several popular
@@ -13,7 +13,7 @@
 //! let num_parts = 1;
 //! let generator = TripGenerator::new(scale_factor, part, num_parts);
 //!
-//! // Output the first 3 rows in classic TPCH TBL format
+//! // Output the first 3 rows in classic Spatial Bench TBL format
 //! // (the generators are normal rust iterators and combine well with the Rust ecosystem)
 //! let trips: Vec<_> = generator.iter()
 //!    .take(3)
@@ -37,7 +37,7 @@
 //!
 //! This crate currently supports the following output formats:
 //!
-//! - TBL: The `Display` impl of the row structs produces the TPCH TBL format.
+//! - TBL: The `Display` impl of the row structs produces the Spatial Bench TBL format.
 //! - CSV: the [`csv`] module has formatters for CSV output (e.g. [`TripCsv`]).
 //!
 //! [`Trip`]: generators::Trip
@@ -57,7 +57,7 @@ pub mod decimal;
 pub mod distribution;
 pub mod generators;
 pub mod kde;
-pub mod queries;
+pub mod q_and_a;
 pub mod random;
 pub mod spider;
 pub mod spider_presets;

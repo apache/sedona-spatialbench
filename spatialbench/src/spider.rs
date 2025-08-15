@@ -226,15 +226,6 @@ pub fn generate_point_geom(center: (f64, f64), config: &SpiderConfig) -> Geometr
     Geometry::Point(Point::new(x, y))
 }
 
-pub fn generate_point_wkt(center: (f64, f64), config: &SpiderConfig) -> String {
-    let (x, y) = if let Some(aff) = &config.affine {
-        apply_affine(center.0, center.1, aff)
-    } else {
-        center
-    };
-    format!("POINT ({} {})", x, y)
-}
-
 pub fn generate_box_geom(center: (f64, f64), config: &SpiderConfig, rng: &mut StdRng) -> Geometry {
     let half_width = rand_unit(rng) * config.width / 2.0;
     let half_height = rand_unit(rng) * config.height / 2.0;
@@ -254,33 +245,6 @@ pub fn generate_box_geom(center: (f64, f64), config: &SpiderConfig, rng: &mut St
         .collect();
 
     Geometry::Polygon(Polygon::new(LineString::from(coords), vec![]))
-}
-
-pub fn generate_box_wkt(center: (f64, f64), config: &SpiderConfig, rng: &mut StdRng) -> String {
-    let half_width = rand_unit(rng) * config.width / 2.0;
-    let half_height = rand_unit(rng) * config.height / 2.0;
-
-    let corners = [
-        (center.0 - half_width, center.1 - half_height), // lower-left
-        (center.0 + half_width, center.1 - half_height), // lower-right
-        (center.0 + half_width, center.1 + half_height), // upper-right
-        (center.0 - half_width, center.1 + half_height), // upper-left
-        (center.0 - half_width, center.1 - half_height), // close ring
-    ];
-
-    let coords: Vec<String> = corners
-        .iter()
-        .map(|&(x, y)| {
-            let (tx, ty) = if let Some(aff) = &config.affine {
-                apply_affine(x, y, aff)
-            } else {
-                (x, y)
-            };
-            format!("{:.10} {:.10}", tx, ty)
-        })
-        .collect();
-
-    format!("POLYGON (({}))", coords.join(", "))
 }
 
 pub fn generate_polygon_geom(
@@ -315,51 +279,4 @@ pub fn generate_polygon_geom(
     coords.push(coords[0]); // close the ring
 
     Geometry::Polygon(Polygon::new(LineString::from(coords), vec![]))
-}
-
-pub fn generate_polygon_wkt(center: (f64, f64), config: &SpiderConfig, rng: &mut StdRng) -> String {
-    let min_segs = 3;
-    let num_segments = if config.maxseg <= 3 {
-        3
-    } else {
-        rng.gen_range(0..=(config.maxseg - min_segs)) + min_segs
-    };
-
-    // Generate random angles
-    let mut angles: Vec<f64> = (0..num_segments)
-        .map(|_| rand_unit(rng) * 2.0 * PI)
-        .collect();
-
-    // Sort angles to form a valid polygon
-    angles.sort_by(|a, b| a.partial_cmp(b).unwrap());
-
-    let mut coords = Vec::with_capacity((num_segments + 1) as usize);
-
-    for angle in &angles {
-        let local = (
-            center.0 + config.polysize * angle.cos(),
-            center.1 + config.polysize * angle.sin(),
-        );
-        let (tx, ty) = if let Some(aff) = &config.affine {
-            apply_affine(local.0, local.1, aff)
-        } else {
-            local
-        };
-        coords.push(format!("{:.10} {:.10}", tx, ty));
-    }
-
-    // Close the ring by repeating the first point
-    let first_angle = angles[0];
-    let local0 = (
-        center.0 + config.polysize * first_angle.cos(),
-        center.1 + config.polysize * first_angle.sin(),
-    );
-    let (tx0, ty0) = if let Some(aff) = &config.affine {
-        apply_affine(local0.0, local0.1, aff)
-    } else {
-        local0
-    };
-    coords.push(format!("{:.10} {:.10}", tx0, ty0));
-
-    format!("POLYGON (({}))", coords.join(", "))
 }

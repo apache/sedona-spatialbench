@@ -1,6 +1,6 @@
-# TPC-H Data Generator in Arrow format
+# Spatial Bench Data Generator in Arrow format
 
-This crate generates TPCH data directly into [Apache Arrow] format using the [arrow] crate
+This crate generates Spatial Bench data directly into [Apache Arrow] format using the [arrow] crate
 
 [Apache Arrow]: https://arrow.apache.org/
 [arrow]: https://crates.io/crates/arrow

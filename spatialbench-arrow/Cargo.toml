@@ -1,6 +1,6 @@
 [package]
 name = "spatialbench-arrow"
-version = "1.1.0"
+version = "1.1.1"
 edition = "2024"
 authors = ["clflushopt", "alamb"]
 description = "TPC-H data generator into Apache Arrow format"
@@ -9,10 +9,10 @@ readme = "README.md"
 license = "Apache-2.0"
 
 [dependencies]
-arrow = { version = "54.0.0", default-features = false, features = ["prettyprint"] }
-spatialbench = { path = "../spatialbench", version = "1.1.0" }
+arrow = { version = "55.2", default-features = false, features = ["prettyprint"] }
+spatialbench = { path = "../spatialbench", version = "1.1.1" }
 geo = { workspace = true }
 geozero = { workspace = true }
 [dev-dependencies]
-arrow-csv = "54.0.0"
+arrow-csv = "55.2"
 chrono = "0.4.39"

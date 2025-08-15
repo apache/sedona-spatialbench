@@ -1,4 +1,4 @@
-//! Verifies the correctness of the Arrow TPCH generator by parsing the canonical TBL format
+//! Verifies the correctness of the Arrow Spatial Bench generator by parsing the canonical TBL format
 //! and comparing with the generated Arrow RecordBatches
 
 use arrow::array::RecordBatch;

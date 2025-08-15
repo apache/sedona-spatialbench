@@ -1,4 +1,4 @@
-//! Statistics reporter for TPCH data generation.
+//! Statistics reporter for Spatial Bench data generation.
 
 use log::{debug, info};
 use std::time::Instant;

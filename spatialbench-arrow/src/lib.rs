@@ -1,6 +1,6 @@
-//! Generate TPCH data as Arrow RecordBatches
+//! Generate Spatial Bench data as Arrow RecordBatches
 //!
-//! This crate provides generators for TPCH tables that directly produces
+//! This crate provides generators for Spatial Bench tables that directly produces
 //! Arrow [`RecordBatch`]es. This is significantly faster than generating TBL or CSV
 //! files and then parsing them into Arrow.
 //!

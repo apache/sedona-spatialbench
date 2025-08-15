@@ -1,184 +1,132 @@
-//! Consistence and conformance test suite that runs against Trino's TPCH
-//! Java implementation.
-use flate2::read::GzDecoder;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
+//! Consistence test suite to test the `IntoIterator` trait implementation
+//! for the generators in the `spatialbench` crate.
 
-fn read_tbl_gz<P: AsRef<Path>>(path: P) -> Vec<String> {
-    let file = File::open(path).expect("Failed to open file");
-    let gz = GzDecoder::new(file);
-    let reader = BufReader::new(gz);
-    reader
-        .lines()
-        .collect::<Result<_, _>>()
-        .expect("Failed to read lines")
+use spatialbench::generators::{
+    BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
+    ZoneGenerator,
+};
+
+struct TestIntoIterator<G>
+where
+    G: IntoIterator,
+    G::Item: std::fmt::Display,
+{
+    generator: Option<G>,
 }
 
-fn test_generator<T, I>(iter: I, reference_path: &str, transform_fn: impl Fn(T) -> String)
+impl<G> TestIntoIterator<G>
 where
-    I: Iterator<Item = T>,
+    G: IntoIterator,
+    G::Item: std::fmt::Display,
 {
-    let mut dir =
-        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set"));
-    dir.push(reference_path);
+    fn new(generator: G) -> Self {
+        Self {
+            generator: Some(generator),
+        }
+    }
 
-    // Read reference data.
-    let reference_data = read_tbl_gz(dir);
-
-    // Generate data using our own generators.
-    let generated_data: Vec<String> = iter.map(transform_fn).collect();
-
-    // Compare that we have the same number of records.
-    assert_eq!(
-        reference_data.len(),
-        generated_data.len(),
-        "Number of records doesn't match for {}. Reference: {}, Generated: {}",
-        reference_path,
-        reference_data.len(),
-        generated_data.len()
-    );
-
-    for (i, (reference, generated)) in reference_data.iter().zip(generated_data.iter()).enumerate()
-    {
-        assert_eq!(
-            reference, generated,
-            "Record {} doesn't match for {}.\nReference: {}\nGenerated: {}",
-            i, reference_path, reference, generated
-        );
+    #[allow(clippy::wrong_self_convention)]
+    pub fn to_string_vec(&mut self, take_num: i32) -> Vec<String> {
+        if let Some(generator) = self.generator.take() {
+            generator
+                .into_iter()
+                .take(take_num as usize)
+                .map(|item| item.to_string())
+                .collect()
+        } else {
+            vec![]
+        }
     }
 }
 
-// #[test]
-// fn test_nation_sf_0_001() {
-//     let _sf = 0.001;
-//     let generator = NationGenerator::default();
-//     test_generator(generator.iter(), "data/sf-0.001/nation.tbl.gz", |nation| {
-//         nation.to_string()
-//     });
-// }
+#[test]
+fn test_trip_into_iter() {
+    {
+        assert_eq!(
+            TestIntoIterator::new(TripGenerator::new(0.01, 1, 1))
+                .to_string_vec(5)
+                .len(),
+            5
+        );
+    }
+    {
+        let trip = TripGenerator::new(0.01, 1, 1);
+        assert_eq!(TestIntoIterator::new(trip).to_string_vec(5).len(), 5);
+    }
+}
 
-// #[test]
-// fn test_region_sf_0_001() {
-//     let _sf = 0.001;
-//     let generator = RegionGenerator::default();
-//     test_generator(generator.iter(), "data/sf-0.001/region.tbl.gz", |region| {
-//         region.to_string()
-//     });
-// }
+#[test]
+fn test_customer_into_iter() {
+    {
+        assert_eq!(
+            TestIntoIterator::new(CustomerGenerator::new(0.01, 1, 1))
+                .to_string_vec(5)
+                .len(),
+            5
+        );
+    }
+    {
+        let customer = CustomerGenerator::new(0.01, 1, 1);
+        assert_eq!(TestIntoIterator::new(customer).to_string_vec(5).len(), 5);
+    }
+}
 
-// #[test]
-// fn test_part_sf_0_001() {
-//     let sf = 0.001;
-//     let generator = VehicleGenerator::new(sf, 1, 1);
-//     test_generator(generator.iter(), "data/sf-0.001/part.tbl.gz", |part| {
-//         part.to_string()
-//     });
-// }
-//
-// #[test]
-// fn test_supplier_sf_0_001() {
-//     let sf = 0.001;
-//     let generator = DriverGenerator::new(sf, 1, 1);
-//     test_generator(
-//         generator.iter(),
-//         "data/sf-0.001/supplier.tbl.gz",
-//         |supplier| supplier.to_string(),
-//     );
-// }
-//
-// #[test]
-// fn test_customer_sf_0_001() {
-//     let sf = 0.001;
-//     let generator = CustomerGenerator::new(sf, 1, 1);
-//     test_generator(
-//         generator.iter(),
-//         "data/sf-0.001/customer.tbl.gz",
-//         |customer| customer.to_string(),
-//     );
-// }
+#[test]
+fn test_driver_into_iter() {
+    {
+        assert_eq!(
+            TestIntoIterator::new(DriverGenerator::new(0.01, 1, 1))
+                .to_string_vec(5)
+                .len(),
+            5
+        );
+    }
+    {
+        let driver = DriverGenerator::new(0.01, 1, 1);
+        assert_eq!(TestIntoIterator::new(driver).to_string_vec(5).len(), 5);
+    }
+}
 
-// #[test]
-// fn test_orders_sf_0_001() {
-//     let sf = 0.001;
-//     let generator = OrderGenerator::new(sf, 1, 1);
-//     test_generator(generator.iter(), "data/sf-0.001/orders.tbl.gz", |order| {
-//         order.to_string()
-//     });
-// }
+#[test]
+fn test_vehicle_into_iter() {
+    {
+        assert_eq!(
+            TestIntoIterator::new(VehicleGenerator::new(0.01, 1, 1))
+                .to_string_vec(5)
+                .len(),
+            1
+        );
+    }
+    {
+        let vehicle = VehicleGenerator::new(0.01, 1, 1);
+        assert_eq!(TestIntoIterator::new(vehicle).to_string_vec(5).len(), 1);
+    }
+}
 
-// #[test]
-// fn test_lineitem_sf_0_001() {
-//     let sf = 0.001;
-//     let generator = LineItemGenerator::new(sf, 1, 1);
-//     test_generator(generator.iter(), "data/sf-0.001/lineitem.tbl.gz", |item| {
-//         item.to_string()
-//     });
-// }
+#[test]
+fn test_zone_into_iter() {
+    {
+        assert_eq!(
+            TestIntoIterator::new(ZoneGenerator::new(0.001, 1, 1))
+                .to_string_vec(5)
+                .len(),
+            5
+        );
+    }
+    {
+        let zone = ZoneGenerator::new(0.001, 1, 1);
+        assert_eq!(TestIntoIterator::new(zone).to_string_vec(5).len(), 5);
+    }
+}
 
-// #[test]
-// fn test_nation_sf_0_01() {
-//     let sf = 0.01;
-//     let generator = NationGenerator::new(sf, 1, 1);
-//     test_generator(generator.iter(), "data/sf-0.01/nation.tbl.gz", |nation| {
-//         nation.to_string()
-//     });
-// }
-
-// #[test]
-// fn test_region_sf_0_01() {
-//     let sf = 0.01;
-//     let generator = RegionGenerator::new(sf, 1, 1);
-//     test_generator(generator.iter(), "data/sf-0.01/region.tbl.gz", |region| {
-//         region.to_string()
-//     });
-// }
-
-// #[test]
-// fn test_part_sf_0_01() {
-//     let sf = 0.01;
-//     let generator = VehicleGenerator::new(sf, 1, 1);
-//     test_generator(generator.iter(), "data/sf-0.01/part.tbl.gz", |part| {
-//         part.to_string()
-//     });
-// }
-
-// #[test]
-// fn test_supplier_sf_0_01() {
-//     let sf = 0.01;
-//     let generator = DriverGenerator::new(sf, 1, 1);
-//     test_generator(
-//         generator.iter(),
-//         "data/sf-0.01/supplier.tbl.gz",
-//         |supplier| supplier.to_string(),
-//     );
-// }
-
-// #[test]
-// fn test_customer_sf_0_01() {
-//     let sf = 0.01;
-//     let generator = CustomerGenerator::new(sf, 1, 1);
-//     test_generator(
-//         generator.iter(),
-//         "data/sf-0.01/customer.tbl.gz",
-//         |customer| customer.to_string(),
-//     );
-// }
-
-// #[test]
-// fn test_orders_sf_0_01() {
-//     let sf = 0.01;
-//     let generator = OrderGenerator::new(sf, 1, 1);
-//     test_generator(generator.iter(), "data/sf-0.01/orders.tbl.gz", |order| {
-//         order.to_string()
-//     })
-// }
-//
-// #[test]
-// fn test_lineitem_sf_0_01() {
-//     let sf = 0.01;
-//     let generator = LineItemGenerator::new(sf, 1, 1);
-//     test_generator(generator.iter(), "data/sf-0.01/lineitem.tbl.gz", |item| {
-//         item.to_string()
-//     })
-// }
+#[test]
+fn test_building_into_iter() {
+    {
+        let gen = BuildingGenerator::new(1.0, 1, 1);
+        assert_eq!(TestIntoIterator::new(&gen).to_string_vec(5).len(), 5);
+    }
+    {
+        let building = BuildingGenerator::new(1.0, 1, 1);
+        assert_eq!(TestIntoIterator::new(&building).to_string_vec(5).len(), 5);
+    }
+}

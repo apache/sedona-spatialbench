@@ -37,7 +37,7 @@ Options:
   -o, --output-dir <OUTPUT_DIR>
           Output directory for generated files (default: current directory) [default: .]
   -T, --tables <TABLES>
-          Which tables to generate (default: all) [possible values: region, nation, supplier, customer, part, partsupp, orders, lineitem]
+          Which tables to generate (default: all) [possible values: vehicle, driver, customer, trip, building, zone]
   -p, --parts <PARTS>
           Number of parts to generate (manual parallel generation) [default: 1]
       --part <PART>
@@ -58,5 +58,5 @@ Options:
 
 For example generating a dataset with a scale factor of 1 (1GB) can be done like this:
 ```shell
-$ spatialbench-cli -s 1 --output-dir=/tmp/tpch
+$ spatialbench-cli -s 1 --output-dir=/tmp/spatialbench
 ```

@@ -16,14 +16,14 @@ Goals:
 
 SpatialBench defines a spatial star schema with the following tables:
 
-| Table      | Type         | Abbr. | Description                                 | Spatial Attributes        | Cardinality per SF       |
-|------------|--------------|-------|---------------------------------------------|----------------------------|--------------------------|
-| Trip       | Fact Table   | `t_`  | Individual trip records                     | pickup & dropoff points    | 6M × SF                  |
-| Customer   | Dimension    | `c_`  | Trip customer info                          | None                       | 30K × SF                 |
-| Driver     | Dimension    | `s_`  | Trip driver info                            | None                       | 500 × SF                 |
-| Vehicle    | Dimension    | `v_`  | Trip vehicle info                           | None                       | 100 × SF                 |
-| Zone       | Dimension    | `z_`  | Administrative zones                        | Polygon                    | ~236K (fixed)            |
-| Building   | Dimension    | `b_`  | Building footprints                         | Polygon                    | 20K × (1 + log₂(SF))     |
+| Table      | Type         | Abbr. | Description                                 | Spatial Attributes        | Cardinality per SF   |
+|------------|--------------|-------|---------------------------------------------|----------------------------|----------------------|
+| Trip       | Fact Table   | `t_`  | Individual trip records                     | pickup & dropoff points    | 6M × SF              |
+| Customer   | Dimension    | `c_`  | Trip customer info                          | None                       | 30K × SF             |
+| Driver     | Dimension    | `s_`  | Trip driver info                            | None                       | 500 × SF             |
+| Vehicle    | Dimension    | `v_`  | Trip vehicle info                           | None                       | 100 × SF             |
+| Zone       | Dimension    | `z_`  | Administrative zones                        | Polygon                    | ~867k (fixed)        |
+| Building   | Dimension    | `b_`  | Building footprints                         | Polygon                    | 20K × (1 + log₂(SF)) |
 
 !!!note
 

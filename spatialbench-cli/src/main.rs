@@ -1,6 +1,6 @@
-//! TPCH data generation CLI with a dbgen compatible API.
+//! Spatial Bench data generation CLI with a dbgen compatible API.
 //!
-//! This crate provides a CLI for generating TPCH data and tries to remain close
+//! This crate provides a CLI for generating Spatial Bench data and tries to remain close
 //! API wise to the original dbgen tool, as in we use the same command line flags
 //! and arguments.
 //!
@@ -42,12 +42,14 @@
 mod csv;
 mod generate;
 mod parquet;
+mod plan;
 mod statistics;
 mod tbl;
 
 use crate::csv::*;
 use crate::generate::{generate_in_chunks, Sink, Source};
 use crate::parquet::*;
+use crate::plan::GenerationPlan;
 use crate::statistics::WriteStatistics;
 use crate::tbl::*;
 use ::parquet::basic::Compression;
@@ -88,13 +90,15 @@ struct Cli {
     #[arg(short = 'T', long = "tables", value_delimiter = ',', value_parser = TableValueParser)]
     tables: Option<Vec<Table>>,
 
-    /// Number of parts to generate (manual parallel generation)
-    #[arg(short, long, default_value_t = 1)]
-    parts: i32,
+    /// Number of partitions to generate (manual parallel generation)
+    #[arg(short, long)]
+    parts: Option<i32>,
 
-    /// Which part to generate (1-based, only relevant if parts > 1)
-    #[arg(long, default_value_t = 1)]
-    part: i32,
+    /// Which partition to generate (1-based)
+    ///
+    /// If not specified, generates all parts
+    #[arg(long)]
+    part: Option<i32>,
 
     /// Output format: tbl, csv, parquet (default: tbl)
     #[arg(short, long, default_value = "tbl")]
@@ -244,13 +248,20 @@ macro_rules! define_generate {
     ($FUN_NAME:ident,  $TABLE:expr, $GENERATOR:ident, $TBL_SOURCE:ty, $CSV_SOURCE:ty, $PARQUET_SOURCE:ty) => {
         async fn $FUN_NAME(&self) -> io::Result<()> {
             let filename = self.output_filename($TABLE);
-            let (num_parts, parts) = self.parallel_target_part_count(&$TABLE);
+            let plan = GenerationPlan::try_new(
+                &$TABLE,
+                self.format,
+                self.scale_factor,
+                self.part,
+                self.parts,
+            )
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
             let scale_factor = self.scale_factor;
             info!("Writing table {} (SF={scale_factor}) to {filename}", $TABLE);
-            debug!("Generating {num_parts} parts in total");
-            let gens = parts
+            debug!("Plan: {plan}");
+            let gens = plan
                 .into_iter()
-                .map(move |part| $GENERATOR::new(scale_factor, part, num_parts));
+                .map(move |(part, num_parts)| $GENERATOR::new(scale_factor, part, num_parts));
             match self.format {
                 OutputFormat::Tbl => self.go(&filename, gens.map(<$TBL_SOURCE>::new)).await,
                 OutputFormat::Csv => self.go(&filename, gens.map(<$CSV_SOURCE>::new)).await,
@@ -380,63 +391,6 @@ impl Cli {
     fn new_output_file(&self, filename: &str) -> io::Result<File> {
         let path = self.output_dir.join(filename);
         File::create(path)
-    }
-
-    /// Returns a list of "parts" (data generator chunks, not TPCH parts) to create
-    ///
-    /// Tuple returned is `(num_parts, part_list)`:
-    /// - num_parts is the total number of parts to generate
-    /// - part_list is the list of parts to generate (1 based)
-    fn parallel_target_part_count(&self, table: &Table) -> (i32, Vec<i32>) {
-        // parallel generation disabled if user specifies a part explicitly
-        if self.part != 1 || self.parts != 1 {
-            return (self.parts, vec![self.part]);
-        }
-
-        // Note use part=1, part_count=1 to calculate the total row count
-        // for the table
-        //
-        // Avg row size is an estimate of the average row size in bytes from the first 100 rows
-        // of the table in tbl format
-        let (avg_row_size_bytes, row_count) = match table {
-            Table::Vehicle => (
-                64,
-                VehicleGenerator::calculate_row_count(self.scale_factor, 1, 1),
-            ),
-            Table::Driver => (
-                80,
-                DriverGenerator::calculate_row_count(self.scale_factor, 1, 1),
-            ),
-            Table::Customer => (
-                84,
-                CustomerGenerator::calculate_row_count(self.scale_factor, 1, 1),
-            ),
-            &Table::Trip => (
-                144,
-                TripGenerator::calculate_row_count(self.scale_factor, 1, 1),
-            ),
-            Table::Building => (
-                212,
-                BuildingGenerator::calculate_row_count(self.scale_factor, 1, 1),
-            ),
-            Table::Zone => {
-                let generator = ZoneGenerator::new(self.scale_factor, 1, 1);
-                (115, generator.calculate_row_count())
-            }
-        };
-        // target chunks of about 16MB (use 15MB to ensure we don't exceed the target size)
-        let target_chunk_size_bytes = 15 * 1024 * 1024;
-        let mut num_parts = ((row_count * avg_row_size_bytes) / target_chunk_size_bytes) + 1;
-
-        // parquet files can have at most 32767 row groups so cap the number of parts at that number
-        if self.format == OutputFormat::Parquet {
-            num_parts = num_parts.min(32767);
-        }
-
-        // convert to i32
-        let num_parts = num_parts.try_into().unwrap();
-        // generating all the parts
-        (num_parts, (1..=num_parts).collect())
     }
 
     /// Generates the output file from the sources
