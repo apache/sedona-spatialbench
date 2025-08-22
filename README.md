@@ -25,10 +25,7 @@ SpatialBench defines a spatial star schema with the following tables:
 | Zone       | Dimension    | `z_`  | Administrative zones                        | Polygon                    | ~867k (fixed)        |
 | Building   | Dimension    | `b_`  | Building footprints                         | Polygon                    | 20K × (1 + log₂(SF)) |
 
-!!!note
-
-    Unlike other tables in the benchmark, the Zone table does not scale with the scale factor. It is a fixed-size reference table representing administrative boundaries and is derived from the Overture Maps Divisions theme, release version 2025-06-25.0.
-    This ensures consistency and realism for spatial join workloads such as point-in-polygon or zone-based aggregations.
+Unlike other tables in the benchmark, the Zone table does not scale with the scale factor. It is a fixed-size reference table representing administrative boundaries and is derived from the Overture Maps Divisions theme, release version 2025-06-25.0. This ensures consistency and realism for spatial join workloads such as point-in-polygon or zone-based aggregations.
 
 ![image.png](images/data_model.png)
 
