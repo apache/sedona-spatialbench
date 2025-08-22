@@ -1,7 +1,7 @@
-use crate::conversions::{decimal128_array_from_iter, to_arrow_date32};
+use crate::conversions::{decimal128_array_from_iter, to_arrow_timestamp_millis};
 use crate::{DEFAULT_BATCH_SIZE, RecordBatchIterator};
-use arrow::array::{BinaryArray, Date32Array, Int64Array, RecordBatch};
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::array::{BinaryArray, Int64Array, RecordBatch, TimestampMillisecondArray};
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef, TimeUnit};
 use geo::Geometry;
 use geozero::{CoordDimensions, ToWkb};
 use spatialbench::generators::{Trip, TripGenerator, TripGeneratorIterator};
@@ -71,13 +71,13 @@ impl Iterator for TripArrow {
         let t_custkey = Int64Array::from_iter_values(rows.iter().map(|row| row.t_custkey));
         let t_driverkey = Int64Array::from_iter_values(rows.iter().map(|row| row.t_driverkey));
         let t_vehiclekey = Int64Array::from_iter_values(rows.iter().map(|row| row.t_vehiclekey));
-        let t_pickuptime = Date32Array::from_iter_values(
-            rows.iter().map(|row| row.t_pickuptime).map(to_arrow_date32),
-        );
-        let t_dropofftime = Date32Array::from_iter_values(
+        let t_pickuptime = TimestampMillisecondArray::from_iter_values(
             rows.iter()
-                .map(|row| row.t_dropofftime)
-                .map(to_arrow_date32),
+                .map(|row| to_arrow_timestamp_millis(row.t_pickuptime)),
+        );
+        let t_dropofftime = TimestampMillisecondArray::from_iter_values(
+            rows.iter()
+                .map(|row| to_arrow_timestamp_millis(row.t_dropofftime)),
         );
         let t_fare = decimal128_array_from_iter(rows.iter().map(|row| row.t_fare));
         let t_tip = decimal128_array_from_iter(rows.iter().map(|row| row.t_tip));
@@ -126,8 +126,16 @@ fn make_trip_schema() -> SchemaRef {
         Field::new("t_custkey", DataType::Int64, false),
         Field::new("t_driverkey", DataType::Int64, false),
         Field::new("t_vehiclekey", DataType::Int64, false),
-        Field::new("t_pickuptime", DataType::Date32, false),
-        Field::new("t_dropofftime", DataType::Date32, false),
+        Field::new(
+            "t_pickuptime",
+            DataType::Timestamp(TimeUnit::Millisecond, None),
+            false,
+        ),
+        Field::new(
+            "t_dropofftime",
+            DataType::Timestamp(TimeUnit::Millisecond, None),
+            false,
+        ),
         Field::new("t_fare", DataType::Decimal128(15, 5), false),
         Field::new("t_tip", DataType::Decimal128(15, 5), false),
         Field::new("t_totalamount", DataType::Decimal128(15, 5), false),

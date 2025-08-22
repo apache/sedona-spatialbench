@@ -224,6 +224,20 @@ impl TPCHDate {
     pub fn to_unix_epoch(&self) -> i32 {
         self.date_index + Self::UNIX_EPOCH_OFFSET
     }
+
+    /// Returns the number of seconds since the Unix epoch this date represents,
+    /// including the time components (hour, minute, second)
+    #[inline(always)]
+    pub fn to_unix_epoch_seconds(&self) -> i64 {
+        // Start with days since Unix epoch converted to seconds
+        let base_seconds = (self.date_index + Self::UNIX_EPOCH_OFFSET) as i64 * 24 * 60 * 60;
+
+        // Add the time components in seconds
+        let time_seconds =
+            (self.hour as i64) * 3600 + (self.minute as i64) * 60 + (self.second as i64);
+
+        base_seconds + time_seconds
+    }
 }
 
 /// Creates a index table of formatted strings

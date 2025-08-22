@@ -33,6 +33,12 @@ pub fn to_arrow_date32(value: TPCHDate) -> i32 {
     value.to_unix_epoch()
 }
 
+/// Convert a TPCH date to an Arrow Timestamp (milliseconds since Unix epoch)
+#[inline(always)]
+pub fn to_arrow_timestamp_millis(value: TPCHDate) -> i64 {
+    value.to_unix_epoch_seconds() * 1000
+}
+
 /// Converts an iterator of TPCH decimals to an Arrow Decimal128Array
 pub fn decimal128_array_from_iter<I>(values: I) -> arrow::array::Decimal128Array
 where
@@ -77,14 +83,14 @@ mod tests {
     }
 
     #[test]
-    fn test_to_arrow_date32() {
+    fn test_to_arrow_timestamp_millis() {
         let value = TPCHDate::new(MIN_GENERATE_DATE, 0, 0, 0);
-        assert_eq!(to_arrow_date32(value), 8035);
+        assert_eq!(to_arrow_timestamp_millis(value), 694224000000);
 
         let value = TPCHDate::new(MIN_GENERATE_DATE + 100, 0, 0, 0);
-        assert_eq!(to_arrow_date32(value), 8135);
+        assert_eq!(to_arrow_timestamp_millis(value), 702864000000);
 
         let value = TPCHDate::new(MIN_GENERATE_DATE + 1234, 0, 0, 0);
-        assert_eq!(to_arrow_date32(value), 9269);
+        assert_eq!(to_arrow_timestamp_millis(value), 800841600000);
     }
 }
