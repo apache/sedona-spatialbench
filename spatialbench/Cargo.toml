@@ -16,6 +16,7 @@ rand = { version = "0.8", features = ["small_rng"] }
 duckdb = { version = "1.3.0", features = ["bundled"] }
 geo = { workspace = true }
 geozero = { workspace = true }
+once_cell = "1.21.3"
 log = "0.4.27"
 
 [dev-dependencies]

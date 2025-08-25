@@ -10,7 +10,8 @@ use crate::random::{PhoneNumberInstance, RandomBoundedLong, StringSequenceInstan
 use crate::random::{RandomAlphaNumeric, RandomAlphaNumericInstance};
 use crate::random::{RandomBoundedInt, RandomString, RandomStringSequence, RandomText};
 use crate::spider::{spider_seed_for_index, SpiderGenerator};
-use crate::spider_presets::SpiderPresets;
+use crate::spider_defaults::SpiderDefaults;
+use crate::spider_overrides;
 use crate::text::TextPool;
 use duckdb::Connection;
 use geo::Geometry;
@@ -909,7 +910,7 @@ impl TripGenerator {
             Distributions::static_default(),
             TextPool::get_or_init_default(),
             crate::kde::default_distance_kde(),
-            SpiderPresets::for_trip_pickups4(),
+            spider_overrides::trip_or_default(SpiderDefaults::trip_default),
         )
     }
 
@@ -1247,14 +1248,13 @@ impl<'a> BuildingGenerator<'a> {
     /// Note the generator's lifetime is `&'static`. See [`BuildingGenerator`] for
     /// more details.
     pub fn new(scale_factor: f64, part: i32, part_count: i32) -> BuildingGenerator<'static> {
-        // Note: use explicit lifetime to ensure this remains `&'static`
         Self::new_with_distributions_and_text_pool(
             scale_factor,
             part,
             part_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
-            SpiderPresets::for_building_polygons(),
+            spider_overrides::building_or_default(SpiderDefaults::building_default),
         )
     }
 

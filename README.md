@@ -87,69 +87,19 @@ for PART in $(seq 1 4); do
 done
 ```
 
-## SpatialBench Spider Data Generator
+#### Custom Spider Configuration
 
-SpatialBench includes a synthetic spatial data generator ([spider.rs](https://github.com/wherobots/sedona-spatialbench/blob/main/spatialbench/src/spider.rs)) for creating:
-- Points
-- Rectangles (boxes)
-- Polygons
+You can override these defaults at runtime by passing a YAML file via the `--config` flag:
 
-This generator is inspired by techniques from the paper [SpiderWeb: A Spatial Data Generator on the Web](https://dl.acm.org/doi/10.1145/3397536.3422351) by Katiyar et al., SIGSPATIAL 2020.
-
-### Supported Distribution Types
-
-| Type         | Description                                                   |
-|--------------|---------------------------------------------------------------|
-| `UNIFORM`    | Uniformly distributed points in `[0,1]²`                      |
-| `NORMAL`     | 2D Gaussian distribution with configurable `mu` and `sigma`   |
-| `DIAGONAL`   | Points clustered along a diagonal                             |
-| `BIT`        | Points in a grid with `2^digits` resolution                   |
-| `SIERPINSKI` | Fractal pattern using Sierpinski triangle                     |
-
-![image.png](images/spatial_distributions.png)
-
-## Configuring Spider Geometry Generation
-
-SpatialBench uses a flexible and extensible SpiderConfig struct (defined in Rust) to control how spatial geometries are generated for synthetic datasets. These configurations are defined in code, often using presets in spider_preset.rs.
-
-#### SpiderConfig Fields
-
-| Field | Type               | Description                                                                    |
-|-------|--------------------|--------------------------------------------------------------------------------|
-| `dist_type` | `DistributionType` | Type of distribution to use (Uniform, Normal, Diagonal, Bit, Sierpinski, etc.) |
-| `geom_type` | `GeomType`         | Geometry to generate: Point, Box, or Polygon                                   |
-| `dim` | `i32`              | Number of dimensions (usually 2)                                               |
-| `seed` | `u32`              | Random seed for reproducibility                                                |
-| `affine` | `Option<[f64; 6]>` | Optional 2D affine transform (scale, rotate, shift)                            |
-| `width`, `height` | `f64`              | For `box` geometries, bounding box size                                        |
-| `maxseg` | `i32`              | Maximum number of segments for polygon shapes                                  |
-| `polysize` | `f64`              | Radius or size of the polygon                                                  |
-| `params` | `DistributionParams` | Additional parameters based on distribution type                               |
-
-#### Supported DistributionParams Variants
-
-| Varient        | Field                  | Description                                                                |
-|----------------|------------------------|----------------------------------------------------------------------------|
-| `None`         | `--`                   | For distributions like Uniform or Sierpinski that don’t require parameters |
-| `Normal`       | `mu`, `sigma`          | Controls center and spread for 2D Gaussian                                 |
-| `Diagonal`     | `percentage`, `buffer` | Mix of diagonal-aligned points and noisy buffer                            |
-| `Bit`          | `probability`, `digits` | Recursive binary split with resolution control                             |
-
-#### Example: USA Mainland Mapping
-
-The affine transform maps generated coordinates from the local unit square [0,1]² into real-world extents. For example, the following affine matrix maps coordinates to the continental USA bounding box:
-
-```rust
-let affine = Some([
-    58.368269, 0.0, -125.244606,  // scale X to ~58°, offset to ~-125°
-    0.0, 25.175375, 24.006328     // scale Y to ~25°, offset to ~24°
-]);
+```bash
+spatialbench-cli -s 1 --format=parquet --tables trip,building --config spatialbench-config.yml
 ```
 
-This maps:
-- x = 0 → -125.24, x = 1 → -66.87
-- y = 0 → 24.00, y = 1 → 49.18
+If --config is not provided, SpatialBench checks for ./spatialbench-config.yml. If absent, it falls back to built-in defaults.
 
+For reference, see the provided [spatialbench-config.yml](spatialbench-config.yml).
+
+See [SPIDER.md](SPIDER.md) for more details about spatial data generation and the full YAML schema and examples.
 
 ## Acknowledgements
 - [TPC-H](https://www.tpc.org/tpch/)

@@ -1,0 +1,29 @@
+trip:
+  dist_type: bit
+  geom_type: point
+  dim: 2
+  seed: 42
+  affine: [360.0, 0.0, -180.0, 0.0, 180.0, -90.0]
+  width: 0.0
+  height: 0.0
+  maxseg: 0
+  polysize: 0.0
+  params:
+    type: bit
+    probability: 0.2
+    digits: 10
+
+building:
+  dist_type: bit
+  geom_type: box
+  dim: 2
+  seed: 12345
+  affine: [360.0, 0.0, -180.0, 0.0, 180.0, -90.0]
+  width: 0.00005
+  height: 0.0001
+  maxseg: 0
+  polysize: 0.0
+  params:
+    type: bit
+    probability: 0.5
+    digits: 20

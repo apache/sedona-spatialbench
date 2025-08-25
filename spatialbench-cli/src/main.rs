@@ -43,6 +43,7 @@ mod csv;
 mod generate;
 mod parquet;
 mod plan;
+mod spider_config_file;
 mod statistics;
 mod tbl;
 
@@ -50,6 +51,7 @@ use crate::csv::*;
 use crate::generate::{generate_in_chunks, Sink, Source};
 use crate::parquet::*;
 use crate::plan::GenerationPlan;
+use crate::spider_config_file::parse_yaml;
 use crate::statistics::WriteStatistics;
 use crate::tbl::*;
 use ::parquet::basic::Compression;
@@ -61,6 +63,7 @@ use spatialbench::generators::{
     BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
     ZoneGenerator,
 };
+use spatialbench::spider_overrides::{set_overrides, SpiderOverrides};
 use spatialbench::text::TextPool;
 use spatialbench_arrow::{
     BuildingArrow, CustomerArrow, DriverArrow, RecordBatchIterator, TripArrow, VehicleArrow,
@@ -89,6 +92,10 @@ struct Cli {
     /// Which tables to generate (default: all)
     #[arg(short = 'T', long = "tables", value_delimiter = ',', value_parser = TableValueParser)]
     tables: Option<Vec<Table>>,
+
+    /// YAML file path specifying configs for Trip and Building
+    #[arg(long = "config")]
+    config: Option<PathBuf>,
 
     /// Number of partitions to generate (manual parallel generation)
     #[arg(short, long)]
@@ -288,6 +295,46 @@ impl Cli {
         // Create output directory if it doesn't exist and we are not writing to stdout.
         if !self.stdout {
             fs::create_dir_all(&self.output_dir)?;
+        }
+
+        // Load overrides if provided or if default config file exists
+        let config_path = if let Some(path) = &self.config {
+            // Use explicitly provided config path
+            Some(path.clone())
+        } else {
+            // Look for default config file in current directory
+            let default_config = PathBuf::from("spatialbench-config.yml");
+            if default_config.exists() {
+                Some(default_config)
+            } else {
+                None
+            }
+        };
+
+        if let Some(path) = config_path {
+            let text = std::fs::read_to_string(&path).map_err(|e| {
+                io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    format!("Failed reading {}: {e}", path.display()),
+                )
+            })?;
+
+            match parse_yaml(&text) {
+                Ok(file_cfg) => {
+                    let trip = file_cfg.trip.as_ref().map(|c| c.to_generator());
+                    let building = file_cfg.building.as_ref().map(|c| c.to_generator());
+                    set_overrides(SpiderOverrides { trip, building });
+                    info!("Loaded spider configuration from {}", path.display());
+                }
+                Err(e) => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        format!("Failed parsing spider-config YAML: {e}"),
+                    ));
+                }
+            }
+        } else {
+            info!("Using default spider configuration from spider_defaults.rs");
         }
 
         // Determine which tables to generate
