@@ -99,7 +99,7 @@ If --config is not provided, SpatialBench checks for ./spatialbench-config.yml. 
 
 For reference, see the provided [spatialbench-config.yml](spatialbench-config.yml).
 
-See [SPIDER.md](SPIDER.md) for more details about spatial data generation and the full YAML schema and examples.
+See [CONFIGURATION.md](./spatialbench-cli/CONFIGURATION.md) for more details about spatial data generation and the full YAML schema and examples.
 
 ## Acknowledgements
 - [TPC-H](https://www.tpc.org/tpch/)
