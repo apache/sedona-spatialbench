@@ -38,24 +38,21 @@ impl SpiderDefaults {
 
     pub fn building_default() -> SpiderGenerator {
         let config = SpiderConfig {
-            dist_type: DistributionType::Bit,
-            geom_type: GeomType::Box,
+            dist_type: DistributionType::Sierpinski,
+            geom_type: GeomType::Polygon,
             dim: 2,
             seed: 12345,
             affine: Some(Self::FULL_WORLD_AFFINE),
 
             // geometry = box
-            width: 0.00005,
-            height: 0.0001,
+            width: 0.0,
+            height: 0.0,
 
             // geometry = polygon
-            maxseg: 0,
-            polysize: 0.0,
+            maxseg: 5,
+            polysize: 0.000039,
 
-            params: DistributionParams::Bit {
-                probability: 0.5,
-                digits: 20,
-            },
+            params: DistributionParams::None,
         };
         SpiderGenerator::new(config)
     }

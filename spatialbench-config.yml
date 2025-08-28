@@ -19,5 +19,9 @@ building:
   dim: 2
   seed: 12345
   affine: [360.0, 0.0, -180.0, 0.0, 180.0, -90.0]
+  width: 0.0
+  height: 0.0
   maxseg: 5
   polysize: 0.000039
+  params:
+    type: none
