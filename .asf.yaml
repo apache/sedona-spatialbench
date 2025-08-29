@@ -42,6 +42,10 @@ github:
     - spatial-sql
     - benchmark
     - performance
+  protected_branches:
+    main: {}
+  enabled_merge_buttons:
+    squash:  true
   features:
     # Enable wiki for documentation
     wiki: false
