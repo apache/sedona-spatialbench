@@ -3,6 +3,8 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::f64::consts::PI;
 
+const GEOMETRY_PRECISION: f64 = 100_000_000.0;
+
 #[derive(Debug, Clone, Copy)]
 pub enum DistributionType {
     Uniform,
@@ -72,12 +74,8 @@ impl SpiderGenerator {
     }
 
     fn generate_uniform(&self, rng: &mut StdRng) -> Geometry {
-        let mut x = rand_unit(rng);
-        let mut y = rand_unit(rng);
-
-        // Hard code coordinate precision to 8 decimal places - milimeter level precision for WGS 84
-        x = (x * 100_000_000.0).round() / 100_000_000.0;
-        y = (y * 100_000_000.0).round() / 100_000_000.0;
+        let x = rand_unit(rng);
+        let y = rand_unit(rng);
 
         match self.config.geom_type {
             GeomType::Point => generate_point_geom((x, y), &self.config),
@@ -89,12 +87,8 @@ impl SpiderGenerator {
     fn generate_normal(&self, rng: &mut StdRng) -> Geometry {
         match self.config.params {
             DistributionParams::Normal { mu, sigma } => {
-                let mut x = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
-                let mut y = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
-
-                // Hard code coordinate precision to 8 decimal places - milimeter level precision for WGS 84
-                x = (x * 100_000_000.0).round() / 100_000_000.0;
-                y = (y * 100_000_000.0).round() / 100_000_000.0;
+                let x = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
+                let y = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
 
                 match self.config.geom_type {
                     GeomType::Point => generate_point_geom((x, y), &self.config),
@@ -142,12 +136,8 @@ impl SpiderGenerator {
                 probability,
                 digits,
             } => {
-                let mut x = spider_bit(rng, probability, digits);
-                let mut y = spider_bit(rng, probability, digits);
-
-                // Hard code coordinate precision to 8 decimal places - milimeter level precision for WGS 84
-                x = (x * 100_000_000.0).round() / 100_000_000.0;
-                y = (y * 100_000_000.0).round() / 100_000_000.0;
+                let x = spider_bit(rng, probability, digits);
+                let y = spider_bit(rng, probability, digits);
 
                 match self.config.geom_type {
                     GeomType::Point => generate_point_geom((x, y), &self.config),
@@ -233,9 +223,8 @@ fn spider_bit(rng: &mut StdRng, prob: f64, digits: u32) -> f64 {
 }
 
 pub fn generate_point_geom(center: (f64, f64), config: &SpiderConfig) -> Geometry {
-    let (x, y) = config
-        .affine
-        .map_or(center, |aff| apply_affine(center.0, center.1, &aff));
+    let (x, y) = round_coordinates(center.0, center.1, GEOMETRY_PRECISION);
+    let (x, y) = config.affine.map_or((x, y), |aff| apply_affine(x, y, &aff));
     Geometry::Point(Point::new(x, y))
 }
 
@@ -253,7 +242,8 @@ pub fn generate_box_geom(center: (f64, f64), config: &SpiderConfig, rng: &mut St
 
     let coords: Vec<_> = corners
         .iter()
-        .map(|&(x, y)| config.affine.map_or((x, y), |aff| apply_affine(x, y, &aff)))
+        .map(|&(x, y)| round_coordinates(x, y, GEOMETRY_PRECISION))
+        .map(|(x, y)| config.affine.map_or((x, y), |aff| apply_affine(x, y, &aff)))
         .map(|(x, y)| coord! { x: x, y: y })
         .collect();
 
@@ -286,14 +276,17 @@ pub fn generate_polygon_geom(
             let y0 = center.1 + config.polysize * angle.sin();
 
             // 2) Clamp in unit square BEFORE affine to keep it in [0,1]^2
-            let x1 = x0.clamp(0.0, 0.1);
-            let y1 = y0.clamp(0.0, 0.1);
+            let x1 = x0.clamp(0.0, 1.0);
+            let y1 = y0.clamp(0.0, 1.0);
 
-            // 3) Now apply affine (e.g., map to lon/lat)
+            // 3) Round coordinates before affine transformation
+            let (x2, y2) = round_coordinates(x1, y1, GEOMETRY_PRECISION);
+
+            // 4) Apply affine transformation
             let (xg, yg) = if let Some(aff) = config.affine {
-                apply_affine(x1, y1, &aff)
+                apply_affine(x2, y2, &aff)
             } else {
-                (x1, y1)
+                (x2, y2)
             };
 
             coord! { x: xg, y: yg }
@@ -306,4 +299,17 @@ pub fn generate_polygon_geom(
     }
 
     Geometry::Polygon(Polygon::new(LineString::from(coords), vec![]))
+}
+
+#[inline]
+fn round_coordinate(coord: f64, precision: f64) -> f64 {
+    (coord * precision).round() / precision
+}
+
+#[inline]
+fn round_coordinates(x: f64, y: f64, precision: f64) -> (f64, f64) {
+    (
+        round_coordinate(x, precision),
+        round_coordinate(y, precision),
+    )
 }
