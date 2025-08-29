@@ -8,7 +8,7 @@ impl SpiderDefaults {
     const FULL_WORLD_AFFINE: [f64; 6] = [
         360.0, // Scale X to cover full longitude range (-180° to 180°)
         0.0, -180.0, // Offset X to start at -180° (west edge of map)
-        0.0, -160.0, // Scale Y to cover full latitude range (-80° to 80°)
+        0.0, -160.0, // Scale Y: maps unit square [0,1] to latitude range [80°, -80°]
         80.0,   // Offset Y to start at 80° (north edge of map)
     ];
 
