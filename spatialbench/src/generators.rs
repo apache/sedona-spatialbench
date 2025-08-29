@@ -1580,11 +1580,11 @@ impl ZoneGenerator {
 
         let query = format!(
             "SELECT
-                id as z_gersid,
-                country as z_country,
+                COALESCE(id, '') as z_gersid,
+                COALESCE(country, '') as z_country,
                 COALESCE(region, '') as z_region,
                 COALESCE(names.primary, '') as z_name,
-                subtype as z_subtype,
+                COALESCE(subtype, '') as z_subtype,
                 ST_AsWKB(geometry) as z_boundary
              FROM read_parquet('{}', hive_partitioning=1)
              WHERE {}
@@ -1814,7 +1814,7 @@ mod tests {
         // Check first Trip
         let first = &trips[1];
         assert_eq!(first.t_tripkey, 2);
-        assert_eq!(first.to_string(), "2|172|1|1|1997-12-24 08:47:14|1997-12-24 09:28:57|0.03|0.00|0.04|0.01|POINT(-168.046875 -21.09375)|POINT(-168.03314019 -21.09159343)|");
+        assert_eq!(first.to_string(), "2|172|1|1|1997-12-24 08:47:14|1997-12-24 09:28:57|0.03|0.00|0.04|0.01|POINT(-167.9122872 34.7837776)|POINT(-167.89855239 34.78593417)|");
     }
 
     #[test]
@@ -1840,7 +1840,7 @@ mod tests {
         // Check first Building
         let first = &buildings[1];
         assert_eq!(first.b_buildingkey, 2);
-        assert_eq!(first.to_string(), "2|blush|POLYGON((-53.95503773947216 -4.59336925079586,-53.95553716203489 -4.603649450495837,-53.952720010369774 -4.601933644900541,-53.95223340198092 -4.601479576109057,-53.95084475390658 -4.598929409235666,-53.95503773947216 -4.59336925079586))|")
+        assert_eq!(first.to_string(), "2|blush|POLYGON((-83.03789282763537 76.82719035094273,-83.05732357624498 76.8261497908428,-83.05935973098767 76.83523128458783,-83.0469480731177 76.83729729350259,-83.03483667238261 76.83170803604837,-83.03789282763537 76.82719035094273))|")
     }
 
     #[test]

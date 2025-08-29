@@ -72,8 +72,12 @@ impl SpiderGenerator {
     }
 
     fn generate_uniform(&self, rng: &mut StdRng) -> Geometry {
-        let x = rand_unit(rng);
-        let y = rand_unit(rng);
+        let mut x = rand_unit(rng);
+        let mut y = rand_unit(rng);
+
+        // Hard code coordinate precision to 8 decimal places - milimeter level precision for WGS 84
+        x = (x * 100_000_000.0).round() / 100_000_000.0;
+        y = (y * 100_000_000.0).round() / 100_000_000.0;
 
         match self.config.geom_type {
             GeomType::Point => generate_point_geom((x, y), &self.config),
@@ -85,8 +89,13 @@ impl SpiderGenerator {
     fn generate_normal(&self, rng: &mut StdRng) -> Geometry {
         match self.config.params {
             DistributionParams::Normal { mu, sigma } => {
-                let x = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
-                let y = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
+                let mut x = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
+                let mut y = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
+
+                // Hard code coordinate precision to 8 decimal places - milimeter level precision for WGS 84
+                x = (x * 100_000_000.0).round() / 100_000_000.0;
+                y = (y * 100_000_000.0).round() / 100_000_000.0;
+
                 match self.config.geom_type {
                     GeomType::Point => generate_point_geom((x, y), &self.config),
                     GeomType::Box => generate_box_geom((x, y), &self.config, rng),
@@ -133,8 +142,12 @@ impl SpiderGenerator {
                 probability,
                 digits,
             } => {
-                let x = spider_bit(rng, probability, digits);
-                let y = spider_bit(rng, probability, digits);
+                let mut x = spider_bit(rng, probability, digits);
+                let mut y = spider_bit(rng, probability, digits);
+
+                // Hard code coordinate precision to 8 decimal places - milimeter level precision for WGS 84
+                x = (x * 100_000_000.0).round() / 100_000_000.0;
+                y = (y * 100_000_000.0).round() / 100_000_000.0;
 
                 match self.config.geom_type {
                     GeomType::Point => generate_point_geom((x, y), &self.config),
@@ -154,7 +167,7 @@ impl SpiderGenerator {
         let a = (0.0, 0.0);
         let b = (1.0, 0.0);
         let c = (0.5, (3.0f64).sqrt() / 2.0);
-        for _ in 0..10 {
+        for _ in 0..27 {
             match rng.gen_range(0..3) {
                 0 => {
                     x = (x + a.0) / 2.0;
@@ -252,6 +265,11 @@ pub fn generate_polygon_geom(
     config: &SpiderConfig,
     rng: &mut StdRng,
 ) -> Geometry {
+    #[inline]
+    fn clamp01(v: f64) -> f64 {
+        if v < 0.0 { 0.0 } else if v > 1.0 { 1.0 } else { v }
+    }
+
     let min_segs = 3;
     let num_segments = if config.maxseg <= 3 {
         3
@@ -259,6 +277,7 @@ pub fn generate_polygon_geom(
         rng.gen_range(0..=(config.maxseg - min_segs)) + min_segs
     };
 
+    // Sample angles and sort for a simple, non-self-intersecting polygon
     let mut angles: Vec<f64> = (0..num_segments)
         .map(|_| rand_unit(rng) * 2.0 * PI)
         .collect();
@@ -266,17 +285,30 @@ pub fn generate_polygon_geom(
 
     let mut coords = angles
         .iter()
-        .map(|angle| {
-            let (x, y) = (
-                center.0 + config.polysize * angle.cos(),
-                center.1 + config.polysize * angle.sin(),
-            );
-            config.affine.map_or((x, y), |aff| apply_affine(x, y, &aff))
+        .map(|&angle| {
+            // 1) Propose vertex around center
+            let x0 = center.0 + config.polysize * angle.cos();
+            let y0 = center.1 + config.polysize * angle.sin();
+
+            // 2) Clamp in unit square BEFORE affine to keep it in [0,1]^2
+            let x1 = clamp01(x0);
+            let y1 = clamp01(y0);
+
+            // 3) Now apply affine (e.g., map to lon/lat)
+            let (xg, yg) = if let Some(aff) = config.affine {
+                apply_affine(x1, y1, &aff)
+            } else {
+                (x1, y1)
+            };
+
+            coord! { x: xg, y: yg }
         })
-        .map(|(x, y)| coord! { x: x, y: y })
         .collect::<Vec<_>>();
 
-    coords.push(coords[0]); // close the ring
+    // Close ring
+    if let Some(first) = coords.first().cloned() {
+        coords.push(first);
+    }
 
     Geometry::Polygon(Polygon::new(LineString::from(coords), vec![]))
 }
