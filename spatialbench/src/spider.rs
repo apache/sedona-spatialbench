@@ -265,17 +265,6 @@ pub fn generate_polygon_geom(
     config: &SpiderConfig,
     rng: &mut StdRng,
 ) -> Geometry {
-    #[inline]
-    fn clamp01(v: f64) -> f64 {
-        if v < 0.0 {
-            0.0
-        } else if v > 1.0 {
-            1.0
-        } else {
-            v
-        }
-    }
-
     let min_segs = 3;
     let num_segments = if config.maxseg <= 3 {
         3
@@ -297,8 +286,8 @@ pub fn generate_polygon_geom(
             let y0 = center.1 + config.polysize * angle.sin();
 
             // 2) Clamp in unit square BEFORE affine to keep it in [0,1]^2
-            let x1 = clamp01(x0);
-            let y1 = clamp01(y0);
+            let x1 = x0.clamp(0.0, 0.1);
+            let y1 = y0.clamp(0.0, 0.1);
 
             // 3) Now apply affine (e.g., map to lon/lat)
             let (xg, yg) = if let Some(aff) = config.affine {
