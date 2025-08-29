@@ -230,7 +230,14 @@ impl OutputSize {
                 Table::Customer => 87,
                 Table::Trip => 69,
                 Table::Building => 109,
-                Table::Zone => 4258,
+                Table::Zone => {
+                    // Scale based on zone subtype count for the scale factor
+                    match scale_factor {
+                        sf if sf < 10.0 => 1332,
+                        sf if sf < 100.0 => 2000,
+                        _ => 4258,
+                    }
+                }
             },
         };
 

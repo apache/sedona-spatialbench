@@ -16,16 +16,27 @@ Goals:
 
 SpatialBench defines a spatial star schema with the following tables:
 
-| Table      | Type         | Abbr. | Description                                 | Spatial Attributes        | Cardinality per SF   |
-|------------|--------------|-------|---------------------------------------------|----------------------------|----------------------|
-| Trip       | Fact Table   | `t_`  | Individual trip records                     | pickup & dropoff points    | 6M × SF              |
-| Customer   | Dimension    | `c_`  | Trip customer info                          | None                       | 30K × SF             |
-| Driver     | Dimension    | `s_`  | Trip driver info                            | None                       | 500 × SF             |
-| Vehicle    | Dimension    | `v_`  | Trip vehicle info                           | None                       | 100 × SF             |
-| Zone       | Dimension    | `z_`  | Administrative zones                        | Polygon                    | ~867k (fixed)        |
-| Building   | Dimension    | `b_`  | Building footprints                         | Polygon                    | 20K × (1 + log₂(SF)) |
+| Table      | Type         | Abbr. | Description                                 | Spatial Attributes        | Cardinality per SF             |
+|------------|--------------|-------|---------------------------------------------|----------------------------|--------------------------------|
+| Trip       | Fact Table   | `t_`  | Individual trip records                     | pickup & dropoff points    | 6M × SF                        |
+| Customer   | Dimension    | `c_`  | Trip customer info                          | None                       | 30K × SF                       |
+| Driver     | Dimension    | `s_`  | Trip driver info                            | None                       | 500 × SF                       |
+| Vehicle    | Dimension    | `v_`  | Trip vehicle info                           | None                       | 100 × SF                       |
+| Zone       | Dimension    | `z_`  | Administrative zones (SF-aware scaling)     | Polygon                    | Tiered by SF range (see below) |
+| Building   | Dimension    | `b_`  | Building footprints                         | Polygon                    | 20K × (1 + log₂(SF))           |
 
-Unlike other tables in the benchmark, the Zone table does not scale with the scale factor. It is a fixed-size reference table representing administrative boundaries and is derived from the Overture Maps Divisions theme, release version 2025-06-25.0. This ensures consistency and realism for spatial join workloads such as point-in-polygon or zone-based aggregations.
+### Zone Table Scaling
+
+The Zone table uses **scale factor–aware generation** so that zone granularity scales with dataset size and keeps query cost realistic. At small scales, this feels like querying ZIP-level units; at large scales, it uses coarser administrative units.
+
+| Scale Factor (SF) | Zone Subtypes Included                             | Zone Cardinality |
+|-------------------|----------------------------------------------------|------------------|
+| [0, 10)           | microhood, macrohood                               | 117,416          |
+| [10, 100)         | + neighborhood, county                             | 455,711          |
+| [100, 1000)       | + localadmin, locality, region, dependency         | 1,035,371        |
+| [1000+)           | + country                                          | 1,035,749        |
+
+This tiered scaling reflects **geometry complexity** and **area distributions** observed in the Overture `division_area` dataset which represents administrative boundaries, release version 2025-08-20.1.
 
 ![image.png](images/data_model.png)
 
