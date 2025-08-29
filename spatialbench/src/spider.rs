@@ -267,7 +267,13 @@ pub fn generate_polygon_geom(
 ) -> Geometry {
     #[inline]
     fn clamp01(v: f64) -> f64 {
-        if v < 0.0 { 0.0 } else if v > 1.0 { 1.0 } else { v }
+        if v < 0.0 {
+            0.0
+        } else if v > 1.0 {
+            1.0
+        } else {
+            v
+        }
     }
 
     let min_segs = 3;
