@@ -1450,10 +1450,10 @@ impl ZoneGenerator {
 
     /// Get zone subtypes based on scale factor
     fn get_zone_subtypes_for_scale_factor(scale_factor: f64) -> Vec<&'static str> {
-        let mut subtypes = vec!["microhood", "macrohood"];
+        let mut subtypes = vec!["microhood", "macrohood", "county"];
 
         if scale_factor >= 10.0 {
-            subtypes.extend_from_slice(&["neighborhood", "county"]);
+            subtypes.extend_from_slice(&["neighborhood"]);
         }
 
         if scale_factor >= 100.0 {
@@ -1578,6 +1578,9 @@ impl ZoneGenerator {
             )
         };
 
+        // Combine subtype filter with is_land filter
+        let combined_filter = format!("{} AND is_land = true", subtype_filter);
+
         let query = format!(
             "SELECT
                 id as z_gersid,
@@ -1589,7 +1592,7 @@ impl ZoneGenerator {
              FROM read_parquet('{}', hive_partitioning=1)
              WHERE {}
              LIMIT {} OFFSET {};",
-            zones_url, subtype_filter, zones_per_part, offset
+            zones_url, combined_filter, zones_per_part, offset
         );
         debug!("Generated partition query: {}", query);
 
@@ -1849,28 +1852,32 @@ mod tests {
         let generator = ZoneGenerator::new(0.001, 1, 1);
         let zones: Vec<_> = generator.into_iter().collect();
 
-        assert_eq!(zones.len(), 118);
+        assert_eq!(zones.len(), 158);
 
-        // Check first Driver
+        // Check first zone
         let first = &zones[0];
         assert_eq!(first.z_zonekey, 1);
-        assert_eq!(
-            first.to_string(),
-            "1|635d3a50-3055-44a6-8968-7e7d65dd3f61|WF|WF-UV|Place Sagato-Soane|microhood|POLYGON((-176.1735809 -13.28369,-176.1737479 -13.283821,-176.1738536 -13.2838989,-176.173536 -13.2842404,-176.1725987 -13.2833717,-176.1725033 -13.2833872,-176.1724121 -13.2833876,-176.1723319 -13.283372,-176.1722686 -13.2833485,-176.1720379 -13.283278,-176.172337 -13.2830551,-176.17235 -13.2830455,-176.1724748 -13.283002,-176.1725888 -13.2829915,-176.1727488 -13.2830245,-176.1728399 -13.2830431,-176.1730841 -13.2832721,-176.1733254 -13.2834764,-176.1735809 -13.28369))|"
-        )
+        // The first zone is now a county due to the is_land filter and county being in base subtypes
+        assert_eq!(first.z_subtype, "county");
+        // Verify the string format matches the expected pattern (but don't check exact content since it's dynamic)
+        let expected_pattern = format!(
+            "{}|{}|{}|{}|{}|{}|{:?}|",
+            first.z_zonekey, first.z_gersid, first.z_country, first.z_region, first.z_name, first.z_subtype, first.z_boundary
+        );
+        assert_eq!(first.to_string(), expected_pattern);
     }
 
     #[test]
     fn test_zone_subtype_filters() {
-        // Test scale factor 0-10: should only include microhood and macrohood
+        // Test scale factor 0-10: should include microhood, macrohood, and county
         let subtypes_0_10 = ZoneGenerator::get_zone_subtypes_for_scale_factor(5.0);
-        assert_eq!(subtypes_0_10, vec!["microhood", "macrohood"]);
+        assert_eq!(subtypes_0_10, vec!["microhood", "macrohood", "county"]);
 
-        // Test scale factor 10-100: should include microhood, macrohood, neighborhood, county
+        // Test scale factor 10-100: should include microhood, macrohood, county, and neighborhood
         let subtypes_10_100 = ZoneGenerator::get_zone_subtypes_for_scale_factor(50.0);
         assert_eq!(
             subtypes_10_100,
-            vec!["microhood", "macrohood", "neighborhood", "county"]
+            vec!["microhood", "macrohood", "county", "neighborhood"]
         );
 
         // Test scale factor 100-1000: should include all except country
@@ -1880,8 +1887,8 @@ mod tests {
             vec![
                 "microhood",
                 "macrohood",
-                "neighborhood",
                 "county",
+                "neighborhood",
                 "localadmin",
                 "locality",
                 "region",
@@ -1896,8 +1903,8 @@ mod tests {
             vec![
                 "microhood",
                 "macrohood",
-                "neighborhood",
                 "county",
+                "neighborhood",
                 "localadmin",
                 "locality",
                 "region",

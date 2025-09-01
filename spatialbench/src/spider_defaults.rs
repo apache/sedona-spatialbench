@@ -29,7 +29,7 @@ impl SpiderDefaults {
             polysize: 0.0,
 
             params: DistributionParams::Bit {
-                probability: 0.2,
+                probability: 0.35,
                 digits: 10,
             },
         };
