@@ -1862,7 +1862,13 @@ mod tests {
         // Verify the string format matches the expected pattern (but don't check exact content since it's dynamic)
         let expected_pattern = format!(
             "{}|{}|{}|{}|{}|{}|{:?}|",
-            first.z_zonekey, first.z_gersid, first.z_country, first.z_region, first.z_name, first.z_subtype, first.z_boundary
+            first.z_zonekey,
+            first.z_gersid,
+            first.z_country,
+            first.z_region,
+            first.z_name,
+            first.z_subtype,
+            first.z_boundary
         );
         assert_eq!(first.to_string(), expected_pattern);
     }
