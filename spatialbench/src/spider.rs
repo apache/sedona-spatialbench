@@ -3,6 +3,8 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::f64::consts::PI;
 
+const GEOMETRY_PRECISION: f64 = 100_000_000.0;
+
 #[derive(Debug, Clone, Copy)]
 pub enum DistributionType {
     Uniform,
@@ -87,6 +89,7 @@ impl SpiderGenerator {
             DistributionParams::Normal { mu, sigma } => {
                 let x = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
                 let y = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
+
                 match self.config.geom_type {
                     GeomType::Point => generate_point_geom((x, y), &self.config),
                     GeomType::Box => generate_box_geom((x, y), &self.config, rng),
@@ -154,7 +157,7 @@ impl SpiderGenerator {
         let a = (0.0, 0.0);
         let b = (1.0, 0.0);
         let c = (0.5, (3.0f64).sqrt() / 2.0);
-        for _ in 0..10 {
+        for _ in 0..27 {
             match rng.gen_range(0..3) {
                 0 => {
                     x = (x + a.0) / 2.0;
@@ -220,9 +223,8 @@ fn spider_bit(rng: &mut StdRng, prob: f64, digits: u32) -> f64 {
 }
 
 pub fn generate_point_geom(center: (f64, f64), config: &SpiderConfig) -> Geometry {
-    let (x, y) = config
-        .affine
-        .map_or(center, |aff| apply_affine(center.0, center.1, &aff));
+    let (x, y) = round_coordinates(center.0, center.1, GEOMETRY_PRECISION);
+    let (x, y) = config.affine.map_or((x, y), |aff| apply_affine(x, y, &aff));
     Geometry::Point(Point::new(x, y))
 }
 
@@ -240,7 +242,8 @@ pub fn generate_box_geom(center: (f64, f64), config: &SpiderConfig, rng: &mut St
 
     let coords: Vec<_> = corners
         .iter()
-        .map(|&(x, y)| config.affine.map_or((x, y), |aff| apply_affine(x, y, &aff)))
+        .map(|&(x, y)| round_coordinates(x, y, GEOMETRY_PRECISION))
+        .map(|(x, y)| config.affine.map_or((x, y), |aff| apply_affine(x, y, &aff)))
         .map(|(x, y)| coord! { x: x, y: y })
         .collect();
 
@@ -259,6 +262,7 @@ pub fn generate_polygon_geom(
         rng.gen_range(0..=(config.maxseg - min_segs)) + min_segs
     };
 
+    // Sample angles and sort for a simple, non-self-intersecting polygon
     let mut angles: Vec<f64> = (0..num_segments)
         .map(|_| rand_unit(rng) * 2.0 * PI)
         .collect();
@@ -266,17 +270,46 @@ pub fn generate_polygon_geom(
 
     let mut coords = angles
         .iter()
-        .map(|angle| {
-            let (x, y) = (
-                center.0 + config.polysize * angle.cos(),
-                center.1 + config.polysize * angle.sin(),
-            );
-            config.affine.map_or((x, y), |aff| apply_affine(x, y, &aff))
+        .map(|&angle| {
+            // 1) Propose vertex around center
+            let x0 = center.0 + config.polysize * angle.cos();
+            let y0 = center.1 + config.polysize * angle.sin();
+
+            // 2) Clamp in unit square BEFORE affine to keep it in [0,1]^2
+            let x1 = x0.clamp(0.0, 1.0);
+            let y1 = y0.clamp(0.0, 1.0);
+
+            // 3) Round coordinates before affine transformation
+            let (x2, y2) = round_coordinates(x1, y1, GEOMETRY_PRECISION);
+
+            // 4) Apply affine transformation
+            let (xg, yg) = if let Some(aff) = config.affine {
+                apply_affine(x2, y2, &aff)
+            } else {
+                (x2, y2)
+            };
+
+            coord! { x: xg, y: yg }
         })
-        .map(|(x, y)| coord! { x: x, y: y })
         .collect::<Vec<_>>();
 
-    coords.push(coords[0]); // close the ring
+    // Close ring
+    if let Some(first) = coords.first().cloned() {
+        coords.push(first);
+    }
 
     Geometry::Polygon(Polygon::new(LineString::from(coords), vec![]))
+}
+
+#[inline]
+fn round_coordinate(coord: f64, precision: f64) -> f64 {
+    (coord * precision).round() / precision
+}
+
+#[inline]
+fn round_coordinates(x: f64, y: f64, precision: f64) -> (f64, f64) {
+    (
+        round_coordinate(x, precision),
+        round_coordinate(y, precision),
+    )
 }
