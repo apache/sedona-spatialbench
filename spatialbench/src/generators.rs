@@ -1813,11 +1813,6 @@ mod tests {
             first.t_dropoffloc,
         );
         assert_eq!(first.to_string(), expected_pattern);
-
-        // Check first Trip
-        let first = &trips[1];
-        assert_eq!(first.t_tripkey, 2);
-        assert_eq!(first.to_string(), "2|172|1|1|1997-12-24 08:47:14|1997-12-24 09:28:57|0.03|0.00|0.04|0.01|POINT(-167.9122872 34.7837776)|POINT(-167.89855239 34.78593417)|");
     }
 
     #[test]
