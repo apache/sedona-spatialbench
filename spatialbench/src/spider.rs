@@ -1,4 +1,4 @@
-use geo::{coord, Geometry, LineString, Point, Polygon};
+use geo::{coord, Coord, CoordsIter, Geometry, LineString, Point, Polygon};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::f64::consts::PI;
@@ -187,7 +187,7 @@ pub fn rand_unit(rng: &mut StdRng) -> f64 {
 }
 
 // Affine transform
-fn apply_affine(x: f64, y: f64, m: &[f64; 6]) -> (f64, f64) {
+pub(crate) fn apply_affine(x: f64, y: f64, m: &[f64; 6]) -> (f64, f64) {
     let x_out = m[0] * x + m[1] * y + m[2];
     let y_out = m[3] * x + m[4] * y + m[5];
     (x_out, y_out)
@@ -312,4 +312,29 @@ fn round_coordinates(x: f64, y: f64, precision: f64) -> (f64, f64) {
         round_coordinate(x, precision),
         round_coordinate(y, precision),
     )
+}
+
+/// Return a transformed copy of a Polygon<f64>
+pub fn apply_affine_polygon(poly: &Polygon<f64>, m: &[f64; 6]) -> Polygon<f64> {
+    // map a LineString by applying the affine to each coord
+    let map_ls = |ls: &LineString<f64>| {
+        let coords: Vec<Coord<f64>> = ls
+            .coords_iter()
+            .map(|c| {
+                let (x, y) = apply_affine(c.x, c.y, m);
+                Coord { x, y }
+            })
+            .collect();
+        LineString::from(coords)
+    };
+
+    let exterior = map_ls(poly.exterior());
+    let interiors = poly.interiors().iter().map(map_ls).collect::<Vec<_>>();
+    Polygon::new(exterior, interiors)
+}
+
+/// In-place convenience (rebuilds and swaps)
+pub fn apply_affine_polygon_in_place(poly: &mut Polygon<f64>, m: &[f64; 6]) {
+    let transformed = apply_affine_polygon(poly, m);
+    *poly = transformed;
 }
