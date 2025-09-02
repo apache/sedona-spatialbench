@@ -10,7 +10,7 @@ trip:
   polysize: 0.0
   params:
     type: bit
-    probability: 0.2
+    probability: 0.35
     digits: 30
 
 building:
