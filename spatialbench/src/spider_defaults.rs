@@ -1,8 +1,18 @@
-use crate::spider::{
-    DistributionParams, DistributionType, GeomType, SpiderConfig, SpiderGenerator,
-};
+use crate::spider::{ContinentAffines, DistributionParams, DistributionType, GeomType, SpiderConfig, SpiderGenerator};
 
 pub struct SpiderDefaults;
+
+impl Default for ContinentAffines {
+    fn default() -> Self {
+        Self {
+            eurasia:       [190.0, 0.0, -10.0, 0.0, -70.0, 70.0],
+            north_america: [116.0, 0.0, -168.0, 0.0, -55.0, 60.0],
+            south_america: [48.0, 0.0, -82.0, 0.0, -69.0, 13.0],
+            oceania:       [70.0, 0.0, 110.0, 0.0, -50.0, 0.0],
+            africa:        [70.0, 0.0, -18.0, 0.0, -73.0, 38.0],
+        }
+    }
+}
 
 impl SpiderDefaults {
     const FULL_WORLD_AFFINE: [f64; 6] = [
@@ -18,7 +28,7 @@ impl SpiderDefaults {
             geom_type: GeomType::Point,
             dim: 2,
             seed: 42,
-            affine: Some(Self::FULL_WORLD_AFFINE),
+            continent_affines: Some(ContinentAffines::default()),
 
             // geometry = box
             width: 0.0,
@@ -42,7 +52,7 @@ impl SpiderDefaults {
             geom_type: GeomType::Polygon,
             dim: 2,
             seed: 12345,
-            affine: Some(Self::FULL_WORLD_AFFINE),
+            continent_affines: Some(ContinentAffines::default()),
 
             // geometry = box
             width: 0.0,

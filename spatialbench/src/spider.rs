@@ -36,7 +36,7 @@ pub struct SpiderConfig {
     pub geom_type: GeomType,
     pub dim: i32,
     pub seed: u32,
-    pub affine: Option<[f64; 6]>, // Affine transformation matrix
+    pub continent_affines: Option<ContinentAffines>, // All 5 continent transformations
 
     // Box-specific fields
     pub width: f64,
@@ -49,6 +49,28 @@ pub struct SpiderConfig {
     // Distribution-specific params
     pub params: DistributionParams,
 }
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct ContinentAffines {
+    pub eurasia: [f64; 6],
+    pub north_america: [f64; 6],
+    pub south_america: [f64; 6],
+    pub oceania: [f64; 6],
+    pub africa: [f64; 6],
+}
+
+// impl ContinentAffines {
+//     pub fn get_by_name(&self, name: &str) -> Option<&[f64; 6]> {
+//         match name {
+//             "eurasia" => Some(&self.eurasia),
+//             "north_america" => Some(&self.north_america),
+//             "south_america" => Some(&self.south_america),
+//             "oceania" => Some(&self.oceania),
+//             "africa" => Some(&self.africa),
+//             _ => None,
+//         }
+//     }
+// }
 
 #[derive(Clone, Debug)]
 pub struct SpiderGenerator {
@@ -224,7 +246,6 @@ fn spider_bit(rng: &mut StdRng, prob: f64, digits: u32) -> f64 {
 
 pub fn generate_point_geom(center: (f64, f64), config: &SpiderConfig) -> Geometry {
     let (x, y) = round_coordinates(center.0, center.1, GEOMETRY_PRECISION);
-    let (x, y) = config.affine.map_or((x, y), |aff| apply_affine(x, y, &aff));
     Geometry::Point(Point::new(x, y))
 }
 
@@ -243,7 +264,6 @@ pub fn generate_box_geom(center: (f64, f64), config: &SpiderConfig, rng: &mut St
     let coords: Vec<_> = corners
         .iter()
         .map(|&(x, y)| round_coordinates(x, y, GEOMETRY_PRECISION))
-        .map(|(x, y)| config.affine.map_or((x, y), |aff| apply_affine(x, y, &aff)))
         .map(|(x, y)| coord! { x: x, y: y })
         .collect();
 
@@ -282,14 +302,7 @@ pub fn generate_polygon_geom(
             // 3) Round coordinates before affine transformation
             let (x2, y2) = round_coordinates(x1, y1, GEOMETRY_PRECISION);
 
-            // 4) Apply affine transformation
-            let (xg, yg) = if let Some(aff) = config.affine {
-                apply_affine(x2, y2, &aff)
-            } else {
-                (x2, y2)
-            };
-
-            coord! { x: xg, y: yg }
+            coord! { x: x2, y: y2 }
         })
         .collect::<Vec<_>>();
 

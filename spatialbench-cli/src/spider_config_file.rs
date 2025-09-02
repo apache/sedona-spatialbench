@@ -1,9 +1,7 @@
 use anyhow::Result;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer};
-use spatialbench::spider::{
-    DistributionParams, DistributionType, GeomType, SpiderConfig, SpiderGenerator,
-};
+use spatialbench::spider::{ContinentAffines, DistributionParams, DistributionType, GeomType, SpiderConfig, SpiderGenerator};
 use std::fmt;
 
 // Deserializer for DistributionType
@@ -82,7 +80,7 @@ pub struct InlineSpiderConfig {
     pub geom_type: GeomType,
     pub dim: u8,
     pub seed: u32,
-    pub affine: Option<[f64; 6]>,
+    pub continent_affines: Option<ContinentAffines>,
     // geometry = box
     pub width: f64,
     pub height: f64,
@@ -132,7 +130,7 @@ impl InlineSpiderConfig {
             geom_type: self.geom_type,
             dim: self.dim as i32,
             seed: self.seed,
-            affine: self.affine,
+            continent_affines: self.continent_affines.clone(),
             width: self.width,
             height: self.height,
             maxseg: self.maxseg,
