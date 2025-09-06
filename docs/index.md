@@ -1,3 +1,3 @@
 # SpatialBench Documentation
 
-Space for SpatialBench Documentation.
+Space for writing SpatialBench Documentation.
