@@ -1,0 +1,7 @@
+mkdocs
+mkdocs-material
+mkdocs-macros-plugin
+mkdocs-glightbox
+mkdocs-git-revision-date-localized-plugin
+mike
+mkdocs-jupyter
