@@ -9,10 +9,10 @@ trip:
   polysize: 0.0
   params:
     type: thomas
-    parents: 50000
-    mean_offspring: 100.0
+    parents: 10000000
+    mean_offspring: 200.0
     sigma: 0.001
-    pareto_alpha: 1.0
+    pareto_alpha: 0.75
     pareto_xm: 1.0
 
 building:

@@ -4,7 +4,7 @@ use rand::{Rng, SeedableRng};
 use std::f64::consts::PI;
 use std::sync::OnceLock;
 
-const GEOMETRY_PRECISION: f64 = 10_000_000_000.0;
+const GEOMETRY_PRECISION: f64 = 1000_000_000.0;
 
 #[derive(Debug, Clone, Copy)]
 pub enum DistributionType {

@@ -22,7 +22,7 @@ impl SpiderDefaults {
 
     pub fn trip_default() -> SpiderGenerator {
         let config = SpiderConfig {
-            dist_type: DistributionType::Bit,
+            dist_type: DistributionType::Thomas,
             geom_type: GeomType::Point,
             dim: 2,
             seed: 56789,
@@ -35,9 +35,12 @@ impl SpiderDefaults {
             maxseg: 0,
             polysize: 0.0,
 
-            params: DistributionParams::Bit {
-                probability: 0.35,
-                digits: 50,
+            params: DistributionParams::Thomas {
+                parents: 50000,
+                mean_offspring: 100.0,
+                sigma: 0.001,
+                pareto_alpha: 1.0,
+                pareto_xm: 1.0,
             },
         };
         SpiderGenerator::new(config, OnceLock::new())
@@ -45,7 +48,7 @@ impl SpiderDefaults {
 
     pub fn building_default() -> SpiderGenerator {
         let config = SpiderConfig {
-            dist_type: DistributionType::Sierpinski,
+            dist_type: DistributionType::Thomas,
             geom_type: GeomType::Polygon,
             dim: 2,
             seed: 12345,
@@ -58,7 +61,13 @@ impl SpiderDefaults {
             maxseg: 5,
             polysize: 0.000039,
 
-            params: DistributionParams::None,
+            params: DistributionParams::Thomas {
+                parents: 5000,
+                mean_offspring: 10.0,
+                sigma: 0.018,
+                pareto_alpha: 1.5,
+                pareto_xm: 1.0,
+            },
         };
         SpiderGenerator::new(config, OnceLock::new())
     }
