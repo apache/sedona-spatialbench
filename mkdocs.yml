@@ -16,7 +16,7 @@
 # under the License.
 
 site_name: SpatialBench
-site_description:  SpatialBench is a high-performance geospatial benchmark for generating synthetic spatial data at scale.
+site_description: SpatialBench is a high-performance geospatial benchmark for generating synthetic spatial data at scale.
 nav:
   - Home: index.md
   - Get Started:
