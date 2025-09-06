@@ -1,0 +1,112 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+site_name: SpatialBench
+site_description:  SpatialBench is a high-performance geospatial benchmark for generating synthetic spatial data at scale.
+nav:
+  - Home: index.md
+  - Get Started:
+      - Overview: get-started/overview.md
+      - Data Model: get-started/data-model.md
+      - Performance: get-started/performance.md
+theme:
+  font: false
+  name: 'material'
+  custom_dir: docs-overrides
+  palette:
+    primary: 'deep orange'
+    accent: 'green'
+  favicon:
+  logo:
+  icon:
+    logo: fontawesome/solid/earth-americas
+    repo: fontawesome/brands/github
+  features:
+    - content.code.copy
+    - content.action.edit
+    - search.highlight
+    - search.share
+    - search.suggest
+    - navigation.footer
+    - navigation.instant
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+extra:
+  version:
+    provider: mike
+    default:
+      - latest
+  social:
+    - icon: fontawesome/brands/github
+      link: 'https://github.com/apache/sedona'
+    - icon: fontawesome/brands/twitter
+      link: 'https://twitter.com/ApacheSedona'
+    - icon: fontawesome/brands/discord
+      link: 'https://discord.gg/9A3k5dEBsY'
+  sedona:
+    current_version: 1.7.2
+    current_geotools: 1.7.2-28.5
+  sedona_create_release:
+    current_version: 1.7.1
+    current_git_tag: sedona-1.7.1-rc1
+    current_rc: 1.7.1-rc1
+    current_snapshot: 1.8.0-SNAPSHOT
+    next_version: 1.8.0
+copyright: Copyright © 2025 The Apache Software Foundation. Apache Sedona, Sedona, Apache, the Apache feather logo, and the Apache Sedona project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries. All other marks mentioned may be trademarks or registered trademarks of their respective owners. Please visit <a href="https://www.apache.org/">Apache Software Foundation</a> for more details.<img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=f3e121f6-c909-4592-8be6-5bd345768cba" /><img referrerpolicy="no-referrer-when-downgrade" src="https://analytics.apache.org/matomo.php?idsite=74&rec=1" />
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - codehilite
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.arithmatex
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:pymdownx.emoji.to_svg
+  - pymdownx.inlinehilite
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+plugins:
+  - search:
+  # prebuild_index: true
+  - macros
+  - git-revision-date-localized:
+      type: datetime
+  - mike:
+      canonical_version: 'latest'
+extra_css:
+  - assets/stylesheets/extra.css
+extra_javascript:
+  - assets/javascripts/main.min.js
