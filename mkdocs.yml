@@ -51,7 +51,7 @@ extra:
       - latest
   social:
     - icon: fontawesome/brands/github
-      link: 'https://github.com/apache/sedona'
+      link: 'https://github.com/apache/spatialbench'
     - icon: fontawesome/brands/twitter
       link: 'https://twitter.com/ApacheSedona'
     - icon: fontawesome/brands/discord
