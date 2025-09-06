@@ -1,3 +1,4 @@
+use std::sync::OnceLock;
 use crate::spider::{ContinentAffines, DistributionParams, DistributionType, GeomType, SpiderConfig, SpiderGenerator};
 
 pub struct SpiderDefaults;
@@ -10,9 +11,9 @@ impl ContinentAffines {
             south_asia: [80.942556, 0.0,  64.583540, 0.0, -61.381606, 51.672557],
             north_asia: [114.339049, 0.0,  64.495655, 0.0,  25.952988, 51.944267],
             oceania: [68.287041, 0.0, 112.481901, 0.0, -38.751779, -10.228433],
-            south_america: [66.177789, 0.0, -99.246451, 0.0, -70.347818, 13.068781],
-            south_north_america: [77.075593, 0.0, -129.127525, 0.0, -35.337948, 48.748946],
-            north_north_america: [115.130019, 0.0, -167.181951, 0.0,  22.683444, 48.980218],
+            south_america: [49.929484, 0.0, -83.833822, 0.0, -68.381204, 12.211188],
+            south_north_america: [68.213519, 0.0, -127.177193, 0.0, -36.453735, 48.9225],
+            north_north_america: [110.934873, 0.0, -165.936203, 0.0, -24.110409, 73.378215],
         }
     }
 }
@@ -39,7 +40,7 @@ impl SpiderDefaults {
                 digits: 50,
             },
         };
-        SpiderGenerator::new(config)
+        SpiderGenerator::new(config, OnceLock::new())
     }
 
     pub fn building_default() -> SpiderGenerator {
@@ -59,6 +60,6 @@ impl SpiderDefaults {
 
             params: DistributionParams::None,
         };
-        SpiderGenerator::new(config)
+        SpiderGenerator::new(config, OnceLock::new())
     }
 }

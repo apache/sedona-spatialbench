@@ -1,5 +1,5 @@
 trip:
-  dist_type: bit
+  dist_type: thomas
   geom_type: point
   dim: 2
   seed: 56789
@@ -8,12 +8,15 @@ trip:
   maxseg: 0
   polysize: 0.0
   params:
-    type: bit
-    probability: 0.35
-    digits: 50
+    type: thomas
+    parents: 50000
+    mean_offspring: 100.0
+    sigma: 0.001
+    pareto_alpha: 1.0
+    pareto_xm: 1.0
 
 building:
-  dist_type: sierpinski
+  dist_type: thomas
   geom_type: polygon
   dim: 2
   seed: 12345
@@ -22,4 +25,9 @@ building:
   maxseg: 5
   polysize: 0.000039
   params:
-    type: none
+    type: thomas
+    parents: 5000
+    mean_offspring: 10.0
+    sigma: 0.018
+    pareto_alpha: 1.5
+    pareto_xm: 1.0

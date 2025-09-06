@@ -3,6 +3,7 @@ use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer};
 use spatialbench::spider::{DistributionParams, DistributionType, GeomType, SpiderConfig, SpiderGenerator};
 use std::fmt;
+use std::sync::OnceLock;
 
 // Deserializer for DistributionType
 fn deserialize_distribution_type<'de, D>(deserializer: D) -> Result<DistributionType, D::Error>
@@ -28,6 +29,7 @@ where
                 "diagonal" => Ok(DistributionType::Diagonal),
                 "bit" => Ok(DistributionType::Bit),
                 "sierpinski" => Ok(DistributionType::Sierpinski),
+                "thomas" => Ok(DistributionType::Thomas),
                 _ => Err(E::custom(format!("unknown distribution type: {}", value))),
             }
         }
@@ -96,7 +98,16 @@ pub enum InlineParams {
     Normal { mu: f64, sigma: f64 },
     Diagonal { percentage: f64, buffer: f64 },
     Bit { probability: f64, digits: u32 },
-    Parcel { srange: f64, dither: f64 },
+
+    // Thomas (Gaussian Neyman–Scott): K parent clusters, Gaussian spread, optional lognormal skew
+    Thomas {
+        parents: u32,        // number of parent centers (K)
+        mean_offspring: f64, // global density scale (kept for compatibility)
+        sigma: f64,          // cluster stddev in unit coords
+        // Pareto weights per parent (heavier tail => more skew)
+        pareto_alpha: f64,   // tail parameter (>0). Smaller => heavier tail (e.g., 1.0–1.5)
+        pareto_xm: f64,      // scale (>0), typically 1.0
+    },
 }
 
 impl InlineSpiderConfig {
@@ -118,9 +129,12 @@ impl InlineSpiderConfig {
                 probability: *probability,
                 digits: *digits,
             },
-            InlineParams::Parcel { srange, dither } => DistributionParams::Parcel {
-                srange: *srange,
-                dither: *dither,
+            InlineParams::Thomas { parents, mean_offspring, sigma, pareto_alpha, pareto_xm} => DistributionParams::Thomas {
+                parents: *parents,
+                mean_offspring: *mean_offspring,
+                sigma: *sigma,
+                pareto_alpha: *pareto_alpha,
+                pareto_xm: *pareto_xm,
             },
         };
 
@@ -135,7 +149,7 @@ impl InlineSpiderConfig {
             polysize: self.polysize,
             params,
         };
-        SpiderGenerator::new(cfg)
+        SpiderGenerator::new(cfg, OnceLock::new())
     }
 }
 

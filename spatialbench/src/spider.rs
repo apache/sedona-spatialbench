@@ -1,7 +1,8 @@
-use geo::{coord, Coord, CoordsIter, Geometry, LineString, Point, Polygon};
+use geo::{coord, Geometry, LineString, Point, Polygon};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::f64::consts::PI;
+use std::sync::OnceLock;
 
 const GEOMETRY_PRECISION: f64 = 10_000_000_000.0;
 
@@ -12,6 +13,7 @@ pub enum DistributionType {
     Diagonal,
     Sierpinski,
     Bit,
+    Thomas,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -28,6 +30,13 @@ pub enum DistributionParams {
     Diagonal { percentage: f64, buffer: f64 },
     Bit { probability: f64, digits: u32 },
     Parcel { srange: f64, dither: f64 },
+    Thomas {
+        parents: u32,        // number of parent centers (K)
+        mean_offspring: f64, // global density scale (kept for compatibility)
+        sigma: f64,          // cluster stddev in unit coords
+        pareto_alpha: f64,   // tail parameter (>0). Smaller => heavier tail (e.g., 1.0–1.5)
+        pareto_xm: f64,      // scale (>0), typically 1.0
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -62,13 +71,23 @@ pub struct ContinentAffines {
 }
 
 #[derive(Clone, Debug)]
+pub struct ThomasCache {
+    cdf: Vec<f64>,   // normalized CDF in parent index order
+    parents: usize,
+    alpha: f64,
+    xm: f64,
+    seed: u64,
+}
+
+#[derive(Clone, Debug)]
 pub struct SpiderGenerator {
     pub config: SpiderConfig,
+    pub thomas_cache: OnceLock<ThomasCache>,
 }
 
 impl SpiderGenerator {
-    pub fn new(config: SpiderConfig) -> Self {
-        Self { config }
+    pub fn new(config: SpiderConfig, thomas_cache: OnceLock<ThomasCache>) -> Self {
+        Self { config, thomas_cache }
     }
 
     pub fn generate(&self, index: u64, continent_affine: &[f64; 6]) -> Geometry {
@@ -81,6 +100,7 @@ impl SpiderGenerator {
             DistributionType::Diagonal => self.generate_diagonal(&mut rng, continent_affine),
             DistributionType::Bit => self.generate_bit(&mut rng, continent_affine),
             DistributionType::Sierpinski => self.generate_sierpinski(&mut rng, continent_affine),
+            DistributionType::Thomas => self.generate_thomas(index, continent_affine),
         }
     }
 
@@ -191,6 +211,112 @@ impl SpiderGenerator {
             GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng, continent_affine),
         }
     }
+
+    fn generate_thomas(&self, index: u64, m: &[f64; 6]) -> Geometry {
+        let (parents, _mean_offspring, sigma, alpha, xm) = match self.config.params {
+            DistributionParams::Thomas { parents, mean_offspring, sigma, pareto_alpha, pareto_xm } => {
+                (parents.max(1), mean_offspring.max(1e-9), sigma.max(1e-6), pareto_alpha.max(1e-6), pareto_xm.max(1e-12))
+            }
+            _ => (24, 12.0, 0.03, 1.2, 1.0), // sensible defaults: heavy skew
+        };
+        let k = parents as usize;
+
+        // draw U once for parent selection (deterministic from index & seed)
+        let u = hash_to_unit_u64(index, (self.config.seed as u64) ^ 0xBADD_F00D);
+
+        // Try to use (or build) cached CDF if params match; otherwise do a one-off O(k) pick
+        let pid = match self.thomas_cache.get() {
+            Some(cache) if cache.parents == k && (cache.alpha - alpha).abs() < 1e-15 && (cache.xm - xm).abs() < 1e-15 && cache.seed == self.config.seed as u64 => {
+                // binary search on cached CDF
+                let mut lo = 0usize;
+                let mut hi = k;
+                while lo < hi {
+                    let mid = (lo + hi) / 2;
+                    if u <= cache.cdf[mid] { hi = mid; } else { lo = mid + 1; }
+                }
+                lo.min(k.saturating_sub(1))
+            }
+            _ => {
+                // build once and cache (first thread wins)
+                let _ = self.get_thomas_cdf(k, alpha, xm, self.config.seed as u64);
+                // re-check and use cache; if racing, or params still don’t match, fallback O(k)
+                if let Some(cache) = self.thomas_cache.get() {
+                    if cache.parents == k && (cache.alpha - alpha).abs() < 1e-15 && (cache.xm - xm).abs() < 1e-15 && cache.seed == self.config.seed as u64 {
+                        let mut lo = 0usize;
+                        let mut hi = k;
+                        while lo < hi {
+                            let mid = (lo + hi) / 2;
+                            if u <= cache.cdf[mid] { hi = mid; } else { lo = mid + 1; }
+                        }
+                        lo.min(k.saturating_sub(1))
+                    } else {
+                        // one-off parent pick without caching
+                        self.pick_parent_pareto_once(u, k, alpha, xm, self.config.seed as u64)
+                    }
+                } else {
+                    self.pick_parent_pareto_once(u, k, alpha, xm, self.config.seed as u64)
+                }
+            }
+        };
+
+        // Parent center (deterministic Halton)
+        let (cx, cy) = halton_2d(pid as u64 + 1, 2, 3);
+
+        // Gaussian offset around parent
+        let seed = spider_seed_for_index(index, (self.config.seed as u64) ^ 0xC177001);
+        let mut rng = StdRng::seed_from_u64(seed);
+        let dx = rand_normal(&mut rng, 0.0, sigma);
+        let dy = rand_normal(&mut rng, 0.0, sigma);
+        let x = (cx + dx).clamp(0.0, 1.0);
+        let y = (cy + dy).clamp(0.0, 1.0);
+
+        match self.config.geom_type {
+            GeomType::Point   => generate_point_geom((x, y), m),
+            GeomType::Box     => generate_box_geom((x, y), &self.config, &mut rng, m),
+            GeomType::Polygon => generate_polygon_geom((x, y), &self.config, &mut rng, m),
+        }
+    }
+
+    fn get_thomas_cdf(&self, parents: usize, alpha: f64, xm: f64, seed: u64) -> &ThomasCache {
+        self.thomas_cache.get_or_init(|| {
+            // Deterministic Pareto weight per parent (depends only on seed & pid)
+            let mut weights = Vec::with_capacity(parents);
+            for pid in 0..parents {
+                // independent U for each parent:
+                let u = u01_from_seed(spider_seed_for_index(pid as u64, seed ^ 0x7EED));
+                weights.push(pareto_draw(u, alpha, xm));
+            }
+            let sum_w = weights.iter().copied().sum::<f64>().max(1e-12);
+            let mut cdf = Vec::with_capacity(parents);
+            let mut acc = 0.0;
+            for w in weights {
+                acc += w / sum_w;
+                cdf.push(acc);
+            }
+            ThomasCache { cdf, parents, alpha, xm, seed }
+        })
+    }
+
+    #[inline]
+    fn pick_parent_pareto_once(&self, u: f64, k: usize, alpha: f64, xm: f64, seed: u64) -> usize {
+        // two-pass: sum weights, then walk until reaching u
+        let mut sum_w = 0.0;
+        let mut tmp = vec![0.0; k];
+        for pid in 0..k {
+            let uu = u01_from_seed(spider_seed_for_index(pid as u64, seed ^ 0x7EED));
+            let w = pareto_draw(uu, alpha, xm);
+            tmp[pid] = w;
+            sum_w += w;
+        }
+        let mut acc = 0.0;
+        for pid in 0..k {
+            acc += tmp[pid] / sum_w;
+            if u <= acc {
+                return pid;
+            }
+        }
+        k.saturating_sub(1)
+    }
 }
 
 pub fn rand_unit(rng: &mut StdRng) -> f64 {
@@ -219,6 +345,20 @@ fn rand_normal(rng: &mut StdRng, mu: f64, sigma: f64) -> f64 {
     let u1: f64 = rng.gen();
     let u2: f64 = rng.gen();
     mu + sigma * (-2.0 * u1.ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos()
+}
+
+#[inline]
+fn u01_from_seed(seed: u64) -> f64 {
+    let z = spider_seed_for_index(seed, 0xA1CE_CAFE);
+    ((z >> 11) as f64) / ((1u64 << 53) as f64) // [0,1)
+}
+
+#[inline]
+fn pareto_draw(u: f64, alpha: f64, xm: f64) -> f64 {
+    // Inverse CDF: X = xm / (1-u)^(1/alpha)
+    let a = alpha.max(1e-6);
+    let s = xm.max(1e-12);
+    s / (1.0 - u).powf(1.0 / a)
 }
 
 fn spider_bit(rng: &mut StdRng, prob: f64, digits: u32) -> f64 {
@@ -322,29 +462,23 @@ fn round_coordinates(x: f64, y: f64, precision: f64) -> (f64, f64) {
     )
 }
 
-/// Return a transformed copy of a Polygon<f64>
-pub fn apply_affine_polygon(poly: &Polygon<f64>, m: &[f64; 6]) -> Polygon<f64> {
-    // map a LineString by applying the affine to each coord
-    let map_ls = |ls: &LineString<f64>| {
-        let coords: Vec<Coord<f64>> = ls
-            .coords_iter()
-            .map(|c| {
-                let (x, y) = apply_affine(c.x, c.y, m);
-                Coord { x, y }
-            })
-            .collect();
-        LineString::from(coords)
-    };
-
-    let exterior = map_ls(poly.exterior());
-    let interiors = poly.interiors().iter().map(map_ls).collect::<Vec<_>>();
-    Polygon::new(exterior, interiors)
+#[inline]
+fn radical_inverse(mut n: u64, base: u32) -> f64 {
+    let b = base as u64;
+    let mut inv = 1.0 / b as f64;
+    let mut val = 0.0;
+    while n > 0 {
+        let d = (n % b) as f64;
+        val += d * inv;
+        n /= b;
+        inv /= b as f64;
+    }
+    val
 }
 
-/// In-place convenience (rebuilds and swaps)
-pub fn apply_affine_polygon_in_place(poly: &mut Polygon<f64>, m: &[f64; 6]) {
-    let transformed = apply_affine_polygon(poly, m);
-    *poly = transformed;
+#[inline]
+fn halton_2d(i: u64, base_x: u32, base_y: u32) -> (f64, f64) {
+    (radical_inverse(i, base_x), radical_inverse(i, base_y))
 }
 
 #[inline]
