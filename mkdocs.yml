@@ -30,8 +30,6 @@ theme:
   palette:
     primary: 'deep orange'
     accent: 'green'
-  favicon:
-  logo:
   icon:
     logo: fontawesome/solid/earth-americas
     repo: fontawesome/brands/github
