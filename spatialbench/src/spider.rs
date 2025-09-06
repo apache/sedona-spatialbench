@@ -3,7 +3,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::f64::consts::PI;
 
-const GEOMETRY_PRECISION: f64 = 100_000_000.0;
+const GEOMETRY_PRECISION: f64 = 10_000_000_000.0;
 
 #[derive(Debug, Clone, Copy)]
 pub enum DistributionType {
@@ -36,7 +36,6 @@ pub struct SpiderConfig {
     pub geom_type: GeomType,
     pub dim: i32,
     pub seed: u32,
-    pub continent_affines: Option<ContinentAffines>, // All 5 continent transformations
 
     // Box-specific fields
     pub width: f64,
@@ -52,25 +51,15 @@ pub struct SpiderConfig {
 
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct ContinentAffines {
-    pub eurasia: [f64; 6],
-    pub north_america: [f64; 6],
-    pub south_america: [f64; 6],
-    pub oceania: [f64; 6],
     pub africa: [f64; 6],
+    pub europe: [f64; 6],
+    pub south_asia: [f64; 6],
+    pub north_asia: [f64; 6],
+    pub oceania: [f64; 6],
+    pub south_america: [f64; 6],
+    pub south_north_america: [f64; 6],
+    pub north_north_america: [f64; 6],
 }
-
-// impl ContinentAffines {
-//     pub fn get_by_name(&self, name: &str) -> Option<&[f64; 6]> {
-//         match name {
-//             "eurasia" => Some(&self.eurasia),
-//             "north_america" => Some(&self.north_america),
-//             "south_america" => Some(&self.south_america),
-//             "oceania" => Some(&self.oceania),
-//             "africa" => Some(&self.africa),
-//             _ => None,
-//         }
-//     }
-// }
 
 #[derive(Clone, Debug)]
 pub struct SpiderGenerator {
@@ -82,40 +71,40 @@ impl SpiderGenerator {
         Self { config }
     }
 
-    pub fn generate(&self, index: u64) -> Geometry {
+    pub fn generate(&self, index: u64, continent_affine: &[f64; 6]) -> Geometry {
         let seed = spider_seed_for_index(index, self.config.seed as u64);
         let mut rng = StdRng::seed_from_u64(seed);
 
         match self.config.dist_type {
-            DistributionType::Uniform => self.generate_uniform(&mut rng),
-            DistributionType::Normal => self.generate_normal(&mut rng),
-            DistributionType::Diagonal => self.generate_diagonal(&mut rng),
-            DistributionType::Bit => self.generate_bit(&mut rng),
-            DistributionType::Sierpinski => self.generate_sierpinski(&mut rng),
+            DistributionType::Uniform => self.generate_uniform(&mut rng, continent_affine),
+            DistributionType::Normal => self.generate_normal(&mut rng, continent_affine),
+            DistributionType::Diagonal => self.generate_diagonal(&mut rng, continent_affine),
+            DistributionType::Bit => self.generate_bit(&mut rng, continent_affine),
+            DistributionType::Sierpinski => self.generate_sierpinski(&mut rng, continent_affine),
         }
     }
 
-    fn generate_uniform(&self, rng: &mut StdRng) -> Geometry {
+    fn generate_uniform(&self, rng: &mut StdRng, continent_affine: &[f64; 6]) -> Geometry {
         let x = rand_unit(rng);
         let y = rand_unit(rng);
 
         match self.config.geom_type {
-            GeomType::Point => generate_point_geom((x, y), &self.config),
-            GeomType::Box => generate_box_geom((x, y), &self.config, rng),
-            GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng),
+            GeomType::Point => generate_point_geom((x, y), continent_affine),
+            GeomType::Box => generate_box_geom((x, y), &self.config, rng, continent_affine),
+            GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng, continent_affine),
         }
     }
 
-    fn generate_normal(&self, rng: &mut StdRng) -> Geometry {
+    fn generate_normal(&self, rng: &mut StdRng, continent_affine: &[f64; 6]) -> Geometry {
         match self.config.params {
             DistributionParams::Normal { mu, sigma } => {
                 let x = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
                 let y = rand_normal(rng, mu, sigma).clamp(0.0, 1.0);
 
                 match self.config.geom_type {
-                    GeomType::Point => generate_point_geom((x, y), &self.config),
-                    GeomType::Box => generate_box_geom((x, y), &self.config, rng),
-                    GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng),
+                    GeomType::Point => generate_point_geom((x, y), continent_affine),
+                    GeomType::Box => generate_box_geom((x, y), &self.config, rng, continent_affine),
+                    GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng, continent_affine),
                 }
             }
             _ => panic!(
@@ -125,7 +114,7 @@ impl SpiderGenerator {
         }
     }
 
-    fn generate_diagonal(&self, rng: &mut StdRng) -> Geometry {
+    fn generate_diagonal(&self, rng: &mut StdRng, continent_affine: &[f64; 6]) -> Geometry {
         match self.config.params {
             DistributionParams::Diagonal { percentage, buffer } => {
                 let (x, y) = if rng.gen::<f64>() < percentage {
@@ -140,9 +129,9 @@ impl SpiderGenerator {
                 };
 
                 match self.config.geom_type {
-                    GeomType::Point => generate_point_geom((x, y), &self.config),
-                    GeomType::Box => generate_box_geom((x, y), &self.config, rng),
-                    GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng),
+                    GeomType::Point => generate_point_geom((x, y), continent_affine),
+                    GeomType::Box => generate_box_geom((x, y), &self.config, rng, continent_affine),
+                    GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng, continent_affine),
                 }
             }
             _ => panic!(
@@ -152,7 +141,7 @@ impl SpiderGenerator {
         }
     }
 
-    fn generate_bit(&self, rng: &mut StdRng) -> Geometry {
+    fn generate_bit(&self, rng: &mut StdRng, continent_affine: &[f64; 6]) -> Geometry {
         match self.config.params {
             DistributionParams::Bit {
                 probability,
@@ -162,9 +151,9 @@ impl SpiderGenerator {
                 let y = spider_bit(rng, probability, digits);
 
                 match self.config.geom_type {
-                    GeomType::Point => generate_point_geom((x, y), &self.config),
-                    GeomType::Box => generate_box_geom((x, y), &self.config, rng),
-                    GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng),
+                    GeomType::Point => generate_point_geom((x, y), continent_affine),
+                    GeomType::Box => generate_box_geom((x, y), &self.config, rng, continent_affine),
+                    GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng, continent_affine),
                 }
             }
             _ => panic!(
@@ -174,7 +163,7 @@ impl SpiderGenerator {
         }
     }
 
-    fn generate_sierpinski(&self, rng: &mut StdRng) -> Geometry {
+    fn generate_sierpinski(&self, rng: &mut StdRng, continent_affine: &[f64; 6]) -> Geometry {
         let (mut x, mut y) = (0.0, 0.0);
         let a = (0.0, 0.0);
         let b = (1.0, 0.0);
@@ -197,9 +186,9 @@ impl SpiderGenerator {
         }
 
         match self.config.geom_type {
-            GeomType::Point => generate_point_geom((x, y), &self.config),
-            GeomType::Box => generate_box_geom((x, y), &self.config, rng),
-            GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng),
+            GeomType::Point => generate_point_geom((x, y), continent_affine),
+            GeomType::Box => generate_box_geom((x, y), &self.config, rng, continent_affine),
+            GeomType::Polygon => generate_polygon_geom((x, y), &self.config, rng, continent_affine),
         }
     }
 }
@@ -244,12 +233,13 @@ fn spider_bit(rng: &mut StdRng, prob: f64, digits: u32) -> f64 {
         .sum()
 }
 
-pub fn generate_point_geom(center: (f64, f64), config: &SpiderConfig) -> Geometry {
-    let (x, y) = round_coordinates(center.0, center.1, GEOMETRY_PRECISION);
+pub fn generate_point_geom(center: (f64, f64), continent_affine: &[f64; 6]) -> Geometry {
+    let (x, y) = apply_affine(center.0, center.1, continent_affine);
+    let (x, y) = round_coordinates(x, y, GEOMETRY_PRECISION);
     Geometry::Point(Point::new(x, y))
 }
 
-pub fn generate_box_geom(center: (f64, f64), config: &SpiderConfig, rng: &mut StdRng) -> Geometry {
+pub fn generate_box_geom(center: (f64, f64), config: &SpiderConfig, rng: &mut StdRng, continent_affine: &[f64; 6]) -> Geometry {
     let half_width = rand_unit(rng) * config.width / 2.0;
     let half_height = rand_unit(rng) * config.height / 2.0;
 
@@ -263,7 +253,8 @@ pub fn generate_box_geom(center: (f64, f64), config: &SpiderConfig, rng: &mut St
 
     let coords: Vec<_> = corners
         .iter()
-        .map(|&(x, y)| round_coordinates(x, y, GEOMETRY_PRECISION))
+        .map(|&(x, y)| apply_affine(x, y, continent_affine))
+        .map(|(x, y)| round_coordinates(x, y, GEOMETRY_PRECISION))
         .map(|(x, y)| coord! { x: x, y: y })
         .collect();
 
@@ -274,6 +265,7 @@ pub fn generate_polygon_geom(
     center: (f64, f64),
     config: &SpiderConfig,
     rng: &mut StdRng,
+    continent_affine: &[f64; 6],
 ) -> Geometry {
     let min_segs = 3;
     let num_segments = if config.maxseg <= 3 {
@@ -299,10 +291,13 @@ pub fn generate_polygon_geom(
             let x1 = x0.clamp(0.0, 1.0);
             let y1 = y0.clamp(0.0, 1.0);
 
-            // 3) Round coordinates before affine transformation
-            let (x2, y2) = round_coordinates(x1, y1, GEOMETRY_PRECISION);
+            // 3) Apply affine transformation
+            let (x2, y2) = apply_affine(x1, y1, continent_affine);
 
-            coord! { x: x2, y: y2 }
+            // 4) Round coordinates before affine transformation
+            let (xg, yg) = round_coordinates(x2, y2, GEOMETRY_PRECISION);
+
+            coord! { x: xg, y: yg }
         })
         .collect::<Vec<_>>();
 
@@ -350,4 +345,76 @@ pub fn apply_affine_polygon(poly: &Polygon<f64>, m: &[f64; 6]) -> Polygon<f64> {
 pub fn apply_affine_polygon_in_place(poly: &mut Polygon<f64>, m: &[f64; 6]) {
     let transformed = apply_affine_polygon(poly, m);
     *poly = transformed;
+}
+
+#[inline]
+pub(crate) fn hash_to_unit_u64(x: u64, salt: u64) -> f64 {
+    // SplitMix64-ish -> [0,1)
+    let mut z = x.wrapping_add(salt).wrapping_add(0x9E3779B97F4A7C15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D049BB133111EB);
+    z ^= z >> 31;
+    ((z >> 11) as f64) / ((1u64 << 53) as f64)
+}
+
+#[inline]
+fn bbox_from_affine(m: &[f64; 6]) -> (f64, f64, f64, f64) {
+    // X = a*x + c, Y = e*y + f   (b=d=0)
+    let (a, c, e, f) = (m[0], m[2], m[4], m[5]);
+    let (west, east) = if a >= 0.0 { (c, c + a) } else { (c + a, c) };
+    let (south, north) = if e >= 0.0 { (f, f + e) } else { (f + e, f) };
+    (west, east, south, north)
+}
+
+/// Spherical band area ~ width * (sin(phi_n) - sin(phi_s))
+#[inline]
+fn spherical_bbox_weight(west: f64, east: f64, south: f64, north: f64) -> f64 {
+    let deg2rad = std::f64::consts::PI / 180.0;
+    let width = (east - west).abs() * deg2rad;
+    let (phi_s, phi_n) = (south * deg2rad, north * deg2rad);
+    let band = (phi_n.sin() - phi_s.sin()).max(0.0);
+    (width * band).max(0.0)
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct WeightedTarget {
+    pub(crate) m: [f64; 6],
+    pub(crate) cdf: f64,
+}
+
+#[inline]
+pub fn build_continent_cdf(aff: &ContinentAffines) -> Vec<(&str, [f64; 6], f64)> {
+    let items = [
+        ("africa", &aff.africa),
+        ("europe", &aff.europe),
+        ("south_asia", &aff.south_asia),
+        ("north_asia", &aff.north_asia),
+        ("oceania", &aff.oceania),
+        ("south_america", &aff.south_america),
+        ("south_north_america", &aff.south_north_america),
+        ("north_north_america", &aff.north_north_america),
+    ];
+
+    let mut targets: Vec<(&str, [f64; 6], f64)> = items
+        .iter()
+        .map(|(name, m)| {
+            let (w, e, s, n) = bbox_from_affine(m);
+            let wt = spherical_bbox_weight(w, e, s, n);
+            (*name, **m, wt) // Dereference both name and m
+        })
+        .collect();
+
+    // Sort by weight descending for better target selection
+    targets.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+
+    // Build CDF
+    let total_weight: f64 = targets.iter().map(|(_, _, w)| w).sum();
+    let mut cumulative = 0.0;
+
+    for (_, _, weight) in &mut targets {
+        cumulative += *weight;
+        *weight = cumulative / total_weight;
+    }
+
+    targets
 }

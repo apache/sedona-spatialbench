@@ -2,33 +2,29 @@ use crate::spider::{ContinentAffines, DistributionParams, DistributionType, Geom
 
 pub struct SpiderDefaults;
 
-impl Default for ContinentAffines {
-    fn default() -> Self {
+impl ContinentAffines {
+    pub fn default() -> Self {
         Self {
-            eurasia:       [190.0, 0.0, -10.0, 0.0, -70.0, 70.0],
-            north_america: [116.0, 0.0, -168.0, 0.0, -55.0, 60.0],
-            south_america: [48.0, 0.0, -82.0, 0.0, -69.0, 13.0],
-            oceania:       [70.0, 0.0, 110.0, 0.0, -50.0, 0.0],
-            africa:        [70.0, 0.0, -18.0, 0.0, -73.0, 38.0],
+            africa: [84.194319, 0.0, -20.062752, 0.0, -77.623846, 37.579421],
+            europe: [76.108853, 0.0, -11.964479, 0.0,  33.901968, 37.926872],
+            south_asia: [80.942556, 0.0,  64.583540, 0.0, -61.381606, 51.672557],
+            north_asia: [114.339049, 0.0,  64.495655, 0.0,  25.952988, 51.944267],
+            oceania: [68.287041, 0.0, 112.481901, 0.0, -38.751779, -10.228433],
+            south_america: [66.177789, 0.0, -99.246451, 0.0, -70.347818, 13.068781],
+            south_north_america: [77.075593, 0.0, -129.127525, 0.0, -35.337948, 48.748946],
+            north_north_america: [115.130019, 0.0, -167.181951, 0.0,  22.683444, 48.980218],
         }
     }
 }
 
 impl SpiderDefaults {
-    const FULL_WORLD_AFFINE: [f64; 6] = [
-        360.0, // Scale X to cover full longitude range (-180° to 180°)
-        0.0, -180.0, // Offset X to start at -180° (west edge of map)
-        0.0, -160.0, // Scale Y: maps unit square [0,1] to latitude range [80°, -80°]
-        80.0,   // Offset Y to start at 80° (north edge of map)
-    ];
 
     pub fn trip_default() -> SpiderGenerator {
         let config = SpiderConfig {
             dist_type: DistributionType::Bit,
             geom_type: GeomType::Point,
             dim: 2,
-            seed: 42,
-            continent_affines: Some(ContinentAffines::default()),
+            seed: 56789,
 
             // geometry = box
             width: 0.0,
@@ -39,8 +35,8 @@ impl SpiderDefaults {
             polysize: 0.0,
 
             params: DistributionParams::Bit {
-                probability: 0.2,
-                digits: 30,
+                probability: 0.35,
+                digits: 50,
             },
         };
         SpiderGenerator::new(config)
@@ -52,7 +48,6 @@ impl SpiderDefaults {
             geom_type: GeomType::Polygon,
             dim: 2,
             seed: 12345,
-            continent_affines: Some(ContinentAffines::default()),
 
             // geometry = box
             width: 0.0,

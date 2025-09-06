@@ -2,33 +2,21 @@ trip:
   dist_type: bit
   geom_type: point
   dim: 2
-  seed: 42
-  continent_affines:
-    eurasia: [ 190.0, 0.0, -10.0, 0.0, -70.0, 70.0 ]
-    north_america: [ 116.0, 0.0, -168.0, 0.0, -55.0, 60.0 ]
-    south_america: [ 48.0, 0.0, -82.0, 0.0, -69.0, 13.0 ]
-    oceania: [ 70.0, 0.0, 110.0, 0.0, -50.0, 0.0 ]
-    africa: [ 70.0, 0.0, -18.0, 0.0, -73.0, 38.0 ]
+  seed: 56789
   width: 0.0
   height: 0.0
   maxseg: 0
   polysize: 0.0
   params:
     type: bit
-    probability: 0.2
-    digits: 30
+    probability: 0.35
+    digits: 50
 
 building:
   dist_type: sierpinski
   geom_type: polygon
   dim: 2
   seed: 12345
-  continent_affines:
-    eurasia: [ 190.0, 0.0, -10.0, 0.0, -70.0, 70.0 ]
-    north_america: [ 116.0, 0.0, -168.0, 0.0, -55.0, 60.0 ]
-    south_america: [ 48.0, 0.0, -82.0, 0.0, -69.0, 13.0 ]
-    oceania: [ 70.0, 0.0, 110.0, 0.0, -50.0, 0.0 ]
-    africa: [ 70.0, 0.0, -18.0, 0.0, -73.0, 38.0 ]
   width: 0.0
   height: 0.0
   maxseg: 5

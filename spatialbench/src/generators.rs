@@ -1,5 +1,5 @@
 //! Generators for each TPC-H Tables
-use crate::{dates, spider};
+use crate::dates;
 use crate::dates::{GenerateUtils, TPCHDate};
 use crate::decimal::TPCHDecimal;
 use crate::distribution::Distribution;
@@ -9,7 +9,7 @@ use crate::random::RowRandomInt;
 use crate::random::{PhoneNumberInstance, RandomBoundedLong, StringSequenceInstance};
 use crate::random::{RandomAlphaNumeric, RandomAlphaNumericInstance};
 use crate::random::{RandomBoundedInt, RandomString, RandomStringSequence, RandomText};
-use crate::spider::{generate_polygon_geom, spider_seed_for_index, SpiderGenerator};
+use crate::spider::{spider_seed_for_index, SpiderGenerator, WeightedTarget, build_continent_cdf, hash_to_unit_u64, ContinentAffines};
 use crate::spider_defaults::SpiderDefaults;
 use crate::spider_overrides;
 use crate::text::TextPool;
@@ -887,6 +887,7 @@ pub struct TripGenerator {
     text_pool: TextPool,
     distance_kde: crate::kde::DistanceKDE,
     spatial_gen: SpiderGenerator,
+    continent_cdf: Vec<WeightedTarget>,
 }
 
 impl TripGenerator {
@@ -924,6 +925,18 @@ impl TripGenerator {
         distance_kde: crate::kde::DistanceKDE,
         spatial_gen: SpiderGenerator,
     ) -> TripGenerator {
+
+        let continent_cdf = {
+            let affines = ContinentAffines::default();
+            build_continent_cdf(&affines)
+                .into_iter()
+                .map(|(_name, m, cdf)| WeightedTarget {
+                    m,
+                    cdf,
+                })
+                .collect()
+        };
+
         TripGenerator {
             scale_factor,
             part,
@@ -932,6 +945,7 @@ impl TripGenerator {
             text_pool: text_pool.clone(),
             distance_kde,
             spatial_gen,
+            continent_cdf,
         }
     }
 
@@ -960,6 +974,7 @@ impl TripGenerator {
             ),
             self.distance_kde.clone(), // Add the KDE model
             self.spatial_gen.clone(),
+            self.continent_cdf.clone(),
         )
     }
 }
@@ -985,6 +1000,8 @@ pub struct TripGeneratorIterator {
     tip_percent_random: RandomBoundedInt,
     trip_minutes_per_mile_random: RandomBoundedInt,
     distance_kde: crate::kde::DistanceKDE,
+    spatial_gen: SpiderGenerator,
+    continent_cdf: Vec<WeightedTarget>,
 
     scale_factor: f64,
     start_index: i64,
@@ -1004,6 +1021,7 @@ impl TripGeneratorIterator {
         row_count: i64,
         distance_kde: crate::kde::DistanceKDE,
         spatial_gen: SpiderGenerator,
+        continent_cdf: Vec<WeightedTarget>,
     ) -> Self {
         // Create all the randomizers
         let max_customer_key = (CustomerGenerator::SCALE_BASE as f64 * scale_factor) as i64;
@@ -1059,6 +1077,8 @@ impl TripGeneratorIterator {
             tip_percent_random,
             trip_minutes_per_mile_random,
             distance_kde,
+            spatial_gen,
+            continent_cdf,
 
             scale_factor,
             start_index,
@@ -1098,30 +1118,20 @@ impl TripGeneratorIterator {
         distance_value = (distance_value * 100_000_000.0).round() / 100_000_000.0;
         let distance = TPCHDecimal((distance_value * 100.0) as i64);
 
-        // Get trip spatial generator with continent affines
-        let trip_generator = spider_overrides::trip_or_default(|| SpiderDefaults::trip_default());
-
         // Select continent based on trip_key and generate pickup location
-        let continent_index = (trip_key as u64 * 2654435761) % 5;
-        let continent_affine = match continent_index {
-            0 => &trip_generator.config.continent_affines.as_ref().unwrap().eurasia,
-            1 => &trip_generator.config.continent_affines.as_ref().unwrap().north_america,
-            2 => &trip_generator.config.continent_affines.as_ref().unwrap().south_america,
-            3 => &trip_generator.config.continent_affines.as_ref().unwrap().oceania,
-            _ => &trip_generator.config.continent_affines.as_ref().unwrap().africa,
-        };
+        let u = hash_to_unit_u64(trip_key as u64, 0xC0DEC0DE);
+        let idx = self
+            .continent_cdf
+            .iter()
+            .position(|t| u <= t.cdf)
+            .unwrap_or(self.continent_cdf.len() - 1);
+        let continent_affine = &self.continent_cdf[idx].m;
 
-        // Generate pickup location in unit space [0,1]
-        let pickup_geom_unit = trip_generator.generate(trip_key as u64);
-        let pickup_point_unit: Point = pickup_geom_unit.try_into().expect("Failed to convert to point");
-
-        // Apply continent-specific affine transformation
-        let (pickup_x, pickup_y) = spider::apply_affine(
-            pickup_point_unit.x(),
-            pickup_point_unit.y(),
-            continent_affine
-        );
-        let pickuploc = Point::new(pickup_x, pickup_y);
+        // Pickup
+        let pickuploc_geom = self.spatial_gen.generate(trip_key as u64, continent_affine);
+        let pickuploc: Point = pickuploc_geom
+            .try_into()
+            .expect("Failed to convert to point");
 
         // Generate dropoff using angle and distance
         let angle_seed = spider_seed_for_index(trip_key as u64, 1234);
@@ -1249,6 +1259,7 @@ pub struct BuildingGenerator<'a> {
     distributions: &'a Distributions,
     text_pool: &'a TextPool,
     spatial_gen: SpiderGenerator,
+    continent_cdf: Vec<WeightedTarget>,
 }
 
 impl<'a> BuildingGenerator<'a> {
@@ -1281,6 +1292,18 @@ impl<'a> BuildingGenerator<'a> {
         text_pool: &'b TextPool,
         spatial_gen: SpiderGenerator,
     ) -> BuildingGenerator<'b> {
+
+        let continent_cdf = {
+            let affines = ContinentAffines::default();
+            build_continent_cdf(&affines)
+                .into_iter()
+                .map(|(_name, m, cdf)| WeightedTarget {
+                    m,
+                    cdf,
+                })
+                .collect()
+        };
+
         BuildingGenerator {
             scale_factor,
             part,
@@ -1288,6 +1311,7 @@ impl<'a> BuildingGenerator<'a> {
             distributions,
             text_pool,
             spatial_gen,
+            continent_cdf,
         }
     }
 
@@ -1314,6 +1338,7 @@ impl<'a> BuildingGenerator<'a> {
             ),
             Self::calculate_row_count(self.scale_factor, self.part, self.part_count),
             self.spatial_gen.clone(),
+            self.continent_cdf.clone(),
         )
     }
 }
@@ -1331,6 +1356,8 @@ impl<'a> IntoIterator for &'a BuildingGenerator<'a> {
 #[derive(Debug)]
 pub struct BuildingGeneratorIterator<'a> {
     name_random: RandomStringSequence<'a>,
+    spatial_gen: SpiderGenerator,
+    continent_cdf: Vec<WeightedTarget>,
 
     start_index: i64,
     row_count: i64,
@@ -1344,6 +1371,7 @@ impl<'a> BuildingGeneratorIterator<'a> {
         start_index: i64,
         row_count: i64,
         spatial_gen: SpiderGenerator,
+        continent_cdf: Vec<WeightedTarget>,
     ) -> Self {
         let mut name_random = RandomStringSequence::new(
             709314158,
@@ -1362,6 +1390,9 @@ impl<'a> BuildingGeneratorIterator<'a> {
 
         BuildingGeneratorIterator {
             name_random,
+            spatial_gen,
+            continent_cdf,
+
             start_index,
             row_count,
 
@@ -1373,30 +1404,23 @@ impl<'a> BuildingGeneratorIterator<'a> {
     fn make_building(&mut self, building_key: i64) -> Building<'a> {
         let name = self.name_random.next_value();
 
-        // Get building spatial generator with continent affines
-        let building_generator = spider_overrides::building_or_default(|| SpiderDefaults::building_default());
-
         // Select continent based on building_key
-        let continent_index = (building_key as u64 * 2654435761) % 5;
-        let continent_affine = match continent_index {
-            0 => &building_generator.config.continent_affines.as_ref().unwrap().eurasia,
-            1 => &building_generator.config.continent_affines.as_ref().unwrap().north_america,
-            2 => &building_generator.config.continent_affines.as_ref().unwrap().south_america,
-            3 => &building_generator.config.continent_affines.as_ref().unwrap().oceania,
-            _ => &building_generator.config.continent_affines.as_ref().unwrap().africa,
-        };
+        let u = hash_to_unit_u64(building_key as u64, 0xC0DEC0DE);
+        let idx = self
+            .continent_cdf
+            .iter()
+            .position(|t| u <= t.cdf)
+            .unwrap_or(self.continent_cdf.len() - 1);
+        let continent_affine = &self.continent_cdf[idx].m;
 
-        // Generate polygon in unit space [0,1]
-        let geom_unit = building_generator.generate(building_key as u64);
-        let mut polygon_unit: geo::Polygon = geom_unit.try_into().expect("Failed to convert to polygon");
-
-        // Apply continent-specific affine transformation
-        spider::apply_affine_polygon_in_place(&mut polygon_unit, continent_affine);
+        // Generate point in unit space [0,1]
+        let geom = self.spatial_gen.generate(building_key as u64, continent_affine);
+        let polygon: geo::Polygon = geom.try_into().expect("Failed to convert to polygon");
 
         Building {
             b_buildingkey: building_key,
             b_name: name,
-            b_boundary: polygon_unit,
+            b_boundary: polygon,
         }
     }
 }
