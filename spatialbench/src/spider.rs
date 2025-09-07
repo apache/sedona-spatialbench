@@ -14,6 +14,7 @@ pub enum DistributionType {
     Sierpinski,
     Bit,
     Thomas,
+    HierThomas,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -36,6 +37,26 @@ pub enum DistributionParams {
         sigma: f64,          // cluster stddev in unit coords
         pareto_alpha: f64,   // tail parameter (>0). Smaller => heavier tail (e.g., 1.0–1.5)
         pareto_xm: f64,      // scale (>0), typically 1.0
+    },
+
+    // hierarchical Thomas (cities -> subclusters)
+    HierThomas {
+        cities: u32,             // # top-level “city” centers
+
+        // variable subclusters per city (normal, clamped)
+        sub_mean: f64,
+        sub_sd: f64,
+        sub_min: u32,
+        sub_max: u32,
+
+        sigma_city: f64,         // spread of subcluster centers around their city
+        sigma_sub: f64,          // spread of final points around the chosen subcluster
+
+        // Pareto weights
+        pareto_alpha_city: f64,  // city weights
+        pareto_xm_city: f64,
+        pareto_alpha_sub: f64,   // subcluster weights (within a city)
+        pareto_xm_sub: f64,
     },
 }
 
@@ -80,14 +101,28 @@ pub struct ThomasCache {
 }
 
 #[derive(Clone, Debug)]
+pub struct HierThomasCache {
+    city_cdf: Vec<f64>,          // global CDF over cities
+    sub_cdfs: Vec<Vec<f64>>,     // per-city CDF over subclusters (variable length)
+    subcounts: Vec<u32>,         // per-city subcluster count
+    cities: usize,
+    alpha_city: f64,
+    xm_city: f64,
+    alpha_sub: f64,
+    xm_sub: f64,
+    seed: u64,
+}
+
+#[derive(Clone, Debug)]
 pub struct SpiderGenerator {
     pub config: SpiderConfig,
     pub thomas_cache: OnceLock<ThomasCache>,
+    pub hier_cache: OnceLock<HierThomasCache>,
 }
 
 impl SpiderGenerator {
-    pub fn new(config: SpiderConfig, thomas_cache: OnceLock<ThomasCache>) -> Self {
-        Self { config, thomas_cache }
+    pub fn new(config: SpiderConfig, thomas_cache: OnceLock<ThomasCache>, hier_cache: OnceLock<HierThomasCache>) -> Self {
+        Self { config, thomas_cache, hier_cache,}
     }
 
     pub fn generate(&self, index: u64, continent_affine: &[f64; 6]) -> Geometry {
@@ -101,6 +136,7 @@ impl SpiderGenerator {
             DistributionType::Bit => self.generate_bit(&mut rng, continent_affine),
             DistributionType::Sierpinski => self.generate_sierpinski(&mut rng, continent_affine),
             DistributionType::Thomas => self.generate_thomas(index, continent_affine),
+            DistributionType::HierThomas   => self.generate_hier_thomas(index, continent_affine),
         }
     }
 
@@ -317,6 +353,153 @@ impl SpiderGenerator {
         }
         k.saturating_sub(1)
     }
+
+    fn generate_hier_thomas(&self, index: u64, m: &[f64; 6]) -> Geometry {
+        let (nc, sub_mean, sub_sd, sub_min, sub_max,
+            sigma_city, sigma_sub, a_c, xm_c, a_s, xm_s) = match self.config.params {
+            DistributionParams::HierThomas {
+                cities,
+                sub_mean, sub_sd, sub_min, sub_max,
+                sigma_city, sigma_sub,
+                pareto_alpha_city, pareto_xm_city,
+                pareto_alpha_sub,  pareto_xm_sub,
+            } => (
+                cities.max(1),
+                sub_mean, sub_sd, sub_min, sub_max,
+                sigma_city.max(1e-6), sigma_sub.max(1e-6),
+                pareto_alpha_city.max(1e-6), pareto_xm_city.max(1e-12),
+                pareto_alpha_sub.max(1e-6),  pareto_xm_sub.max(1e-12),
+            ),
+            _ => (16, 8.0, 3.0, 2, 24, 0.05, 0.01, 1.1, 1.0, 1.2, 1.0),
+        };
+
+        let cities = nc as usize;
+
+        // Build/reuse cache with variable subcounts
+        let cache = self.get_hier_cache(
+            cities,
+            sub_mean, sub_sd, sub_min, sub_max,
+            a_c, xm_c, a_s, xm_s,
+            self.config.seed as u64,
+        );
+
+        // Independent uniforms for the two picks
+        let u_city = hash_to_unit_u64(index, (self.config.seed as u64) ^ 0xC17C1CF);
+        let u_sub  = hash_to_unit_u64(index, (self.config.seed as u64) ^ 0x53BFACE);
+
+        // city pick
+        let city_id = {
+            let mut lo = 0usize;
+            let mut hi = cache.cities;
+            while lo < hi {
+                let mid = (lo + hi) / 2;
+                if u_city <= cache.city_cdf[mid] { hi = mid; } else { lo = mid + 1; }
+            }
+            lo.min(cache.cities.saturating_sub(1))
+        };
+
+        // subcluster pick (variable length)
+        let cdf = &cache.sub_cdfs[city_id];
+        let mut lo = 0usize;
+        let mut hi = cdf.len();
+        while lo < hi {
+            let mid = (lo + hi) / 2;
+            if u_sub <= cdf[mid] { hi = mid; } else { lo = mid + 1; }
+        }
+        let sub_id = lo.min(cdf.len().saturating_sub(1));
+
+        // city center (deterministic)
+        let (cx, cy) = halton_2d(city_id as u64 + 1, 2, 3);
+
+        // subcenter (deterministic Gaussian around city)
+        let sub_seed = spider_seed_for_index((city_id as u64) << 32 | (sub_id as u64),
+                                             (self.config.seed as u64) ^ 0xC173_5FB);
+        let mut rng_sub = StdRng::seed_from_u64(sub_seed);
+        let sx = (cx + rand_normal(&mut rng_sub, 0.0, sigma_city)).clamp(0.0, 1.0);
+        let sy = (cy + rand_normal(&mut rng_sub, 0.0, sigma_city)).clamp(0.0, 1.0);
+
+        // final point (Gaussian around subcenter)
+        let pt_seed = spider_seed_for_index(index, (self.config.seed as u64) ^ 0xF136D);
+        let mut rng_pt = StdRng::seed_from_u64(pt_seed);
+        let x = (sx + rand_normal(&mut rng_pt, 0.0, sigma_sub)).clamp(0.0, 1.0);
+        let y = (sy + rand_normal(&mut rng_pt, 0.0, sigma_sub)).clamp(0.0, 1.0);
+
+        match self.config.geom_type {
+            GeomType::Point   => generate_point_geom((x, y), m),
+            GeomType::Box     => generate_box_geom((x, y), &self.config, &mut rng_pt, m),
+            GeomType::Polygon => generate_polygon_geom((x, y), &self.config, &mut rng_pt, m),
+        }
+    }
+
+    fn get_hier_cache(
+        &self,
+        cities: usize,
+        sub_mean: f64,
+        sub_sd: f64,
+        sub_min: u32,
+        sub_max: u32,
+        alpha_city: f64,
+        xm_city: f64,
+        alpha_sub: f64,
+        xm_sub: f64,
+        seed: u64,
+    ) -> &HierThomasCache {
+        self.hier_cache.get_or_init(|| {
+            // City CDF (Pareto weights)
+            let mut city_w = Vec::with_capacity(cities);
+            for cid in 0..cities {
+                let u = u01_from_seed(spider_seed_for_index(cid as u64, seed ^ 0xC17E));
+                city_w.push(pareto_draw(u, alpha_city, xm_city));
+            }
+            let sum_city = city_w.iter().copied().sum::<f64>().max(1e-12);
+            let mut city_cdf = Vec::with_capacity(cities);
+            let mut acc = 0.0;
+            for w in city_w {
+                acc += w / sum_city;
+                city_cdf.push(acc);
+            }
+
+            // Per-city subcluster counts (deterministic normal)
+            let mut subcounts = Vec::with_capacity(cities);
+            for cid in 0..cities {
+                // seed depends on (seed, cid) so it’s stable
+                let s = spider_seed_for_index(cid as u64, seed ^ 0x53_EBC132);
+                let k = sample_normal_count(sub_mean, sub_sd.max(1e-9), sub_min.max(1), sub_max.max(1), s);
+                subcounts.push(k);
+            }
+
+            // Per-city subcluster CDFs (Pareto weights), length = subcounts[cid]
+            let mut sub_cdfs = Vec::with_capacity(cities);
+            for cid in 0..cities {
+                let n_sub = subcounts[cid] as usize;
+                let mut w = Vec::with_capacity(n_sub);
+                for sid in 0..n_sub {
+                    let u = u01_from_seed(spider_seed_for_index(((cid as u64) << 32) | sid as u64, seed ^ 0x5EB5));
+                    w.push(pareto_draw(u, alpha_sub, xm_sub));
+                }
+                let sum_w = w.iter().copied().sum::<f64>().max(1e-12);
+                let mut cdf = Vec::with_capacity(n_sub);
+                let mut sacc = 0.0;
+                for wi in w {
+                    sacc += wi / sum_w;
+                    cdf.push(sacc);
+                }
+                sub_cdfs.push(cdf);
+            }
+
+            HierThomasCache {
+                city_cdf,
+                sub_cdfs,
+                subcounts,
+                cities,
+                alpha_city,
+                xm_city,
+                alpha_sub,
+                xm_sub,
+                seed,
+            }
+        })
+    }
 }
 
 pub fn rand_unit(rng: &mut StdRng) -> f64 {
@@ -479,6 +662,16 @@ fn radical_inverse(mut n: u64, base: u32) -> f64 {
 #[inline]
 fn halton_2d(i: u64, base_x: u32, base_y: u32) -> (f64, f64) {
     (radical_inverse(i, base_x), radical_inverse(i, base_y))
+}
+
+#[inline]
+fn sample_normal_count(mu: f64, sd: f64, min_v: u32, max_v: u32, seed: u64) -> u32 {
+    let mut rng = StdRng::seed_from_u64(seed);
+    let draw = rand_normal(&mut rng, mu, sd).round();
+    let mut k = draw.max(min_v as f64) as u32;
+    if k > max_v { k = max_v; }
+    if k < 1 { k = 1; }
+    k
 }
 
 #[inline]

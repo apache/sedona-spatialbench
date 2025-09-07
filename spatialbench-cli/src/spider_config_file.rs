@@ -30,6 +30,7 @@ where
                 "bit" => Ok(DistributionType::Bit),
                 "sierpinski" => Ok(DistributionType::Sierpinski),
                 "thomas" => Ok(DistributionType::Thomas),
+                "hierthomas" => Ok(DistributionType::HierThomas),
                 _ => Err(E::custom(format!("unknown distribution type: {}", value))),
             }
         }
@@ -108,6 +109,20 @@ pub enum InlineParams {
         pareto_alpha: f64,   // tail parameter (>0). Smaller => heavier tail (e.g., 1.0–1.5)
         pareto_xm: f64,      // scale (>0), typically 1.0
     },
+
+    HierThomas {
+        cities: u32,              // top-level “city” centers
+        sub_mean: f64,
+        sub_sd: f64,
+        sub_min: u32,
+        sub_max: u32,
+        sigma_city: f64,          // spread of subcluster centers around their city
+        sigma_sub: f64,           // spread of final points around the chosen subcluster
+        pareto_alpha_city: f64,   // Pareto tail for city weights
+        pareto_xm_city: f64,      // Pareto scale (xmin) for city weights
+        pareto_alpha_sub: f64,    // Pareto tail for subcluster weights (within a city)
+        pareto_xm_sub: f64,       // Pareto scale (xmin) for subcluster weights
+    },
 }
 
 impl InlineSpiderConfig {
@@ -136,6 +151,19 @@ impl InlineSpiderConfig {
                 pareto_alpha: *pareto_alpha,
                 pareto_xm: *pareto_xm,
             },
+            InlineParams::HierThomas { cities, sub_mean, sub_sd, sub_min, sub_max, sigma_city, sigma_sub, pareto_alpha_city, pareto_xm_city, pareto_alpha_sub, pareto_xm_sub} => DistributionParams::HierThomas {
+                cities: *cities,              // top-level “city” centers
+                sub_mean: *sub_mean,
+                sub_sd: *sub_sd,
+                sub_min: *sub_min,
+                sub_max: *sub_max,
+                sigma_city: *sigma_city,          // spread of subcluster centers around their city
+                sigma_sub: *sigma_sub,           // spread of final points around the chosen subcluster
+                pareto_alpha_city: *pareto_alpha_city,   // Pareto tail for city weights
+                pareto_xm_city: *pareto_xm_city,      // Pareto scale (xmin) for city weights
+                pareto_alpha_sub: *pareto_alpha_sub,    // Pareto tail for subcluster weights (within a city)
+                pareto_xm_sub: *pareto_xm_sub,       // Pareto scale (xmin) for subcluster weights
+            },
         };
 
         let cfg = SpiderConfig {
@@ -149,7 +177,7 @@ impl InlineSpiderConfig {
             polysize: self.polysize,
             params,
         };
-        SpiderGenerator::new(cfg, OnceLock::new())
+        SpiderGenerator::new(cfg, OnceLock::new(), OnceLock::new())
     }
 }
 
