@@ -40,7 +40,7 @@ This tiered scaling reflects **geometry complexity** and **area distributions** 
 
 ![image.png](images/data_model.png)
 
-### Affine Coverage
+### Geographic Coverage
 
 Spatial Bench's data generator uses **continent-bounded affines**. Each continent is defined by a bounding polygon, ensuring generation mostly covers land areas and introducing the natural skew of real geographies.
 
@@ -67,7 +67,7 @@ Key performance benefits:
 - **Zero-copy, streaming architecture**: Generates data in constant memory, suitable for very large datasets.
 - **Multithreaded from the ground up**: Leverages all CPU cores for high-throughput generation.
 - **Arrow-native output**: Supports fast serialization to Parquet and other formats without bottlenecks.
-- **Fast geometry generation**: The Spider module generates millions of spatial geometries per second, with deterministic output and affine transforms.
+- **Fast geometry generation**: The Spider module generates millions of spatial geometries per second, with deterministic output.
 
 ## How is SpatialBench dbgen built?
 
