@@ -5,7 +5,6 @@ SpatialBench configuration allows you to customize spatial data generation for y
 Spider is designed for benchmark reproducibility:
 - Generates millions of geometries per second.
 - Uses seeds for deterministic output.
-- Supports affine transforms to map the unit square [0,1]² into real-world coordinates.
 
 Reference: [SpiderWeb: A Spatial Data Generator on the Web](https://dl.acm.org/doi/10.1145/3397536.3422351) by Katiyar et al., SIGSPATIAL 2020.
 
@@ -54,7 +53,6 @@ Each entry must conform to the configuration schema:
   geom_type: <string>        # Geometry type: point | box | polygon
   dim: <int>                 # Dimensions (always 2 for 2D spatial data)
   seed: <int>                # Random seed for deterministic generation
-  affine: [f64; 6]           # Optional coordinate transformation matrix
   width: <float>             # Box width (used only when geom_type = box)
   height: <float>            # Box height (used only when geom_type = box)
   maxseg: <int>              # Maximum polygon segments (used only when geom_type = polygon)
@@ -66,18 +64,17 @@ Each entry must conform to the configuration schema:
 
 ### Configuration Field Details
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `dist_type` | string | Yes | **Distribution Algorithm**: Controls how coordinates are generated in the unit square [0,1]² before applying affine transforms. |
-| `geom_type` | string | Yes | **Geometry Type**: Determines the final spatial geometry output format. |
-| `dim` | int | Yes | **Dimensions**: Always 2 for 2D spatial data. Controls the dimensionality of generated coordinates. |
-| `seed` | int | Yes | **Random Seed**: Ensures reproducible generation. Each record uses a deterministic hash of this seed combined with the record index. |
-| `affine` | [f64; 6] | No | **Coordinate Transform**: Maps unit square [0,1]² to real-world coordinates. Applied after coordinate generation. |
-| `width` | float | Yes | **Box Width**: Maximum width of generated boxes (in unit square coordinates). Actual width is randomized between 0 and this value. |
-| `height` | float | Yes | **Box Height**: Maximum height of generated boxes (in unit square coordinates). Actual height is randomized between 0 and this value. |
+| Field | Type | Required | Description                                                                                                                                  |
+|-------|------|----------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| `dist_type` | string | Yes | **Distribution Algorithm**: Controls how coordinates are generated in the unit square [0,1]² before applying affine transforms.              |
+| `geom_type` | string | Yes | **Geometry Type**: Determines the final spatial geometry output format.                                                                      |
+| `dim` | int | Yes | **Dimensions**: Always 2 for 2D spatial data. Controls the dimensionality of generated coordinates.                                          |
+| `seed` | int | Yes | **Random Seed**: Ensures reproducible generation. Each record uses a deterministic hash of this seed combined with the record index.         |
+| `width` | float | Yes | **Box Width**: Maximum width of generated boxes (in unit square coordinates). Actual width is randomized between 0 and this value.           |
+| `height` | float | Yes | **Box Height**: Maximum height of generated boxes (in unit square coordinates). Actual height is randomized between 0 and this value.        |
 | `maxseg` | int | Yes | **Max Polygon Segments**: Maximum number of sides for generated polygons. Minimum is 3, actual count is randomized between 3 and this value. |
-| `polysize` | float | Yes | **Polygon Size**: Radius of generated polygons from their center point (in unit square coordinates). |
-| `params` | object | Yes | **Distribution Parameters**: Specific parameters for the chosen distribution type. |
+| `polysize` | float | Yes | **Polygon Size**: Radius of generated polygons from their center point (in unit square coordinates).                                         |
+| `params` | object | Yes | **Distribution Parameters**: Specific parameters for the chosen distribution type.                                                           |
 
 ## Supported Distribution Parameters
 
@@ -119,45 +116,4 @@ When SpatialBench starts, it resolves configuration in this order:
 1. Explicit config: If --config <path> is provided, that file is used.
 2. Local default: If no flag is provided, SpatialBench looks for ./spatialbench-config.yml in the current directory.
 3. Built-ins: If neither is found, it uses compiled defaults from the built-in configuration.
-
-## Affine Transform
-
-The affine transform maps coordinates from the unit square [0,1]² into real-world ranges.
-It is expressed as an array of 6 numbers:
-
-```
-[a, b, c, d, e, f]
-```
-
-Applied as:
-
-```
-X = a*x + b*y + c
-Y = d*x + e*y + f
-```
-
-- a, e → scale factors in X and Y.
-- b, d → shear/skew (usually 0 for simple scaling).
-- c, f → translation offsets.
-
-#### How to fill it
-
-1. Decide the bounding box of your target region:
-   - Example (continental USA): [-125.24, 24.00, -66.87, 49.18] → west, south, east, north.
-2. Compute scale and offset:
-   - scale_x = (east - west)
-   - scale_y = (north - south)
-   - offset_x = west
-   - offset_y = south
-3. Plug into [a, b, c, d, e, f] with no skew:
-   - [scale_x, 0.0, offset_x, 0.0, scale_y, offset_y]
-
-#### Example: Mapping [0,1]² to Continental USA
-
-```yaml
-affine: [58.368269, 0.0, -125.244606, 0.0, 25.175375, 24.006328]
-```
-
-Which means:
-- x=0 → -125.24, x=1 → -66.87
-- y=0 → 24.00, y=1 → 49.18
+4. 

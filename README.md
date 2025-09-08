@@ -40,6 +40,25 @@ This tiered scaling reflects **geometry complexity** and **area distributions** 
 
 ![image.png](images/data_model.png)
 
+### Affine Coverage
+
+Spatial Bench's data generator uses **continent-bounded affines**. Each continent is defined by a bounding polygon, ensuring generation mostly covers land areas and introducing the natural skew of real geographies.
+
+Bounding polygons:
+
+```text
+Africa:              POLYGON ((-20.062752 -40.044425, 64.131567 -40.044425, 64.131567 37.579421, -20.062752 37.579421, -20.062752 -40.044425))
+Europe:              POLYGON ((-11.964479 37.926872, 64.144374 37.926872, 64.144374 71.82884, -11.964479 71.82884, -11.964479 37.926872))
+South Asia:          POLYGON ((64.58354 -9.709049, 145.526096 -9.709049, 145.526096 51.672557, 64.58354 51.672557, 64.58354 -9.709049))
+North Asia:          POLYGON ((64.495655 51.944267, 178.834704 51.944267, 178.834704 77.897255, 64.495655 77.897255, 64.495655 51.944267))
+Oceania:             POLYGON ((112.481901 -48.980212, 180.768942 -48.980212, 180.768942 -10.228433, 112.481901 -10.228433, 112.481901 -48.980212))
+South America:       POLYGON ((-83.833822 -56.170016, -33.904338 -56.170016, -33.904338 12.211188, -83.833822 12.211188, -83.833822 -56.170016))
+South North America: POLYGON ((-124.890724 12.382931, -69.511192 12.382931, -69.511192 42.55308, -124.890724 42.55308, -124.890724 12.382931))
+North North America: POLYGON ((-166.478008 42.681087, -52.053245 42.681087, -52.053245 72.659041, -166.478008 72.659041, -166.478008 42.681087))
+```
+
+![image.png](images/continent_bounds.png)
+
 ## Performance
 
 SpatialBench inherits its speed and efficiency from the tpchgen-rs project, which is one of the fastest open-source data generators available.
@@ -70,7 +89,7 @@ cargo install --path ./spatialbench-cli
 
 - The core generator logic lives in the spatialbench crate.
 - Geometry-aware logic is in spatialbench-arrow and integrated via Arrow-based schemas.
-- The spatial extension modules like the Spider geometry generator reside in [spider.rs](https://github.com/wherobots/sedona-spatialbench/blob/main/spatialbench/src/spider.rs).
+- The spatial extension modules like the Spider geometry generator reside in the [spatial](https://github.com/wherobots/sedona-spatialbench/blob/main/spatialbench/src/spatial) directory.
 - The generator supports output formats like .tbl and Apache Parquet via the Arrow writer.
 
 For contribution or debugging, refer to the [ARCHITECTURE.md](https://github.com/wherobots/sedona-spatialbench/blob/main/ARCHITECTURE.md) guide.
