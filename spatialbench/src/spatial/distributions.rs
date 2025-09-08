@@ -222,7 +222,7 @@ pub fn generate_hier_thomas(
     let (cx, cy) = halton_2d(city_id as u64 + 1, 2, 3);
     let mut rng_sub = seeded_rng(spider_seed_for_index(
         ((city_id as u64) << 32) | (sub_id as u64),
-        (config.seed as u64) ^ 0xC173_5FB,
+        (config.seed as u64) ^ 0x0C17_35FB,
     ));
     let (sx, sy) = gauss_around(&mut rng_sub, (cx, cy), sigma_city);
 
@@ -293,8 +293,8 @@ fn get_or_create_hier_cache(
             .collect();
 
         let mut sub_cdfs = Vec::with_capacity(cities);
-        for cid in 0..cities {
-            let n_sub = subcounts[cid] as usize;
+        for (cid, subcount) in subcounts.iter().enumerate().take(cities) {
+            let n_sub = *subcount as usize;
             let weights: Vec<f64> = (0..n_sub)
                 .map(|sid| {
                     let u = u01_from_seed(spider_seed_for_index(

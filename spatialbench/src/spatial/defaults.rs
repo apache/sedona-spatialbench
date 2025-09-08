@@ -6,8 +6,8 @@ use std::sync::OnceLock;
 
 pub struct SpatialDefaults;
 
-impl ContinentAffines {
-    pub fn default() -> Self {
+impl Default for ContinentAffines {
+    fn default() -> Self {
         Self {
             africa: [84.194319, 0.0, -20.062752, 0.0, -77.623846, 37.579421],
             europe: [76.108853, 0.0, -11.964479, 0.0, 33.901968, 37.926872],
