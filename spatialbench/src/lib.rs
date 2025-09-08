@@ -59,7 +59,5 @@ pub mod generators;
 pub mod kde;
 pub mod q_and_a;
 pub mod random;
-pub mod spider;
-pub mod spider_defaults;
-pub mod spider_overrides;
 pub mod text;
+pub mod spatial;

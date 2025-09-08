@@ -43,7 +43,7 @@ mod csv;
 mod generate;
 mod parquet;
 mod plan;
-mod spider_config_file;
+mod spatial_config_file;
 mod statistics;
 mod tbl;
 
@@ -51,7 +51,7 @@ use crate::csv::*;
 use crate::generate::{generate_in_chunks, Sink, Source};
 use crate::parquet::*;
 use crate::plan::GenerationPlan;
-use crate::spider_config_file::parse_yaml;
+use crate::spatial_config_file::parse_yaml;
 use crate::statistics::WriteStatistics;
 use crate::tbl::*;
 use ::parquet::basic::Compression;
@@ -63,7 +63,7 @@ use spatialbench::generators::{
     BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
     ZoneGenerator,
 };
-use spatialbench::spider_overrides::{set_overrides, SpiderOverrides};
+use spatialbench::spatial::overrides::{set_overrides, SpatialOverrides};
 use spatialbench::text::TextPool;
 use spatialbench_arrow::{
     BuildingArrow, CustomerArrow, DriverArrow, RecordBatchIterator, TripArrow, VehicleArrow,
@@ -323,7 +323,7 @@ impl Cli {
                 Ok(file_cfg) => {
                     let trip = file_cfg.trip.as_ref().map(|c| c.to_generator());
                     let building = file_cfg.building.as_ref().map(|c| c.to_generator());
-                    set_overrides(SpiderOverrides { trip, building });
+                    set_overrides(SpatialOverrides { trip, building });
                     info!("Loaded spider configuration from {}", path.display());
                 }
                 Err(e) => {

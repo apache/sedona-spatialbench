@@ -1,9 +1,9 @@
 use anyhow::Result;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer};
-use spatialbench::spider::{DistributionParams, DistributionType, GeomType, SpiderConfig, SpiderGenerator};
 use std::fmt;
 use std::sync::OnceLock;
+use spatialbench::spatial::{DistributionParams, DistributionType, GeomType, SpatialConfig, SpatialGenerator};
 
 // Deserializer for DistributionType
 fn deserialize_distribution_type<'de, D>(deserializer: D) -> Result<DistributionType, D::Error>
@@ -70,13 +70,13 @@ where
 }
 
 #[derive(Deserialize)]
-pub struct SpiderConfigFile {
-    pub trip: Option<InlineSpiderConfig>,
-    pub building: Option<InlineSpiderConfig>,
+pub struct SpatialConfigFile {
+    pub trip: Option<InlineSpatialConfig>,
+    pub building: Option<InlineSpatialConfig>,
 }
 
 #[derive(Deserialize)]
-pub struct InlineSpiderConfig {
+pub struct InlineSpatialConfig {
     #[serde(deserialize_with = "deserialize_distribution_type")]
     pub dist_type: DistributionType,
     #[serde(deserialize_with = "deserialize_geom_type")]
@@ -125,8 +125,8 @@ pub enum InlineParams {
     },
 }
 
-impl InlineSpiderConfig {
-    pub fn to_generator(&self) -> SpiderGenerator {
+impl InlineSpatialConfig {
+    pub fn to_generator(&self) -> SpatialGenerator {
         let params = match &self.params {
             InlineParams::None => DistributionParams::None,
             InlineParams::Normal { mu, sigma } => DistributionParams::Normal {
@@ -166,7 +166,7 @@ impl InlineSpiderConfig {
             },
         };
 
-        let cfg = SpiderConfig {
+        let cfg = SpatialConfig {
             dist_type: self.dist_type,
             geom_type: self.geom_type,
             dim: self.dim as i32,
@@ -177,11 +177,11 @@ impl InlineSpiderConfig {
             polysize: self.polysize,
             params,
         };
-        SpiderGenerator::new(cfg, OnceLock::new(), OnceLock::new())
+        SpatialGenerator::new(cfg, OnceLock::new(), OnceLock::new())
     }
 }
 
-pub fn parse_yaml(text: &str) -> Result<SpiderConfigFile> {
+pub fn parse_yaml(text: &str) -> Result<SpatialConfigFile> {
     log::info!("Default spider config is being overridden by user-provided configuration");
-    Ok(serde_yaml::from_str::<SpiderConfigFile>(text)?)
+    Ok(serde_yaml::from_str::<SpatialConfigFile>(text)?)
 }

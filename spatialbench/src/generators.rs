@@ -9,9 +9,6 @@ use crate::random::RowRandomInt;
 use crate::random::{PhoneNumberInstance, RandomBoundedLong, StringSequenceInstance};
 use crate::random::{RandomAlphaNumeric, RandomAlphaNumericInstance};
 use crate::random::{RandomBoundedInt, RandomString, RandomStringSequence, RandomText};
-use crate::spider::{spider_seed_for_index, SpiderGenerator, WeightedTarget, build_continent_cdf, hash_to_unit_u64, ContinentAffines};
-use crate::spider_defaults::SpiderDefaults;
-use crate::spider_overrides;
 use crate::text::TextPool;
 use duckdb::Connection;
 use geo::Geometry;
@@ -24,6 +21,10 @@ use std::convert::TryInto;
 use std::fmt;
 use std::fmt::Display;
 use std::time::Instant;
+use crate::spatial::{SpatialGenerator, ContinentAffines, SpatialDefaults};
+use crate::spatial::overrides as spatial_overrides;
+use crate::spatial::utils::{hash_to_unit_u64, spider_seed_for_index};
+use crate::spatial::utils::continent::{build_continent_cdf, WeightedTarget};
 
 /// A Vehicle Manufacturer, formatted as `"Manufacturer#<n>"`
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -886,7 +887,7 @@ pub struct TripGenerator {
     distributions: Distributions,
     text_pool: TextPool,
     distance_kde: crate::kde::DistanceKDE,
-    spatial_gen: SpiderGenerator,
+    spatial_gen: SpatialGenerator,
     continent_cdf: Vec<WeightedTarget>,
 }
 
@@ -911,7 +912,7 @@ impl TripGenerator {
             Distributions::static_default(),
             TextPool::get_or_init_default(),
             crate::kde::default_distance_kde(),
-            spider_overrides::trip_or_default(SpiderDefaults::trip_default),
+            spatial_overrides::trip_or_default(SpatialDefaults::trip_default),
         )
     }
 
@@ -923,7 +924,7 @@ impl TripGenerator {
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
         distance_kde: crate::kde::DistanceKDE,
-        spatial_gen: SpiderGenerator,
+        spatial_gen: SpatialGenerator,
     ) -> TripGenerator {
 
         let continent_cdf = {
@@ -1000,7 +1001,7 @@ pub struct TripGeneratorIterator {
     tip_percent_random: RandomBoundedInt,
     trip_minutes_per_mile_random: RandomBoundedInt,
     distance_kde: crate::kde::DistanceKDE,
-    spatial_gen: SpiderGenerator,
+    spatial_gen: SpatialGenerator,
     continent_cdf: Vec<WeightedTarget>,
 
     scale_factor: f64,
@@ -1020,7 +1021,7 @@ impl TripGeneratorIterator {
         start_index: i64,
         row_count: i64,
         distance_kde: crate::kde::DistanceKDE,
-        spatial_gen: SpiderGenerator,
+        spatial_gen: SpatialGenerator,
         continent_cdf: Vec<WeightedTarget>,
     ) -> Self {
         // Create all the randomizers
@@ -1258,7 +1259,7 @@ pub struct BuildingGenerator<'a> {
     part_count: i32,
     distributions: &'a Distributions,
     text_pool: &'a TextPool,
-    spatial_gen: SpiderGenerator,
+    spatial_gen: SpatialGenerator,
     continent_cdf: Vec<WeightedTarget>,
 }
 
@@ -1279,7 +1280,7 @@ impl<'a> BuildingGenerator<'a> {
             part_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
-            spider_overrides::building_or_default(SpiderDefaults::building_default),
+            spatial_overrides::building_or_default(SpatialDefaults::building_default),
         )
     }
 
@@ -1290,7 +1291,7 @@ impl<'a> BuildingGenerator<'a> {
         part_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
-        spatial_gen: SpiderGenerator,
+        spatial_gen: SpatialGenerator,
     ) -> BuildingGenerator<'b> {
 
         let continent_cdf = {
@@ -1356,7 +1357,7 @@ impl<'a> IntoIterator for &'a BuildingGenerator<'a> {
 #[derive(Debug)]
 pub struct BuildingGeneratorIterator<'a> {
     name_random: RandomStringSequence<'a>,
-    spatial_gen: SpiderGenerator,
+    spatial_gen: SpatialGenerator,
     continent_cdf: Vec<WeightedTarget>,
 
     start_index: i64,
@@ -1370,7 +1371,7 @@ impl<'a> BuildingGeneratorIterator<'a> {
         text_pool: &'a TextPool,
         start_index: i64,
         row_count: i64,
-        spatial_gen: SpiderGenerator,
+        spatial_gen: SpatialGenerator,
         continent_cdf: Vec<WeightedTarget>,
     ) -> Self {
         let mut name_random = RandomStringSequence::new(
@@ -1868,7 +1869,7 @@ mod tests {
         // Check first Trip
         let first = &trips[1];
         assert_eq!(first.t_tripkey, 2);
-        assert_eq!(first.to_string(), "2|172|1|1|1997-12-24 08:47:14|1997-12-24 09:28:57|0.03|0.00|0.04|0.01|POINT(-167.9122872 34.7837776)|POINT(-167.89855239 34.78593417)|");
+        assert_eq!(first.to_string(), "2|172|1|1|1997-12-24 08:47:14|1997-12-24 09:28:57|0.03|0.00|0.04|0.01|POINT(110.811330422 42.439435623)|POINT(110.82506524 42.4415922)|");
     }
 
     #[test]
@@ -1894,7 +1895,7 @@ mod tests {
         // Check first Building
         let first = &buildings[1];
         assert_eq!(first.b_buildingkey, 2);
-        assert_eq!(first.to_string(), "2|blush|POLYGON((-83.0378916 76.8271904,-83.0573244 76.8261504,-83.05935840000001 76.835232,-83.0469492 76.8372976,-83.0348352 76.8317088,-83.0378916 76.8271904))|")
+        assert_eq!(first.to_string(), "2|blush|POLYGON((86.384542194 50.455356051,86.380173376 50.454956856,86.379715566 50.458440835,86.382506208 50.459233429,86.385229341 50.457089194,86.384542194 50.455356051))|")
     }
 
     #[test]
