@@ -9,9 +9,10 @@ use crate::random::RowRandomInt;
 use crate::random::{PhoneNumberInstance, RandomBoundedLong, StringSequenceInstance};
 use crate::random::{RandomAlphaNumeric, RandomAlphaNumericInstance};
 use crate::random::{RandomBoundedInt, RandomString, RandomStringSequence, RandomText};
-use crate::spider::{spider_seed_for_index, SpiderGenerator};
-use crate::spider_defaults::SpiderDefaults;
-use crate::spider_overrides;
+use crate::spatial::overrides as spatial_overrides;
+use crate::spatial::utils::continent::{build_continent_cdf, WeightedTarget};
+use crate::spatial::utils::{hash_to_unit_u64, spider_seed_for_index};
+use crate::spatial::{ContinentAffines, SpatialDefaults, SpatialGenerator};
 use crate::text::TextPool;
 use duckdb::Connection;
 use geo::Geometry;
@@ -886,7 +887,8 @@ pub struct TripGenerator {
     distributions: Distributions,
     text_pool: TextPool,
     distance_kde: crate::kde::DistanceKDE,
-    spatial_gen: SpiderGenerator,
+    spatial_gen: SpatialGenerator,
+    continent_cdf: Vec<WeightedTarget>,
 }
 
 impl TripGenerator {
@@ -910,7 +912,7 @@ impl TripGenerator {
             Distributions::static_default(),
             TextPool::get_or_init_default(),
             crate::kde::default_distance_kde(),
-            spider_overrides::trip_or_default(SpiderDefaults::trip_default),
+            spatial_overrides::trip_or_default(SpatialDefaults::trip_default),
         )
     }
 
@@ -922,8 +924,16 @@ impl TripGenerator {
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
         distance_kde: crate::kde::DistanceKDE,
-        spatial_gen: SpiderGenerator,
+        spatial_gen: SpatialGenerator,
     ) -> TripGenerator {
+        let continent_cdf = {
+            let affines = ContinentAffines::default();
+            build_continent_cdf(&affines)
+                .into_iter()
+                .map(|(_name, m, cdf)| WeightedTarget { m, cdf })
+                .collect()
+        };
+
         TripGenerator {
             scale_factor,
             part,
@@ -932,6 +942,7 @@ impl TripGenerator {
             text_pool: text_pool.clone(),
             distance_kde,
             spatial_gen,
+            continent_cdf,
         }
     }
 
@@ -960,6 +971,7 @@ impl TripGenerator {
             ),
             self.distance_kde.clone(), // Add the KDE model
             self.spatial_gen.clone(),
+            self.continent_cdf.clone(),
         )
     }
 }
@@ -985,7 +997,8 @@ pub struct TripGeneratorIterator {
     tip_percent_random: RandomBoundedInt,
     trip_minutes_per_mile_random: RandomBoundedInt,
     distance_kde: crate::kde::DistanceKDE,
-    spatial_gen: SpiderGenerator,
+    spatial_gen: SpatialGenerator,
+    continent_cdf: Vec<WeightedTarget>,
 
     scale_factor: f64,
     start_index: i64,
@@ -997,6 +1010,7 @@ pub struct TripGeneratorIterator {
 }
 
 impl TripGeneratorIterator {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         _distributions: &Distributions,
         _text_pool: &TextPool,
@@ -1004,7 +1018,8 @@ impl TripGeneratorIterator {
         start_index: i64,
         row_count: i64,
         distance_kde: crate::kde::DistanceKDE,
-        spatial_gen: SpiderGenerator,
+        spatial_gen: SpatialGenerator,
+        continent_cdf: Vec<WeightedTarget>,
     ) -> Self {
         // Create all the randomizers
         let max_customer_key = (CustomerGenerator::SCALE_BASE as f64 * scale_factor) as i64;
@@ -1061,6 +1076,7 @@ impl TripGeneratorIterator {
             trip_minutes_per_mile_random,
             distance_kde,
             spatial_gen,
+            continent_cdf,
 
             scale_factor,
             start_index,
@@ -1100,22 +1116,28 @@ impl TripGeneratorIterator {
         distance_value = (distance_value * 100_000_000.0).round() / 100_000_000.0;
         let distance = TPCHDecimal((distance_value * 100.0) as i64);
 
+        // Select continent based on trip_key and generate pickup location
+        let u = hash_to_unit_u64(trip_key as u64, 0xC0DEC0DE);
+        let idx = self
+            .continent_cdf
+            .iter()
+            .position(|t| u <= t.cdf)
+            .unwrap_or(self.continent_cdf.len() - 1);
+        let continent_affine = &self.continent_cdf[idx].m;
+
         // Pickup
-        let pickuploc_geom = self.spatial_gen.generate(trip_key as u64);
+        let pickuploc_geom = self.spatial_gen.generate(trip_key as u64, continent_affine);
         let pickuploc: Point = pickuploc_geom
             .try_into()
             .expect("Failed to convert to point");
-        let pickup_x = pickuploc.x();
-        let pickup_y = pickuploc.y();
 
-        // Angle
+        // Generate dropoff using angle and distance
         let angle_seed = spider_seed_for_index(trip_key as u64, 1234);
         let mut angle_rng = StdRng::seed_from_u64(angle_seed);
         let angle: f64 = angle_rng.gen::<f64>() * std::f64::consts::TAU;
 
-        // Dropoff via polar projection
-        let mut dropoff_x = pickup_x + distance_value * angle.cos();
-        let mut dropoff_y = pickup_y + distance_value * angle.sin();
+        let mut dropoff_x = pickuploc.x() + distance_value * angle.cos();
+        let mut dropoff_y = pickuploc.y() + distance_value * angle.sin();
 
         // Hard code coordinate precision to 8 decimal places - milimeter level precision for WGS 84
         dropoff_x = (dropoff_x * 100_000_000.0).round() / 100_000_000.0;
@@ -1234,7 +1256,8 @@ pub struct BuildingGenerator<'a> {
     part_count: i32,
     distributions: &'a Distributions,
     text_pool: &'a TextPool,
-    spatial_gen: SpiderGenerator,
+    spatial_gen: SpatialGenerator,
+    continent_cdf: Vec<WeightedTarget>,
 }
 
 impl<'a> BuildingGenerator<'a> {
@@ -1254,7 +1277,7 @@ impl<'a> BuildingGenerator<'a> {
             part_count,
             Distributions::static_default(),
             TextPool::get_or_init_default(),
-            spider_overrides::building_or_default(SpiderDefaults::building_default),
+            spatial_overrides::building_or_default(SpatialDefaults::building_default),
         )
     }
 
@@ -1265,8 +1288,16 @@ impl<'a> BuildingGenerator<'a> {
         part_count: i32,
         distributions: &'b Distributions,
         text_pool: &'b TextPool,
-        spatial_gen: SpiderGenerator,
+        spatial_gen: SpatialGenerator,
     ) -> BuildingGenerator<'b> {
+        let continent_cdf = {
+            let affines = ContinentAffines::default();
+            build_continent_cdf(&affines)
+                .into_iter()
+                .map(|(_name, m, cdf)| WeightedTarget { m, cdf })
+                .collect()
+        };
+
         BuildingGenerator {
             scale_factor,
             part,
@@ -1274,6 +1305,7 @@ impl<'a> BuildingGenerator<'a> {
             distributions,
             text_pool,
             spatial_gen,
+            continent_cdf,
         }
     }
 
@@ -1300,6 +1332,7 @@ impl<'a> BuildingGenerator<'a> {
             ),
             Self::calculate_row_count(self.scale_factor, self.part, self.part_count),
             self.spatial_gen.clone(),
+            self.continent_cdf.clone(),
         )
     }
 }
@@ -1317,7 +1350,8 @@ impl<'a> IntoIterator for &'a BuildingGenerator<'a> {
 #[derive(Debug)]
 pub struct BuildingGeneratorIterator<'a> {
     name_random: RandomStringSequence<'a>,
-    spatial_gen: SpiderGenerator,
+    spatial_gen: SpatialGenerator,
+    continent_cdf: Vec<WeightedTarget>,
 
     start_index: i64,
     row_count: i64,
@@ -1330,7 +1364,8 @@ impl<'a> BuildingGeneratorIterator<'a> {
         text_pool: &'a TextPool,
         start_index: i64,
         row_count: i64,
-        spatial_gen: SpiderGenerator,
+        spatial_gen: SpatialGenerator,
+        continent_cdf: Vec<WeightedTarget>,
     ) -> Self {
         let mut name_random = RandomStringSequence::new(
             709314158,
@@ -1349,9 +1384,11 @@ impl<'a> BuildingGeneratorIterator<'a> {
 
         BuildingGeneratorIterator {
             name_random,
+            spatial_gen,
+            continent_cdf,
+
             start_index,
             row_count,
-            spatial_gen,
 
             index: 0,
         }
@@ -1360,7 +1397,20 @@ impl<'a> BuildingGeneratorIterator<'a> {
     /// Creates a part with the given key
     fn make_building(&mut self, building_key: i64) -> Building<'a> {
         let name = self.name_random.next_value();
-        let geom = self.spatial_gen.generate(building_key as u64);
+
+        // Select continent based on building_key
+        let u = hash_to_unit_u64(building_key as u64, 0xC0DEC0DE);
+        let idx = self
+            .continent_cdf
+            .iter()
+            .position(|t| u <= t.cdf)
+            .unwrap_or(self.continent_cdf.len() - 1);
+        let continent_affine = &self.continent_cdf[idx].m;
+
+        // Generate point in unit space [0,1]
+        let geom = self
+            .spatial_gen
+            .generate(building_key as u64, continent_affine);
         let polygon: geo::Polygon = geom.try_into().expect("Failed to convert to polygon");
 
         Building {
@@ -1817,7 +1867,7 @@ mod tests {
         // Check first Trip
         let first = &trips[1];
         assert_eq!(first.t_tripkey, 2);
-        assert_eq!(first.to_string(), "2|172|1|1|1997-12-24 08:47:14|1997-12-24 09:28:57|0.03|0.00|0.04|0.01|POINT(-167.9115996 14.079737600000001)|POINT(-167.89786479 14.08189417)|");
+        assert_eq!(first.to_string(), "2|172|1|1|1997-12-24 08:47:14|1997-12-24 09:28:57|0.03|0.00|0.04|0.01|POINT(110.811330422 42.439435623)|POINT(110.82506524 42.4415922)|");
     }
 
     #[test]
@@ -1843,7 +1893,7 @@ mod tests {
         // Check first Building
         let first = &buildings[1];
         assert_eq!(first.b_buildingkey, 2);
-        assert_eq!(first.to_string(), "2|blush|POLYGON((-83.0378916 76.8271904,-83.0573244 76.8261504,-83.05935840000001 76.835232,-83.0469492 76.8372976,-83.0348352 76.8317088,-83.0378916 76.8271904))|")
+        assert_eq!(first.to_string(), "2|blush|POLYGON((86.384542194 50.455356051,86.380173376 50.454956856,86.379715566 50.458440835,86.382506208 50.459233429,86.385229341 50.457089194,86.384542194 50.455356051))|")
     }
 
     #[test]

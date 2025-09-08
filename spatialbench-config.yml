@@ -2,8 +2,7 @@ trip:
   dist_type: bit
   geom_type: point
   dim: 2
-  seed: 42
-  affine: [360.0, 0.0, -180.0, 0.0, -160.0, 80.0]
+  seed: 56789
   width: 0.0
   height: 0.0
   maxseg: 0
@@ -18,7 +17,6 @@ building:
   geom_type: polygon
   dim: 2
   seed: 12345
-  affine: [360.0, 0.0, -180.0, 0.0, -160.0, 80.0]
   width: 0.0
   height: 0.0
   maxseg: 5
