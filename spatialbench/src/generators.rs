@@ -1010,6 +1010,7 @@ pub struct TripGeneratorIterator {
 }
 
 impl TripGeneratorIterator {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         _distributions: &Distributions,
         _text_pool: &TextPool,

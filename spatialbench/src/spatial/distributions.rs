@@ -257,6 +257,7 @@ fn get_or_create_thomas_cache(
     });
 }
 
+#[allow(clippy::too_many_arguments)]
 fn get_or_create_hier_cache(
     hier_cache: &OnceLock<HierThomasCache>,
     cities: usize,
