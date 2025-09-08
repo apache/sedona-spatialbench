@@ -84,7 +84,7 @@ fn test_spatialbench_cli_parts() {
     // Create a temporary directory
     let temp_dir = tempdir().expect("Failed to create temporary directory");
 
-    // generate 4 parts of the trip table with scale factor 0.1
+    // generate 4 parts of the trip table with scale factor 0.001
     // into directories /part1, /part2, /part3, /part4
     // use threads to run the command concurrently to minimize the time taken
     let num_parts = 4;
