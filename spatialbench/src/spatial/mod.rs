@@ -1,12 +1,12 @@
-pub mod config;
-pub mod generator;
-pub mod distributions;
-pub mod geometry;
 pub mod cache;
-pub mod utils;
+pub mod config;
 pub mod defaults;
+pub mod distributions;
+pub mod generator;
+pub mod geometry;
 pub mod overrides;
+pub mod utils;
 
 pub use config::*;
-pub use generator::SpatialGenerator;
 pub use defaults::*;
+pub use generator::SpatialGenerator;

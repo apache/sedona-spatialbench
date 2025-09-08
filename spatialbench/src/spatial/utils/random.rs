@@ -100,7 +100,11 @@ pub fn sample_normal_count(mu: f64, sd: f64, min_v: u32, max_v: u32, seed: u64) 
     let mut rng = seeded_rng(seed);
     let draw = rand_normal(&mut rng, mu, sd).round();
     let mut k = draw.max(min_v as f64) as u32;
-    if k > max_v { k = max_v; }
-    if k < 1 { k = 1; }
+    if k > max_v {
+        k = max_v;
+    }
+    if k < 1 {
+        k = 1;
+    }
     k
 }

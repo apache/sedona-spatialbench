@@ -1,5 +1,5 @@
-use crate::spatial::{SpatialConfig, GeomType};
 use crate::spatial::utils::{apply_affine, round_coordinates};
+use crate::spatial::{GeomType, SpatialConfig};
 use geo::{coord, Geometry, LineString, Point, Polygon};
 use rand::rngs::StdRng;
 use rand::Rng;
@@ -27,7 +27,12 @@ pub fn generate_point_geom(center: (f64, f64), m: &[f64; 6]) -> Geometry {
     Geometry::Point(Point::new(x, y))
 }
 
-pub fn generate_box_geom(center: (f64, f64), config: &SpatialConfig, rng: &mut StdRng, m: &[f64; 6]) -> Geometry {
+pub fn generate_box_geom(
+    center: (f64, f64),
+    config: &SpatialConfig,
+    rng: &mut StdRng,
+    m: &[f64; 6],
+) -> Geometry {
     let half_width = rng.gen::<f64>() * config.width / 2.0;
     let half_height = rng.gen::<f64>() * config.height / 2.0;
 
@@ -49,7 +54,12 @@ pub fn generate_box_geom(center: (f64, f64), config: &SpatialConfig, rng: &mut S
     Geometry::Polygon(Polygon::new(LineString::from(coords), vec![]))
 }
 
-pub fn generate_polygon_geom(center: (f64, f64), config: &SpatialConfig, rng: &mut StdRng, m: &[f64; 6]) -> Geometry {
+pub fn generate_polygon_geom(
+    center: (f64, f64),
+    config: &SpatialConfig,
+    rng: &mut StdRng,
+    m: &[f64; 6],
+) -> Geometry {
     let min_segs = 3;
     let num_segments = if config.maxseg <= 3 {
         3
@@ -57,13 +67,18 @@ pub fn generate_polygon_geom(center: (f64, f64), config: &SpatialConfig, rng: &m
         rng.gen_range(0..=(config.maxseg - min_segs)) + min_segs
     };
 
-    let mut angles: Vec<f64> = (0..num_segments).map(|_| rng.gen::<f64>() * 2.0 * PI).collect();
+    let mut angles: Vec<f64> = (0..num_segments)
+        .map(|_| rng.gen::<f64>() * 2.0 * PI)
+        .collect();
     angles.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
     let mut ring = angles
         .iter()
         .map(|&ang| {
-            let (x0, y0) = (center.0 + config.polysize * ang.cos(), center.1 + config.polysize * ang.sin());
+            let (x0, y0) = (
+                center.0 + config.polysize * ang.cos(),
+                center.1 + config.polysize * ang.sin(),
+            );
             let (x1, y1) = (x0.clamp(0.0, 1.0), y0.clamp(0.0, 1.0));
             let (x2, y2) = apply_affine(x1, y1, m);
             let (xr, yr) = round_coordinates(x2, y2, GEOMETRY_PRECISION);

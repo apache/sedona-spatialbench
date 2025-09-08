@@ -1,9 +1,11 @@
 use anyhow::Result;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer};
+use spatialbench::spatial::{
+    DistributionParams, DistributionType, GeomType, SpatialConfig, SpatialGenerator,
+};
 use std::fmt;
 use std::sync::OnceLock;
-use spatialbench::spatial::{DistributionParams, DistributionType, GeomType, SpatialConfig, SpatialGenerator};
 
 // Deserializer for DistributionType
 fn deserialize_distribution_type<'de, D>(deserializer: D) -> Result<DistributionType, D::Error>
@@ -96,9 +98,18 @@ pub struct InlineSpatialConfig {
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum InlineParams {
     None,
-    Normal { mu: f64, sigma: f64 },
-    Diagonal { percentage: f64, buffer: f64 },
-    Bit { probability: f64, digits: u32 },
+    Normal {
+        mu: f64,
+        sigma: f64,
+    },
+    Diagonal {
+        percentage: f64,
+        buffer: f64,
+    },
+    Bit {
+        probability: f64,
+        digits: u32,
+    },
 
     // Thomas (Gaussian Neyman–Scott): K parent clusters, Gaussian spread, optional lognormal skew
     Thomas {
@@ -106,22 +117,22 @@ pub enum InlineParams {
         mean_offspring: f64, // global density scale (kept for compatibility)
         sigma: f64,          // cluster stddev in unit coords
         // Pareto weights per parent (heavier tail => more skew)
-        pareto_alpha: f64,   // tail parameter (>0). Smaller => heavier tail (e.g., 1.0–1.5)
-        pareto_xm: f64,      // scale (>0), typically 1.0
+        pareto_alpha: f64, // tail parameter (>0). Smaller => heavier tail (e.g., 1.0–1.5)
+        pareto_xm: f64,    // scale (>0), typically 1.0
     },
 
     HierThomas {
-        cities: u32,              // top-level “city” centers
+        cities: u32, // top-level “city” centers
         sub_mean: f64,
         sub_sd: f64,
         sub_min: u32,
         sub_max: u32,
-        sigma_city: f64,          // spread of subcluster centers around their city
-        sigma_sub: f64,           // spread of final points around the chosen subcluster
-        pareto_alpha_city: f64,   // Pareto tail for city weights
-        pareto_xm_city: f64,      // Pareto scale (xmin) for city weights
-        pareto_alpha_sub: f64,    // Pareto tail for subcluster weights (within a city)
-        pareto_xm_sub: f64,       // Pareto scale (xmin) for subcluster weights
+        sigma_city: f64,        // spread of subcluster centers around their city
+        sigma_sub: f64,         // spread of final points around the chosen subcluster
+        pareto_alpha_city: f64, // Pareto tail for city weights
+        pareto_xm_city: f64,    // Pareto scale (xmin) for city weights
+        pareto_alpha_sub: f64,  // Pareto tail for subcluster weights (within a city)
+        pareto_xm_sub: f64,     // Pareto scale (xmin) for subcluster weights
     },
 }
 
@@ -144,24 +155,42 @@ impl InlineSpatialConfig {
                 probability: *probability,
                 digits: *digits,
             },
-            InlineParams::Thomas { parents, mean_offspring, sigma, pareto_alpha, pareto_xm} => DistributionParams::Thomas {
+            InlineParams::Thomas {
+                parents,
+                mean_offspring,
+                sigma,
+                pareto_alpha,
+                pareto_xm,
+            } => DistributionParams::Thomas {
                 parents: *parents,
                 mean_offspring: *mean_offspring,
                 sigma: *sigma,
                 pareto_alpha: *pareto_alpha,
                 pareto_xm: *pareto_xm,
             },
-            InlineParams::HierThomas { cities, sub_mean, sub_sd, sub_min, sub_max, sigma_city, sigma_sub, pareto_alpha_city, pareto_xm_city, pareto_alpha_sub, pareto_xm_sub} => DistributionParams::HierThomas {
-                cities: *cities,              // top-level “city” centers
+            InlineParams::HierThomas {
+                cities,
+                sub_mean,
+                sub_sd,
+                sub_min,
+                sub_max,
+                sigma_city,
+                sigma_sub,
+                pareto_alpha_city,
+                pareto_xm_city,
+                pareto_alpha_sub,
+                pareto_xm_sub,
+            } => DistributionParams::HierThomas {
+                cities: *cities, // top-level “city” centers
                 sub_mean: *sub_mean,
                 sub_sd: *sub_sd,
                 sub_min: *sub_min,
                 sub_max: *sub_max,
-                sigma_city: *sigma_city,          // spread of subcluster centers around their city
-                sigma_sub: *sigma_sub,           // spread of final points around the chosen subcluster
-                pareto_alpha_city: *pareto_alpha_city,   // Pareto tail for city weights
-                pareto_xm_city: *pareto_xm_city,      // Pareto scale (xmin) for city weights
-                pareto_alpha_sub: *pareto_alpha_sub,    // Pareto tail for subcluster weights (within a city)
+                sigma_city: *sigma_city, // spread of subcluster centers around their city
+                sigma_sub: *sigma_sub,   // spread of final points around the chosen subcluster
+                pareto_alpha_city: *pareto_alpha_city, // Pareto tail for city weights
+                pareto_xm_city: *pareto_xm_city, // Pareto scale (xmin) for city weights
+                pareto_alpha_sub: *pareto_alpha_sub, // Pareto tail for subcluster weights (within a city)
                 pareto_xm_sub: *pareto_xm_sub,       // Pareto scale (xmin) for subcluster weights
             },
         };

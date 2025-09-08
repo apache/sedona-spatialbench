@@ -1,5 +1,5 @@
-use once_cell::sync::OnceCell;
 use crate::spatial::SpatialGenerator;
+use once_cell::sync::OnceCell;
 
 #[derive(Clone, Default)]
 pub struct SpatialOverrides {

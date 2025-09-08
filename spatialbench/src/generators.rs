@@ -9,6 +9,10 @@ use crate::random::RowRandomInt;
 use crate::random::{PhoneNumberInstance, RandomBoundedLong, StringSequenceInstance};
 use crate::random::{RandomAlphaNumeric, RandomAlphaNumericInstance};
 use crate::random::{RandomBoundedInt, RandomString, RandomStringSequence, RandomText};
+use crate::spatial::overrides as spatial_overrides;
+use crate::spatial::utils::continent::{build_continent_cdf, WeightedTarget};
+use crate::spatial::utils::{hash_to_unit_u64, spider_seed_for_index};
+use crate::spatial::{ContinentAffines, SpatialDefaults, SpatialGenerator};
 use crate::text::TextPool;
 use duckdb::Connection;
 use geo::Geometry;
@@ -21,10 +25,6 @@ use std::convert::TryInto;
 use std::fmt;
 use std::fmt::Display;
 use std::time::Instant;
-use crate::spatial::{SpatialGenerator, ContinentAffines, SpatialDefaults};
-use crate::spatial::overrides as spatial_overrides;
-use crate::spatial::utils::{hash_to_unit_u64, spider_seed_for_index};
-use crate::spatial::utils::continent::{build_continent_cdf, WeightedTarget};
 
 /// A Vehicle Manufacturer, formatted as `"Manufacturer#<n>"`
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -926,15 +926,11 @@ impl TripGenerator {
         distance_kde: crate::kde::DistanceKDE,
         spatial_gen: SpatialGenerator,
     ) -> TripGenerator {
-
         let continent_cdf = {
             let affines = ContinentAffines::default();
             build_continent_cdf(&affines)
                 .into_iter()
-                .map(|(_name, m, cdf)| WeightedTarget {
-                    m,
-                    cdf,
-                })
+                .map(|(_name, m, cdf)| WeightedTarget { m, cdf })
                 .collect()
         };
 
@@ -1293,15 +1289,11 @@ impl<'a> BuildingGenerator<'a> {
         text_pool: &'b TextPool,
         spatial_gen: SpatialGenerator,
     ) -> BuildingGenerator<'b> {
-
         let continent_cdf = {
             let affines = ContinentAffines::default();
             build_continent_cdf(&affines)
                 .into_iter()
-                .map(|(_name, m, cdf)| WeightedTarget {
-                    m,
-                    cdf,
-                })
+                .map(|(_name, m, cdf)| WeightedTarget { m, cdf })
                 .collect()
         };
 
@@ -1415,7 +1407,9 @@ impl<'a> BuildingGeneratorIterator<'a> {
         let continent_affine = &self.continent_cdf[idx].m;
 
         // Generate point in unit space [0,1]
-        let geom = self.spatial_gen.generate(building_key as u64, continent_affine);
+        let geom = self
+            .spatial_gen
+            .generate(building_key as u64, continent_affine);
         let polygon: geo::Polygon = geom.try_into().expect("Failed to convert to polygon");
 
         Building {

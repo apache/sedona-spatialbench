@@ -19,10 +19,22 @@ pub enum GeomType {
 #[derive(Debug, Clone)]
 pub enum DistributionParams {
     None,
-    Normal { mu: f64, sigma: f64 },
-    Diagonal { percentage: f64, buffer: f64 },
-    Bit { probability: f64, digits: u32 },
-    Parcel { srange: f64, dither: f64 },
+    Normal {
+        mu: f64,
+        sigma: f64,
+    },
+    Diagonal {
+        percentage: f64,
+        buffer: f64,
+    },
+    Bit {
+        probability: f64,
+        digits: u32,
+    },
+    Parcel {
+        srange: f64,
+        dither: f64,
+    },
     Thomas {
         parents: u32,
         mean_offspring: f64,
