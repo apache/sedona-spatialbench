@@ -1,5 +1,5 @@
 trip:
-  dist_type: bit
+  dist_type: HierarchicalThomas
   geom_type: point
   dim: 2
   seed: 56789
@@ -8,18 +8,38 @@ trip:
   maxseg: 0
   polysize: 0.0
   params:
-    type: bit
-    probability: 0.35
-    digits: 30
+    type: hierarchicalthomas
+    cities: 60000
+    sub_mean: 15
+    sub_sd: 12
+    sub_min: 2
+    sub_max: 80
+    sigma_city: 0.006
+    sigma_sub: 0.003
+    pareto_alpha_city: 0.80
+    pareto_xm_city: 1.0
+    pareto_alpha_sub: 1.00
+    pareto_xm_sub: 1.0
 
 building:
-  dist_type: sierpinski
+  dist_type: HierarchicalThomas
   geom_type: polygon
   dim: 2
   seed: 12345
   width: 0.0
   height: 0.0
-  maxseg: 5
+  maxseg: 7
   polysize: 0.000039
   params:
-    type: none
+    type: hierarchicalthomas
+    cities: 10000
+    sub_mean: 5
+    sub_sd: 3
+    sub_min: 1
+    sub_max: 15
+    sigma_city: 0.1
+    sigma_sub: 0.01
+    pareto_alpha_city: 1.20
+    pareto_xm_city: 1.0
+    pareto_alpha_sub: 1.00
+    pareto_xm_sub: 1.0

@@ -36,9 +36,12 @@ impl SpatialGenerator {
             DistributionType::Thomas => {
                 generate_thomas(index, &self.config, &self.thomas_cache, continent_affine)
             }
-            DistributionType::HierThomas => {
-                generate_hier_thomas(index, &self.config, &self.hier_cache, continent_affine)
-            }
+            DistributionType::HierarchicalThomas => generate_hierarchical_thomas(
+                index,
+                &self.config,
+                &self.hier_cache,
+                continent_affine,
+            ),
         }
     }
 }
