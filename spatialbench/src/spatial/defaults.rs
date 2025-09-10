@@ -24,7 +24,7 @@ impl Default for ContinentAffines {
 impl SpatialDefaults {
     pub fn trip_default() -> SpatialGenerator {
         let config = SpatialConfig {
-            dist_type: DistributionType::Bit,
+            dist_type: DistributionType::HierarchicalThomas,
             geom_type: GeomType::Point,
             dim: 2,
             seed: 56789,
@@ -37,9 +37,18 @@ impl SpatialDefaults {
             maxseg: 0,
             polysize: 0.0,
 
-            params: DistributionParams::Bit {
-                probability: 0.35,
-                digits: 30,
+            params: DistributionParams::HierarchicalThomas {
+                cities: 60000,
+                sub_mean: 15.0,
+                sub_sd: 12.0,
+                sub_min: 2,
+                sub_max: 80,
+                sigma_city: 0.006,
+                sigma_sub: 0.003,
+                pareto_alpha_city: 0.80,
+                pareto_xm_city: 1.0,
+                pareto_alpha_sub: 1.00,
+                pareto_xm_sub: 1.0,
             },
         };
         SpatialGenerator::new(config, OnceLock::new(), OnceLock::new())
@@ -47,7 +56,7 @@ impl SpatialDefaults {
 
     pub fn building_default() -> SpatialGenerator {
         let config = SpatialConfig {
-            dist_type: DistributionType::Sierpinski,
+            dist_type: DistributionType::HierarchicalThomas,
             geom_type: GeomType::Polygon,
             dim: 2,
             seed: 12345,
@@ -57,10 +66,22 @@ impl SpatialDefaults {
             height: 0.0,
 
             // geometry = polygon
-            maxseg: 5,
+            maxseg: 7,
             polysize: 0.000039,
 
-            params: DistributionParams::None,
+            params: DistributionParams::HierarchicalThomas {
+                cities: 10000,
+                sub_mean: 5.0,
+                sub_sd: 3.0,
+                sub_min: 1,
+                sub_max: 15,
+                sigma_city: 0.1,
+                sigma_sub: 0.01,
+                pareto_alpha_city: 1.20,
+                pareto_xm_city: 1.0,
+                pareto_alpha_sub: 1.00,
+                pareto_xm_sub: 1.0,
+            },
         };
         SpatialGenerator::new(config, OnceLock::new(), OnceLock::new())
     }

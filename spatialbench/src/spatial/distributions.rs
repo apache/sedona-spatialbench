@@ -77,7 +77,7 @@ pub fn generate_sierpinski(index: u64, config: &SpatialConfig, m: &[f64; 6]) -> 
     let (mut x, mut y) = (0.0, 0.0);
     let a = (0.0, 0.0);
     let b = (1.0, 0.0);
-    let c = (0.5, (3.0f64).sqrt() / 2.0);
+    let c = (0.5, 3.0f64.sqrt() / 2.0);
     for _ in 0..27 {
         match rng.gen_range(0..3) {
             0 => {
@@ -163,7 +163,7 @@ fn pick_parent_pareto_once(u: f64, k: usize, alpha: f64, xm: f64, seed: u64) -> 
     pick_from_cdf(&cdf, u)
 }
 
-pub fn generate_hier_thomas(
+pub fn generate_hierarchical_thomas(
     index: u64,
     config: &SpatialConfig,
     hier_cache: &OnceLock<HierThomasCache>,
@@ -171,7 +171,7 @@ pub fn generate_hier_thomas(
 ) -> Geometry {
     let (nc, sub_mean, sub_sd, sub_min, sub_max, sigma_city, sigma_sub, a_c, xm_c, a_s, xm_s) =
         match config.params {
-            DistributionParams::HierThomas {
+            DistributionParams::HierarchicalThomas {
                 cities,
                 sub_mean,
                 sub_sd,

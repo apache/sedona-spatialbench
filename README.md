@@ -29,12 +29,12 @@ SpatialBench defines a spatial star schema with the following tables:
 
 The Zone table uses **scale factor–aware generation** so that zone granularity scales with dataset size and keeps query cost realistic. At small scales, this feels like querying ZIP-level units; at large scales, it uses coarser administrative units.
 
-| Scale Factor (SF) | Zone Subtypes Included                             | Zone Cardinality |
-|-------------------|----------------------------------------------------|------------------|
-| [0, 10)           | microhood, macrohood                               | 117,416          |
-| [10, 100)         | + neighborhood, county                             | 455,711          |
-| [100, 1000)       | + localadmin, locality, region, dependency         | 1,035,371        |
-| [1000+)           | + country                                          | 1,035,749        |
+| Scale Factor (SF) | Zone Subtypes Included                     | Zone Cardinality |
+|-------------------|--------------------------------------------|------------------|
+| [0, 10)           | microhood, macrohood, county               | 156,095          |
+| [10, 100)         | + neighborhood                             | 455,711          |
+| [100, 1000)       | + localadmin, locality, region, dependency | 1,035,371        |
+| [1000+)           | + country                                  | 1,035,749        |
 
 This tiered scaling reflects **geometry complexity** and **area distributions** observed in the Overture `division_area` dataset which represents administrative boundaries, release version 2025-08-20.1.
 

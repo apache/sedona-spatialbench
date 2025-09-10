@@ -32,7 +32,7 @@ where
                 "bit" => Ok(DistributionType::Bit),
                 "sierpinski" => Ok(DistributionType::Sierpinski),
                 "thomas" => Ok(DistributionType::Thomas),
-                "hierthomas" => Ok(DistributionType::HierThomas),
+                "hierarchicalthomas" => Ok(DistributionType::HierarchicalThomas),
                 _ => Err(E::custom(format!("unknown distribution type: {}", value))),
             }
         }
@@ -121,7 +121,7 @@ pub enum InlineParams {
         pareto_xm: f64,    // scale (>0), typically 1.0
     },
 
-    HierThomas {
+    HierarchicalThomas {
         cities: u32, // top-level “city” centers
         sub_mean: f64,
         sub_sd: f64,
@@ -168,7 +168,7 @@ impl InlineSpatialConfig {
                 pareto_alpha: *pareto_alpha,
                 pareto_xm: *pareto_xm,
             },
-            InlineParams::HierThomas {
+            InlineParams::HierarchicalThomas {
                 cities,
                 sub_mean,
                 sub_sd,
@@ -180,7 +180,7 @@ impl InlineSpatialConfig {
                 pareto_xm_city,
                 pareto_alpha_sub,
                 pareto_xm_sub,
-            } => DistributionParams::HierThomas {
+            } => DistributionParams::HierarchicalThomas {
                 cities: *cities, // top-level “city” centers
                 sub_mean: *sub_mean,
                 sub_sd: *sub_sd,

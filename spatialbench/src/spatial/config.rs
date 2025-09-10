@@ -6,7 +6,7 @@ pub enum DistributionType {
     Sierpinski,
     Bit,
     Thomas,
-    HierThomas,
+    HierarchicalThomas,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -42,7 +42,7 @@ pub enum DistributionParams {
         pareto_alpha: f64,
         pareto_xm: f64,
     },
-    HierThomas {
+    HierarchicalThomas {
         cities: u32,
         // variable subclusters per city (normal, clamped)
         sub_mean: f64,
