@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-site_name: SpatialBench
+site_name: Apache Sedona SpatialBench
 site_description: SpatialBench is a high-performance geospatial benchmark for generating synthetic spatial data at scale.
 nav:
   - Home: index.md
