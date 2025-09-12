@@ -23,6 +23,10 @@ nav:
       - Overview: get-started/overview.md
       - Data Model: get-started/data-model.md
       - Performance: get-started/performance.md
+
+repo_url: https://github.com/apache/sedona-spatialbench/
+repo_name: apache/sedona-spatialbench
+
 theme:
   font: false
   name: 'material'
