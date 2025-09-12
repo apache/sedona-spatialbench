@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-site_name: SpatialBench
+site_name: Apache Sedona SpatialBench
 site_description: SpatialBench is a high-performance geospatial benchmark for generating synthetic spatial data at scale.
 nav:
   - Home: index.md
@@ -23,12 +23,16 @@ nav:
       - Overview: get-started/overview.md
       - Data Model: get-started/data-model.md
       - Performance: get-started/performance.md
+
+repo_url: https://github.com/apache/sedona-spatialbench/
+repo_name: apache/sedona-spatialbench
+
 theme:
   font: false
   name: 'material'
   custom_dir: docs-overrides
   palette:
-    primary: 'deep orange'
+    primary: custom
     accent: 'green'
   icon:
     logo: fontawesome/solid/earth-americas
@@ -41,9 +45,10 @@ theme:
     - search.suggest
     - navigation.footer
     - navigation.instant
+    - navigation.top
+    - navigation.sections
     - navigation.tabs
     - navigation.tabs.sticky
-    - navigation.top
 extra:
   version:
     provider: mike
@@ -57,6 +62,12 @@ extra:
     - icon: fontawesome/brands/discord
       link: 'https://discord.gg/9A3k5dEBsY'
 # (Removed Sedona-specific version variables; no replacement needed)
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - assets/javascripts/main.min.js
+
 copyright: Copyright © 2025 The Apache Software Foundation. Apache Sedona, Sedona, Apache, the Apache feather logo, and the Apache Sedona project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries. All other marks mentioned may be trademarks or registered trademarks of their respective owners. Please visit <a href="https://www.apache.org/">Apache Software Foundation</a> for more details.<img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=f3e121f6-c909-4592-8be6-5bd345768cba" /><img referrerpolicy="no-referrer-when-downgrade" src="https://analytics.apache.org/matomo.php?idsite=74&rec=1" />
 
 markdown_extensions:
@@ -96,7 +107,4 @@ plugins:
       type: datetime
   - mike:
       canonical_version: 'latest'
-extra_css:
-  - assets/stylesheets/extra.css
-extra_javascript:
-  - assets/javascripts/main.min.js
+
