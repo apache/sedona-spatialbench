@@ -19,10 +19,7 @@ site_name: Apache Sedona SpatialBench
 site_description: SpatialBench is a high-performance geospatial benchmark for generating synthetic spatial data at scale.
 nav:
   - Home: index.md
-  - Get Started:
-      - Overview: get-started/overview.md
-      - Data Model: get-started/data-model.md
-      - Performance: get-started/performance.md
+  - Overview and Methodology: overview-methodology.md
 
 repo_url: https://github.com/apache/sedona-spatialbench/
 repo_name: apache/sedona-spatialbench
@@ -47,7 +44,7 @@ theme:
     - navigation.instant
     - navigation.top
     - navigation.sections
-    - navigation.tabs
+    - navigation.expand
     - navigation.tabs.sticky
 extra:
   version:
@@ -107,4 +104,3 @@ plugins:
       type: datetime
   - mike:
       canonical_version: 'latest'
-
