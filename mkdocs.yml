@@ -37,7 +37,14 @@ nav:
 >>>>>>> a1cba00 (docs: add landing page (#9))
 =======
   - SpatialBench: index.md
+<<<<<<< HEAD
   - Overview and Methodology: overview-methodology.md
+=======
+  - Get Started:
+      - Overview: get-started/overview.md
+      - Data Model: get-started/data-model.md
+      - Performance: get-started/performance.md
+>>>>>>> ec402b3 (adding overview back)
   - Blog: "https://sedona.apache.org/latest/blog/"
   - Community: "https://sedona.apache.org/latest/community/contact/"
   - Apache Software Foundation: "https://sedona.apache.org/latest/asf/asf/"
