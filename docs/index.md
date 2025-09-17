@@ -6,12 +6,14 @@ The methodology is unbiased and the benchmarks in any environment to compare rel
 
 ## Why SpatialBench
 
-SpatialBench includes representative spatial workflows, including the following types of queries:
+SpatialBench is a geospatial benchmark for testing and optimizing spatial analytical query performance in database systems. Inspired by the SSB and NYC taxi data, it combines realistic urban mobility scenarios with a star schema extended with spatial attributes like pickup/dropoff points, zones, and building footprints. 
 
-* Spatial filtering and aggregations
-* KNN joins
-* Range joins
-* Distance joins
+This design enables evaluation of the following geospatial operations:
+
+* spatial joins
+* distance queries
+* aggregations
+* point-in-polygon analysis
 
 Let’s dive into the advantages of SpatialBench.
 
@@ -56,8 +58,6 @@ ON ST_DWithin(t.t_pickup_loc, b.b_boundary, 500)
 GROUP BY b.b_buildingkey, b.b_name
 ORDER BY nearby_pickup_count DESC;
 ```
-
-The SpatialBench dataset is based on the NYC Yellow Taxi Trips dataset.
 
 This query performs a distance join, followed by an aggregation.  It’s a great example of a query that’s useful for performance benchmarking a spatial engine that can process vector geometries.
 
