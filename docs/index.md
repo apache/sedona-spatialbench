@@ -1,4 +1,23 @@
-# Sedona SpatialBench
+---
+title: Sedona SpatialBench
+---
+
+<!---
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+-->
 
 Sedona SpatialBench makes it easy to run spatial benchmarks on a realistic dataset with any query engine.
 
@@ -6,7 +25,7 @@ The methodology is unbiased and the benchmarks in any environment to compare rel
 
 ## Why SpatialBench
 
-SpatialBench is a geospatial benchmark for testing and optimizing spatial analytical query performance in database systems. Inspired by the SSB and NYC taxi data, it combines realistic urban mobility scenarios with a star schema extended with spatial attributes like pickup/dropoff points, zones, and building footprints. 
+SpatialBench is a geospatial benchmark for testing and optimizing spatial analytical query performance in database systems. Inspired by the SSB and NYC taxi data, it combines realistic urban mobility scenarios with a star schema extended with spatial attributes like pickup/dropoff points, zones, and building footprints.
 
 This design enables evaluation of the following geospatial operations:
 
@@ -48,7 +67,7 @@ See the project repository [README](https://github.com/apache/sedona-spatialbenc
 Here’s an example query that counts the number of trips that start within 500 meters of each building:
 
 ```sql
-SELECT 
+SELECT
     b.b_buildingkey,
     b.b_name,
     COUNT(*) AS nearby_pickup_count
