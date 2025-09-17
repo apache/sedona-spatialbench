@@ -20,6 +20,7 @@ site_description: SpatialBench is a high-performance geospatial benchmark for ge
 nav:
   - SpatialBench: index.md
   - Get Started:
+      - Overview: get-started/overview.md
       - Data Model: get-started/data-model.md
       - Performance: get-started/performance.md
   - Blog: "https://sedona.apache.org/latest/blog/"
