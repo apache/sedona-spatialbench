@@ -71,7 +71,7 @@ Key performance benefits:
 
 ## How is SpatialBench dbgen built?
 
-SpatialBench is a Rust-based fork of the tpchgen-rs project. It preserves the original’s high-performance, multi-threaded, streaming architecture, while extending it with a spatial star schema and geometry generation logic.
+SpatialBench is a Rust-based fork of the tpchgen-rs project. It preserves the original's high-performance, multi-threaded, streaming architecture, while extending it with a spatial star schema and geometry generation logic.
 
 You can build the SpatialBench data generator using Cargo:
 
