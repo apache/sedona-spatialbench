@@ -1,9 +1,8 @@
-<<<<<<< HEAD
 ---
 hide:
   - navigation
 
-title: SpatialBench
+title: Sedona SpatialBench
 ---
 
 <!---
@@ -24,8 +23,6 @@ title: SpatialBench
   specific language governing permissions and limitations
   under the License.
 -->
-=======
-# Sedona SpatialBench
 
 Sedona SpatialBench makes it easy to run spatial benchmarks on a realistic dataset with any query engine.
 
@@ -33,7 +30,7 @@ The methodology is unbiased and the benchmarks in any environment to compare rel
 
 ## Why SpatialBench
 
-SpatialBench is a geospatial benchmark for testing and optimizing spatial analytical query performance in database systems. Inspired by the SSB and NYC taxi data, it combines realistic urban mobility scenarios with a star schema extended with spatial attributes like pickup/dropoff points, zones, and building footprints. 
+SpatialBench is a geospatial benchmark for testing and optimizing spatial analytical query performance in database systems. Inspired by the SSB and NYC taxi data, it combines realistic urban mobility scenarios with a star schema extended with spatial attributes like pickup/dropoff points, zones, and building footprints.
 
 This design enables evaluation of the following geospatial operations:
 
@@ -62,7 +59,7 @@ Here’s how you can install the synthetic data generator:
 cargo install --path ./spatialbench-cli
 ```
 
-Here’s how you can generate the synthetic dataset:
+Here's how you can generate the synthetic dataset:
 
 ```
 spatialbench-cli -s 1 --format=parquet
@@ -72,10 +69,10 @@ See the project repository [README](https://github.com/apache/sedona-spatialbenc
 
 ## Example query
 
-Here’s an example query that counts the number of trips that start within 500 meters of each building:
+Here's an example query that counts the number of trips that start within 500 meters of each building:
 
 ```sql
-SELECT 
+SELECT
     b.b_buildingkey,
     b.b_name,
     COUNT(*) AS nearby_pickup_count
@@ -86,11 +83,10 @@ GROUP BY b.b_buildingkey, b.b_name
 ORDER BY nearby_pickup_count DESC;
 ```
 
-This query performs a distance join, followed by an aggregation.  It’s a great example of a query that’s useful for performance benchmarking a spatial engine that can process vector geometries.
+This query performs a distance join, followed by an aggregation. It’s a great example of a query that’s useful for performance benchmarking a spatial engine that can process vector geometries.
 
 ## Join the community
 
 Feel free to start a [GitHub Discussion](https://github.com/apache/sedona/discussions) or join the [Discord community](https://discord.gg/9A3k5dEBsY) to ask the developers any questions you may have.
 
 We look forward to collaborating with you on these benchmarks!
->>>>>>> a1cba00 (docs: add landing page (#9))
