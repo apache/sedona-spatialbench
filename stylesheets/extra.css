@@ -1,0 +1,58 @@
+/* ==========================================================================
+   Global Color and Font Variables
+   ========================================================================== */
+:root {
+  --color-red: #CA463A;
+  --color-white: #fff;
+  --color-dark: #1C1C1C;
+  --font-inter: "Inter",
+  sans-serif;
+}
+
+/* ==========================================================================
+   Header Styles
+   ========================================================================== */
+
+/* Main header container (the top black bar) */
+.md-header {
+  box-shadow: none;
+  background-color: var(--color-dark);
+}
+
+/* Inner content of the header */
+.md-header .md-header__inner {
+  background-color: var(--color-dark);
+  min-height: 80px;
+}
+
+/* Styles for the logo image */
+.md-header .md-header__inner .header-logo img,
+.md-header .md-header__inner .header-logo svg {
+  height: 42px;
+  width: auto;
+}
+
+/* --- Definitive Navigation CSS (Final Version) --- */
+
+/* 1. Set the height of the main navigation bar */
+.md-tabs {
+  background-color: var(--color-red);
+  height: 2.5rem; /* Set an explicit, predictable height for the bar */
+}
+
+/* 2. Control the alignment of the links within the bar */
+.md-tabs .md-tabs__list {
+  height: 100%; /* Make the link container fill the bar's height */
+  justify-content: center; /* Center links horizontally */
+  align-items: center;   /* NEW: Center links vertically */
+  flex-wrap: wrap;       /* Allow wrapping on small screens */
+}
+
+/* 3. Style the individual navigation links */
+.md-tabs__link {
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.85);
+  /* We no longer need vertical padding for spacing */
+  padding: 0 0.9rem;
+  font-size: 0.65rem; /* NEW: Adjust font size */
+}
