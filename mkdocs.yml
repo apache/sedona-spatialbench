@@ -36,8 +36,10 @@ theme:
   palette:
     primary: custom
     accent: 'green'
+  favicon: image/sedona_logo_symbol.png
+  logo: image/sedona_logo_symbol_white.svg
   icon:
-    logo: sedona_logo_symbol
+    logo: fontawesome/solid/earth-americas
     repo: fontawesome/brands/github
   features:
     - content.code.copy
@@ -52,10 +54,6 @@ theme:
     - navigation.tabs
     - navigation.tabs.sticky
 extra:
-  version:
-    provider: mike
-    default:
-      - latest
   social:
     - icon: fontawesome/brands/github
       link: 'https://github.com/apache/spatialbench'
@@ -103,9 +101,7 @@ markdown_extensions:
   - pymdownx.tilde
 plugins:
   - search:
-  # prebuild_index: true
+      # prebuild_index: true
   - macros
   - git-revision-date-localized:
       type: datetime
-  - mike:
-      canonical_version: 'latest'
