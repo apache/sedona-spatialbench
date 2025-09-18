@@ -16,28 +16,29 @@
 # under the License.
 
 site_name: Apache Sedona SpatialBench
-site_description: SpatialBench is a high-performance geospatial benchmark for generating synthetic spatial data at scale.
+site_description: SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems
 nav:
   - SpatialBench: index.md
   - Overview and Methodology: overview-methodology.md
   - Blog: "https://sedona.apache.org/latest/blog/"
   - Community: "https://sedona.apache.org/latest/community/contact/"
   - Apache Software Foundation: "https://sedona.apache.org/latest/asf/asf/"
-  - Sedona Homepage: "https://sedona.apache.org/latest/"
-  - SedonaDB Homepage: "https://sedona.apache.org/sedonadb/"
+  - Return toSedona Homepage: "https://sedona.apache.org/latest/"
 
 repo_url: https://github.com/apache/sedona-spatialbench/
+edit_uri: https://github.com/apache/sedona-spatialbench/blob/main/docs/
 repo_name: apache/sedona-spatialbench
 
 theme:
-  font: false
-  name: 'material'
-  custom_dir: docs-overrides
+  name: material
+  font:
+    font: false
+    name: 'material'
   palette:
     primary: custom
     accent: 'green'
   favicon: image/sedona_logo_symbol.png
-  logo: image/sedona_logo_symbol_white.svg
+  logo: image/sedona_logo_symbol.svg
   icon:
     logo: fontawesome/solid/earth-americas
     repo: fontawesome/brands/github
@@ -71,37 +72,75 @@ extra_javascript:
 copyright: Copyright © 2025 The Apache Software Foundation. Apache Sedona, Sedona, Apache, the Apache feather logo, and the Apache Sedona project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries. All other marks mentioned may be trademarks or registered trademarks of their respective owners. Please visit <a href="https://www.apache.org/">Apache Software Foundation</a> for more details.<img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=f3e121f6-c909-4592-8be6-5bd345768cba" /><img referrerpolicy="no-referrer-when-downgrade" src="https://analytics.apache.org/matomo.php?idsite=74&rec=1" />
 
 markdown_extensions:
-  - admonition
-  - attr_list
-  - codehilite
-  - toc:
-      permalink: true
-      toc_depth: 3
-  - pymdownx.arithmatex
-  - pymdownx.betterem:
-      smart_enable: all
-  - pymdownx.caret
-  - pymdownx.critic
-  - pymdownx.details
-  - pymdownx.emoji:
-      emoji_generator: !!python/name:pymdownx.emoji.to_svg
-  - pymdownx.inlinehilite
-  - pymdownx.magiclink
-  - pymdownx.mark
-  - pymdownx.smartsymbols
-  - pymdownx.superfences:
-      custom_fences:
+   - admonition
+   - attr_list
+   - codehilite
+   - footnotes
+   - toc:
+        permalink: true
+        toc_depth: 3
+   - pymdownx.arithmatex
+   - pymdownx.betterem:
+        smart_enable: all
+   - pymdownx.caret
+   - pymdownx.critic
+   - pymdownx.details
+   - pymdownx.emoji
+   - pymdownx.highlight
+   - pymdownx.inlinehilite
+   - pymdownx.magiclink
+   - pymdownx.mark
+   - pymdownx.smartsymbols
+   - pymdownx.snippets:
+        base_path: ["docs/"]
+   - pymdownx.superfences:
+        custom_fences:
         - name: mermaid
           class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
-  - pymdownx.tabbed:
-      alternate_style: true
-  - pymdownx.tasklist:
-      custom_checkbox: true
-  - pymdownx.tilde
+   - pymdownx.tabbed:
+        alternate_style: true
+   - pymdownx.tasklist:
+        custom_checkbox: true
+   - pymdownx.tilde
 plugins:
-  - search:
-      # prebuild_index: true
-  - macros
-  - git-revision-date-localized:
-      type: datetime
+   - search
+   - macros
+   - git-revision-date-localized:
+        type: datetime
+   - glightbox:
+        touchNavigation: true
+        loop: false
+        effect: zoom
+        slide_effect: slide
+        width: 100%
+        height: auto
+        zoomable: true
+        draggable: true
+        skip_classes:
+          - custom-skip-class-name
+          - skip-lightbox
+        auto_caption: false
+        caption_position: bottom
+        background: white
+        shadow: false
+        manual: false
+   - tags
+   - mkdocstrings:
+          handlers:
+               python:
+                    inventories:
+                         - https://docs.python.org/3/objects.inv
+                         - https://geopandas.org/en/stable/objects.inv
+                         - https://pandas.pydata.org/docs/objects.inv
+                    options:
+                         docstring_section_style: list
+                         docstring_style: google
+                         line_length: 80
+                         separate_signature: true
+                         show_root_heading: true
+                         show_signature_annotations: true
+                         show_source: false
+                         show_symbol_type_toc: true
+                         signature_crossrefs: true
+                         extra:
+                              paths: ['python']
