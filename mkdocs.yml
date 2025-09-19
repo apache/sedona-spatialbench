@@ -18,8 +18,10 @@
 site_name: Apache Sedona SpatialBench
 site_description: SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems
 nav:
-  - SpatialBench: index.md
-  - Overview and Methodology: overview-methodology.md
+  - Home:
+    - SpatialBench: index.md
+    - Overview and Methodology: overview-methodology.md
+    - Datasets and Generators: datasets-generators.md
   - Blog: "https://sedona.apache.org/latest/blog/"
   - Community: "https://sedona.apache.org/latest/community/contact/"
   - Apache Software Foundation: "https://sedona.apache.org/latest/asf/asf/"
