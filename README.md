@@ -8,6 +8,32 @@ Goals:
 - Help users compare engines and frameworks across different data scales.
 - Support open standards and foster collaboration in the spatial computing community.
 
+## Queries
+SpatialBench includes a set of 12 SQL queries. Because spatial sql syntaxes vary widely across systems, we provide a cli
+to print all 12 queries in the dialect of your choice. Currently supported dialects are:
+
+- Databricks Spatial SQL
+- DuckDB
+- Geopandas (distinct case)
+- SedonaDB
+- SedonaSpark
+
+
+We tried to vary the queries only as much as necessary to accommodate dialect differences.
+
+Geopandas is obviously a distinct case, as it is not SQL-based, however, due to its popularity, we felt it was important
+to include it. Pandas/Geopandas users often hand optimize their queries in ways that SQL engines handle automatically.
+We felt hand-tuning the queries was unfair for this exercise, and tried to do as little of that as possible while still
+writing "idiomatic" pandas code. We would be interested in hearing feedback on this approach as well as seeing a "fully
+hand-optimized" version of the queries.
+
+We welcome contributions and civil discussions on how to improve the queries and their implementations.
+
+You can print the queries in your dialect of choice using the following command:
+```bash
+./print_queries.py <dialect>
+```
+
 ## Data Model
 
 SpatialBench defines a spatial star schema with the following tables:
