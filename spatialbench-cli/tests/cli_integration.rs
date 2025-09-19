@@ -392,7 +392,7 @@ async fn test_incompatible_options_warnings() {
         .arg("--parquet-row-group-bytes")
         .arg("8192")
         .assert()
-        // still success, but should see warnints
+        // still success, but should see warnings
         .success()
         .stderr(predicates::str::contains(
             "Warning: Parquet compression option set but not generating Parquet files",
