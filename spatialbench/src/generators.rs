@@ -1591,7 +1591,7 @@ impl ZoneGenerator {
         // Install and load required extensions
         let t1 = Instant::now();
         conn.execute_batch(
-        r#"
+            r#"
             INSTALL httpfs;
             LOAD httpfs;
             INSTALL spatial;
@@ -1605,7 +1605,7 @@ impl ZoneGenerator {
             -- Region + endpoint for the Overture bucket
             SET s3_region = 'us-west-2';
             SET s3_endpoint = 's3.us-west-2.amazonaws.com';
-            "#
+            "#,
         )?;
         debug!(
             "Installed and loaded DuckDB extensions in {:?}",
