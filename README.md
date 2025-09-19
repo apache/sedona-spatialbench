@@ -1,10 +1,6 @@
 # SpatialBench
 
-SpatialBench is a high-performance geospatial benchmark for generating synthetic spatial data at scale. Inspired by the Star Schema Benchmark (SSB) and real-world mobility data like the NYC TLC dataset, SpatialBench is designed to evaluate spatial query performance in modern data platforms.
-
-Built in Rust and powered by Apache Arrow, SpatialBench brings fast, scalable, and streaming-friendly data generation for spatial workloads—minimal dependencies, blazing speed.
-
-SpatialBench provides a reproducible and scalable way to evaluate the performance of spatial data engines using realistic synthetic workloads.
+SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems. It provides a reproducible and scalable way to evaluate the performance of spatial data engines using realistic synthetic workloads.
 
 Goals:
 
