@@ -20,4 +20,4 @@ This crate ensures correct results using two methods.
 
 Please see [CONTRIBUTING.md] for more information on how to contribute to this project.
 
-[CONTRIBUTING.md]: https://github.com/wherobots/sedona-spatialbench/blob/main/CONTRIBUTING.md
+[CONTRIBUTING.md]: https://github.com/apache/sedona-spatialbench/blob/main/CONTRIBUTING.md

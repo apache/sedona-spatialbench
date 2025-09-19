@@ -1,5 +1,6 @@
 use assert_cmd::Command;
 use parquet::arrow::arrow_reader::{ArrowReaderOptions, ParquetRecordBatchReaderBuilder};
+use parquet::file::metadata::ParquetMetaDataReader;
 use spatialbench::generators::TripGenerator;
 use spatialbench_arrow::{RecordBatchIterator, TripArrow};
 use std::fs;
@@ -184,6 +185,100 @@ async fn test_write_parquet_trips() {
     }
 }
 
+#[tokio::test]
+async fn test_write_parquet_row_group_size_default() {
+    // Run the CLI command to generate parquet data with default settings
+    let output_dir = tempdir().unwrap();
+    Command::cargo_bin("spatialbench-cli")
+        .expect("Binary not found")
+        .arg("--format")
+        .arg("parquet")
+        .arg("--scale-factor")
+        .arg("1")
+        .arg("--tables")
+        .arg("trip,driver,vehicle,customer,building")
+        .arg("--output-dir")
+        .arg(output_dir.path())
+        .assert()
+        .success();
+
+    expect_row_group_sizes(
+        output_dir.path(),
+        vec![
+            RowGroups {
+                table: "customer",
+                row_group_bytes: vec![2600113],
+            },
+            RowGroups {
+                table: "trip",
+                row_group_bytes: vec![123519959, 123486809, 123476361, 123492237],
+            },
+            RowGroups {
+                table: "driver",
+                row_group_bytes: vec![41594],
+            },
+            RowGroups {
+                table: "vehicle",
+                row_group_bytes: vec![5393],
+            },
+            RowGroups {
+                table: "building",
+                row_group_bytes: vec![2492865],
+            },
+        ],
+    );
+}
+
+#[tokio::test]
+async fn test_write_parquet_row_group_size_20mb() {
+    // Run the CLI command to generate parquet data with larger row group size
+    let output_dir = tempdir().unwrap();
+    Command::cargo_bin("spatialbench-cli")
+        .expect("Binary not found")
+        .arg("--format")
+        .arg("parquet")
+        .arg("--scale-factor")
+        .arg("1")
+        .arg("--tables")
+        .arg("trip,driver,vehicle,customer,building")
+        .arg("--output-dir")
+        .arg(output_dir.path())
+        .arg("--parquet-row-group-bytes")
+        .arg("20000000") // 20 MB
+        .assert()
+        .success();
+
+    expect_row_group_sizes(
+        output_dir.path(),
+        vec![
+            RowGroups {
+                table: "customer",
+                row_group_bytes: vec![2600113],
+            },
+            RowGroups {
+                table: "trip",
+                row_group_bytes: vec![
+                    24361422, 24361685, 24350928, 24348682, 24353605, 24335813, 24358941, 24343011,
+                    24345967, 24361312, 24337627, 24345972, 24348724, 24361400, 24361528, 24346264,
+                    24351137, 24338412, 24348304, 24361680, 24351433,
+                ],
+            },
+            RowGroups {
+                table: "driver",
+                row_group_bytes: vec![41594],
+            },
+            RowGroups {
+                table: "vehicle",
+                row_group_bytes: vec![5393],
+            },
+            RowGroups {
+                table: "building",
+                row_group_bytes: vec![2492865],
+            },
+        ],
+    );
+}
+
 #[test]
 fn test_spatialbench_cli_part_no_parts() {
     let temp_dir = tempdir().expect("Failed to create temporary directory");
@@ -277,6 +372,36 @@ fn test_spatialbench_cli_zero_part_zero_parts() {
         ));
 }
 
+/// Test specifying parquet options even when writing tbl output
+#[tokio::test]
+async fn test_incompatible_options_warnings() {
+    let output_dir = tempdir().unwrap();
+    Command::cargo_bin("spatialbench-cli")
+        .expect("Binary not found")
+        .arg("--format")
+        .arg("csv")
+        .arg("--tables")
+        .arg("trip")
+        .arg("--scale-factor")
+        .arg("0.0001")
+        .arg("--output-dir")
+        .arg(output_dir.path())
+        // pass in parquet options that are incompatible with csv
+        .arg("--parquet-compression")
+        .arg("zstd(1)")
+        .arg("--parquet-row-group-bytes")
+        .arg("8192")
+        .assert()
+        // still success, but should see warnings
+        .success()
+        .stderr(predicates::str::contains(
+            "Warning: Parquet compression option set but not generating Parquet files",
+        ))
+        .stderr(predicates::str::contains(
+            "Warning: Parquet row group size option set but not generating Parquet files",
+        ));
+}
+
 fn read_gzipped_file_to_string<P: AsRef<Path>>(path: P) -> Result<String, std::io::Error> {
     let file = File::open(path)?;
     let mut decoder = flate2::read::GzDecoder::new(file);
@@ -298,4 +423,42 @@ fn read_reference_file(table_name: &str, scale_factor: &str) -> String {
             panic!("Failed to read reference file {reference_file}: {e}");
         }
     }
+}
+
+#[derive(Debug, PartialEq)]
+struct RowGroups {
+    table: &'static str,
+    /// total bytes in each row group
+    row_group_bytes: Vec<i64>,
+}
+
+/// For each table in tables, check that the parquet file in output_dir has
+/// a file with the expected row group sizes.
+fn expect_row_group_sizes(output_dir: &Path, expected_row_groups: Vec<RowGroups>) {
+    let mut actual_row_groups = vec![];
+    for table in &expected_row_groups {
+        let output_path = output_dir.join(format!("{}.parquet", table.table));
+        assert!(
+            output_path.exists(),
+            "Expected parquet file {:?} to exist",
+            output_path
+        );
+        // read the metadata to get the row group size
+        let file = File::open(&output_path).expect("Failed to open parquet file");
+        let mut metadata_reader = ParquetMetaDataReader::new();
+        metadata_reader.try_parse(&file).unwrap();
+        let metadata = metadata_reader.finish().unwrap();
+        let row_groups = metadata.row_groups();
+        let actual_row_group_bytes: Vec<_> =
+            row_groups.iter().map(|rg| rg.total_byte_size()).collect();
+        actual_row_groups.push(RowGroups {
+            table: table.table,
+            row_group_bytes: actual_row_group_bytes,
+        })
+    }
+    // compare the expected and actual row groups debug print actual on failure
+    // for better output / easier comparison
+    let expected_row_groups = format!("{expected_row_groups:#?}");
+    let actual_row_groups = format!("{actual_row_groups:#?}");
+    assert_eq!(actual_row_groups, expected_row_groups);
 }

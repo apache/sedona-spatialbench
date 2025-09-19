@@ -89,10 +89,10 @@ cargo install --path ./spatialbench-cli
 
 - The core generator logic lives in the spatialbench crate.
 - Geometry-aware logic is in spatialbench-arrow and integrated via Arrow-based schemas.
-- The spatial extension modules like the Spider geometry generator reside in the [spatial](https://github.com/wherobots/sedona-spatialbench/blob/main/spatialbench/src/spatial) directory.
+- The spatial extension modules like the Spider geometry generator reside in the [spatial](./spatialbench/src/spatial) directory.
 - The generator supports output formats like .tbl and Apache Parquet via the Arrow writer.
 
-For contribution or debugging, refer to the [ARCHITECTURE.md](https://github.com/wherobots/sedona-spatialbench/blob/main/ARCHITECTURE.md) guide.
+For contribution or debugging, refer to the [ARCHITECTURE.md](./ARCHITECTURE.md) guide.
 
 ## Usage
 

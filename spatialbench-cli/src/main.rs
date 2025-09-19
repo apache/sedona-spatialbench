@@ -19,6 +19,7 @@
 //!         --part <N>               Which part to generate (1-based, default: 1)
 //!     -n, --num-threads <N>        Number of threads to use (default: number of CPUs)
 //!     -c, --parquet-compression <C> Parquet compression codec, e.g., SNAPPY, ZSTD(1), UNCOMPRESSED (default: SNAPPY)
+//!         --parquet-row-group-size <N> Target size in bytes per row group in Parquet files (default: 134,217,728)
 //!     -v, --verbose                Verbose output
 //!         --stdout                 Write output to stdout instead of files
 //!```
@@ -50,7 +51,7 @@ mod tbl;
 use crate::csv::*;
 use crate::generate::{generate_in_chunks, Sink, Source};
 use crate::parquet::*;
-use crate::plan::GenerationPlan;
+use crate::plan::{GenerationPlan, DEFAULT_PARQUET_ROW_GROUP_BYTES};
 use crate::spatial_config_file::parse_yaml;
 use crate::statistics::WriteStatistics;
 use crate::tbl::*;
@@ -81,7 +82,7 @@ use std::time::Instant;
 #[command(version)]
 #[command(about = "TPC-H Data Generator", long_about = None)]
 struct Cli {
-    /// Scale factor to address (default: 1)
+    /// Scale factor to create
     #[arg(short, long, default_value_t = 1.)]
     scale_factor: f64,
 
@@ -97,17 +98,17 @@ struct Cli {
     #[arg(long = "config")]
     config: Option<PathBuf>,
 
-    /// Number of partitions to generate (manual parallel generation)
+    /// Number of part(itions) to generate (manual parallel generation)
     #[arg(short, long)]
     parts: Option<i32>,
 
-    /// Which partition to generate (1-based)
+    /// Which part(ition) to generate (1-based)
     ///
     /// If not specified, generates all parts
     #[arg(long)]
     part: Option<i32>,
 
-    /// Output format: tbl, csv, parquet (default: tbl)
+    /// Output format: tbl, csv, parquet
     #[arg(short, long, default_value = "tbl")]
     format: OutputFormat,
 
@@ -115,7 +116,7 @@ struct Cli {
     #[arg(short, long, default_value_t = num_cpus::get())]
     num_threads: usize,
 
-    /// Parquet block compression format. Default is SNAPPY
+    /// Parquet block compression format.
     ///
     /// Supported values: UNCOMPRESSED, ZSTD(N), SNAPPY, GZIP, LZO, BROTLI, LZ4
     ///
@@ -131,13 +132,28 @@ struct Cli {
     #[arg(short = 'c', long, default_value = "SNAPPY")]
     parquet_compression: Compression,
 
-    /// Verbose output (default: false)
+    /// Verbose output
     #[arg(short, long, default_value_t = false)]
     verbose: bool,
 
     /// Write the output to stdout instead of a file.
     #[arg(long, default_value_t = false)]
     stdout: bool,
+
+    /// Target size in row group bytes in Parquet files
+    ///
+    /// Row groups are the typical unit of parallel processing and compression
+    /// in Parquet. With many query engines, smaller row groups enable better
+    /// parallelism and lower peak memory use but may reduce compression
+    /// efficiency.
+    ///
+    /// Note: parquet files are limited to 32k row groups, so at high scale
+    /// factors, the row group size may be increased to keep the number of row
+    /// groups under this limit.
+    ///
+    /// Typical values range from 10MB to 100MB.
+    #[arg(long, default_value_t = DEFAULT_PARQUET_ROW_GROUP_BYTES)]
+    parquet_row_group_bytes: i64,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -261,6 +277,7 @@ macro_rules! define_generate {
                 self.scale_factor,
                 self.part,
                 self.parts,
+                self.parquet_row_group_bytes,
             )
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
             let scale_factor = self.scale_factor;
@@ -282,6 +299,7 @@ macro_rules! define_generate {
 }
 
 impl Cli {
+    /// Main function to run the generation
     async fn main(self) -> io::Result<()> {
         if self.verbose {
             // explicitly set logging to info / stdout
@@ -360,6 +378,20 @@ impl Cli {
         let elapsed = start.elapsed();
         info!("Created static distributions and text pools in {elapsed:?}");
 
+        // Warn if parquet specific options are set but not generating parquet
+        if self.format != OutputFormat::Parquet {
+            if self.parquet_compression != Compression::SNAPPY {
+                eprintln!(
+                    "Warning: Parquet compression option set but not generating Parquet files"
+                );
+            }
+            if self.parquet_row_group_bytes != DEFAULT_PARQUET_ROW_GROUP_BYTES {
+                eprintln!(
+                    "Warning: Parquet row group size option set but not generating Parquet files"
+                );
+            }
+        }
+
         // Generate each table
         for table in tables {
             match table {
@@ -375,6 +407,7 @@ impl Cli {
         info!("Generation complete!");
         Ok(())
     }
+
     define_generate!(
         generate_vehicle,
         Table::Vehicle,
