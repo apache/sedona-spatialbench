@@ -689,36 +689,36 @@ mod tests {
             #[test]
             fn parquet_sf1_lineitem_default_row_group() {
                 Test::new()
-                    .with_table(Table::Lineitem)
+                    .with_table(Table::Trip)
                     .with_format(OutputFormat::Parquet)
                     .with_scale_factor(10.0)
-                    .assert(524, 1..=524);
+                    .assert(31, 1..=31);
             }
 
             #[test]
             fn parquet_sf1_lineitem_small_row_group() {
                 Test::new()
-                    .with_table(Table::Lineitem)
+                    .with_table(Table::Trip)
                     .with_format(OutputFormat::Parquet)
                     .with_scale_factor(10.0)
                     .with_parquet_row_group_bytes(1024 * 1024) // 1MB row groups
-                    .assert(3663, 1..=3663);
+                    .assert(3949, 1..=3949);
             }
 
             #[test]
             fn parquet_sf1_lineitem_large_row_group() {
                 Test::new()
-                    .with_table(Table::Lineitem)
+                    .with_table(Table::Trip)
                     .with_format(OutputFormat::Parquet)
                     .with_scale_factor(10.0)
                     .with_parquet_row_group_bytes(20 * 1024 * 1024) // 20MB row groups
-                    .assert(184, 1..=184);
+                    .assert(198, 1..=198);
             }
 
             #[test]
             fn parquet_sf1_lineitem_small_row_group_max_groups() {
                 Test::new()
-                    .with_table(Table::Lineitem)
+                    .with_table(Table::Trip)
                     .with_format(OutputFormat::Parquet)
                     .with_scale_factor(100000.0)
                     .with_parquet_row_group_bytes(1024 * 1024) // 1MB row groups

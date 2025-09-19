@@ -208,7 +208,7 @@ async fn test_write_parquet_row_group_size_default() {
                 row_group_bytes: vec![6524595, 6510817, 6509412, 6519647],
             },
             RowGroups {
-                table: "lineitem",
+                table: "trip",
                 row_group_bytes: vec![
                     7159834, 7109252, 7093240, 7123300, 7147731, 7122707, 7144719, 7101681,
                     7113659, 7109747, 7109526, 7143030, 7105585, 7100415, 7143142, 7117154,
@@ -220,34 +220,26 @@ async fn test_write_parquet_row_group_size_default() {
                 ],
             },
             RowGroups {
-                table: "nation",
+                table: "driver",
                 row_group_bytes: vec![2931],
             },
             RowGroups {
-                table: "orders",
+                table: "zone",
                 row_group_bytes: vec![
                     7843809, 7843770, 7849113, 7846008, 7850945, 7848848, 7840156, 7842590,
                     7841844, 7840741, 7842821, 7841010, 7845089, 7835475, 7841544, 7839733,
                 ],
             },
             RowGroups {
-                table: "part",
+                table: "vehicle",
                 row_group_bytes: vec![7015205, 7016059],
             },
             RowGroups {
-                table: "partsupp",
+                table: "building",
                 row_group_bytes: vec![
                     7296158, 7278688, 7293668, 7289456, 7287098, 7294237, 7281630, 7302815,
                     7286591, 7292998, 7288736, 7299556, 7295055, 7297254, 7292243, 7281443,
                 ],
-            },
-            RowGroups {
-                table: "region",
-                row_group_bytes: vec![756],
-            },
-            RowGroups {
-                table: "supplier",
-                row_group_bytes: vec![1637351],
             },
         ],
     );
