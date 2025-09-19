@@ -424,7 +424,7 @@ def main():
         "Databricks": DatabricksSpatialBenchBenchmark,
         "DuckDB": DuckDBSpatialBenchBenchmark,
         "SedonaDB": SedonaDBSpatialBenchBenchmark,
-        "Geopandas": None # Special case, we will catch this below
+        "Geopandas": None  # Special case, we will catch this below
     }
 
     if len(sys.argv) < 2:
