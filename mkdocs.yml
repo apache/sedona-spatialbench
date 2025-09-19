@@ -23,7 +23,7 @@ nav:
   - Blog: "https://sedona.apache.org/latest/blog/"
   - Community: "https://sedona.apache.org/latest/community/contact/"
   - Apache Software Foundation: "https://sedona.apache.org/latest/asf/asf/"
-  - Return to Sedona Homepage: "https://sedona.apache.org/latest/"
+  - Sedona Homepage: "https://sedona.apache.org/latest/"
 
 repo_url: https://github.com/apache/sedona-spatialbench/
 edit_uri: https://github.com/apache/sedona-spatialbench/blob/main/docs/
