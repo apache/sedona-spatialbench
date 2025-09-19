@@ -239,6 +239,8 @@ async fn test_write_parquet_row_group_size_20mb() {
         .arg("parquet")
         .arg("--scale-factor")
         .arg("1")
+        .arg("--tables")
+        .arg("trip,driver,vehicle,customer,building")
         .arg("--output-dir")
         .arg(output_dir.path())
         .arg("--parquet-row-group-bytes")
@@ -251,39 +253,27 @@ async fn test_write_parquet_row_group_size_20mb() {
         vec![
             RowGroups {
                 table: "customer",
-                row_group_bytes: vec![12849948, 12843398],
+                row_group_bytes: vec![2600113],
             },
             RowGroups {
-                table: "lineitem",
+                table: "trip",
                 row_group_bytes: vec![
-                    18120705, 18173631, 18121037, 18098532, 18104251, 18159584, 18143034, 18087872,
-                    18116882, 18146572, 18137133, 18192817, 18109983, 18107897, 18137448, 18126493,
-                    18125071, 18120274, 18113389, 18177883,
+                    24361422, 24361685, 24350928, 24348682, 24353605, 24335813, 24358941, 24343011,
+                    24345967, 24361312, 24337627, 24345972, 24348724, 24361400, 24361528, 24346264,
+                    24351137, 24338412, 24348304, 24361680, 24351433,
                 ],
             },
             RowGroups {
-                table: "nation",
-                row_group_bytes: vec![2931],
+                table: "driver",
+                row_group_bytes: vec![41594],
             },
             RowGroups {
-                table: "orders",
-                row_group_bytes: vec![19819201, 19823559, 19814276, 19810582, 19806184, 19799240],
+                table: "vehicle",
+                row_group_bytes: vec![5393],
             },
             RowGroups {
-                table: "part",
-                row_group_bytes: vec![13923638],
-            },
-            RowGroups {
-                table: "partsupp",
-                row_group_bytes: vec![18983980, 18996831, 18979486, 18982575, 19001482, 18988488],
-            },
-            RowGroups {
-                table: "region",
-                row_group_bytes: vec![756],
-            },
-            RowGroups {
-                table: "supplier",
-                row_group_bytes: vec![1637351],
+                table: "building",
+                row_group_bytes: vec![2492865],
             },
         ],
     );
@@ -391,7 +381,7 @@ async fn test_incompatible_options_warnings() {
         .arg("--format")
         .arg("csv")
         .arg("--tables")
-        .arg("orders")
+        .arg("trip")
         .arg("--scale-factor")
         .arg("0.0001")
         .arg("--output-dir")
