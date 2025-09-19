@@ -51,16 +51,16 @@ Let’s dive into the advantages of SpatialBench.
 Here’s how you can install the synthetic data generator:
 
 ```
-cargo install --path ./spatialbench-cli
+cargo install --path ./tpchgen-cli
 ```
 
 Here’s how you can generate the synthetic dataset:
 
 ```
-spatialbench-cli -s 1 --format=parquet
+tpchgen-cli -s 1 --format=parquet
 ```
 
-See the project repository [README](https://github.com/apache/sedona-spatialbench) for the complete set of straightforward data generation instructions.
+See the project repository [README](https://github.com/apache/sedona-tpchgen) for the complete set of straightforward data generation instructions.
 
 ## Example query
 

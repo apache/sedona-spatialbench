@@ -82,30 +82,30 @@ cargo build --release
 Alternatively, install it directly using:
 
 ```bash
-cargo install --path ./spatialbench-cli
+cargo install --path ./tpchgen-cli
 ```
 
 ### Notes
 
-- The core generator logic lives in the spatialbench crate.
-- Geometry-aware logic is in spatialbench-arrow and integrated via Arrow-based schemas.
-- The spatial extension modules like the Spider geometry generator reside in the [spatial](https://github.com/wherobots/sedona-spatialbench/blob/main/spatialbench/src/spatial) directory.
+- The core generator logic lives in the tpchgen crate.
+- Geometry-aware logic is in tpchgen-arrow and integrated via Arrow-based schemas.
+- The spatial extension modules like the Spider geometry generator reside in the [spatial](https://github.com/wherobots/sedona-tpchgen/blob/main/tpchgen/src/spatial) directory.
 - The generator supports output formats like .tbl and Apache Parquet via the Arrow writer.
 
-For contribution or debugging, refer to the [ARCHITECTURE.md](https://github.com/wherobots/sedona-spatialbench/blob/main/ARCHITECTURE.md) guide.
+For contribution or debugging, refer to the [ARCHITECTURE.md](https://github.com/wherobots/sedona-tpchgen/blob/main/ARCHITECTURE.md) guide.
 
 ## Usage
 
 #### Generate All Tables (Scale Factor 1)
 
 ```bash
-spatialbench-cli -s 1 --format=parquet
+tpchgen-cli -s 1 --format=parquet
 ```
 
 #### Generate Individual Tables
 
 ```bash
-spatialbench-cli -s 1 --format=parquet --tables trip,building --output-dir sf1-parquet
+tpchgen-cli -s 1 --format=parquet --tables trip,building --output-dir sf1-parquet
 ```
 
 #### Partitioned Output Example
@@ -113,7 +113,7 @@ spatialbench-cli -s 1 --format=parquet --tables trip,building --output-dir sf1-p
 ```bash
 for PART in $(seq 1 4); do
   mkdir part-$PART
-  spatialbench-cli -s 10 --tables trip,building --output-dir part-$PART --parts 4 --part $PART
+  tpchgen-cli -s 10 --tables trip,building --output-dir part-$PART --parts 4 --part $PART
 done
 ```
 
@@ -122,14 +122,14 @@ done
 You can override these defaults at runtime by passing a YAML file via the `--config` flag:
 
 ```bash
-spatialbench-cli -s 1 --format=parquet --tables trip,building --config spatialbench-config.yml
+tpchgen-cli -s 1 --format=parquet --tables trip,building --config tpchgen-config.yml
 ```
 
-If --config is not provided, SpatialBench checks for ./spatialbench-config.yml. If absent, it falls back to built-in defaults.
+If --config is not provided, SpatialBench checks for ./tpchgen-config.yml. If absent, it falls back to built-in defaults.
 
-For reference, see the provided [spatialbench-config.yml](spatialbench-config.yml).
+For reference, see the provided [tpchgen-config.yml](tpchgen-config.yml).
 
-See [CONFIGURATION.md](./spatialbench-cli/CONFIGURATION.md) for more details about spatial data generation and the full YAML schema and examples.
+See [CONFIGURATION.md](./tpchgen-cli/CONFIGURATION.md) for more details about spatial data generation and the full YAML schema and examples.
 
 ## Acknowledgements
 - [TPC-H](https://www.tpc.org/tpch/)
