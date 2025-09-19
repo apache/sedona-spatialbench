@@ -1,4 +1,4 @@
-//! [`GenerationPlan`] that describes how to generate a TPC-H dataset.
+//! [`GenerationPlan`] that describes how to generate a Spatial Bench dataset.
 
 use crate::{OutputFormat, Table};
 use log::debug;
@@ -58,18 +58,22 @@ pub struct GenerationPlan {
     part_list: RangeInclusive<i32>,
 }
 
+pub const DEFAULT_PARQUET_ROW_GROUP_BYTES: i64 = 128 * 1024 * 1024;
+
 impl GenerationPlan {
     /// Returns a GenerationPlan number of parts to generate
     ///
     /// # Arguments
     /// * `cli_part`: optional part number to generate (1-based), `--part` CLI argument
     /// * `cli_part_count`: optional total number of parts, `--parts` CLI argument
+    /// * `parquet_row_group_size`: optional parquet row group size, `--parquet-row-group-size` CLI argument
     pub fn try_new(
         table: &Table,
         format: OutputFormat,
         scale_factor: f64,
         cli_part: Option<i32>,
         cli_part_count: Option<i32>,
+        parquet_row_group_bytes: i64,
     ) -> Result<Self, String> {
         // If a single part is specified, split it into chunks to enable parallel generation.
         match (cli_part, cli_part_count) {
@@ -83,10 +87,17 @@ impl GenerationPlan {
                     "The --part_count option requires the --part option to be set",
                 ))
             }
-            (Some(part), Some(part_count)) => {
-                Self::try_new_with_parts(table, format, scale_factor, part, part_count)
+            (Some(part), Some(part_count)) => Self::try_new_with_parts(
+                table,
+                format,
+                scale_factor,
+                part,
+                part_count,
+                parquet_row_group_bytes,
+            ),
+            (None, None) => {
+                Self::try_new_without_parts(table, format, scale_factor, parquet_row_group_bytes)
             }
-            (None, None) => Self::try_new_without_parts(table, format, scale_factor),
         }
     }
 
@@ -99,6 +110,7 @@ impl GenerationPlan {
         scale_factor: f64,
         cli_part: i32,
         cli_part_count: i32,
+        parquet_row_group_bytes: i64,
     ) -> Result<Self, String> {
         if cli_part < 1 {
             return Err(format!(
@@ -126,7 +138,7 @@ impl GenerationPlan {
 
         // scale down the row count by the number of partitions being generated
         // so that the output is consistent with the original part count
-        let num_chunks = OutputSize::new(table, scale_factor, format)
+        let num_chunks = OutputSize::new(table, scale_factor, format, parquet_row_group_bytes)
             .with_scaled_row_count(cli_part_count)
             .part_count();
 
@@ -161,8 +173,9 @@ impl GenerationPlan {
         table: &Table,
         format: OutputFormat,
         scale_factor: f64,
+        parquet_row_group_bytes: i64,
     ) -> Result<Self, String> {
-        let output_size = OutputSize::new(table, scale_factor, format);
+        let output_size = OutputSize::new(table, scale_factor, format, parquet_row_group_bytes);
         let num_parts = output_size.part_count();
 
         Ok(Self {
@@ -205,7 +218,12 @@ struct OutputSize {
 }
 
 impl OutputSize {
-    pub fn new(table: &Table, scale_factor: f64, format: OutputFormat) -> Self {
+    pub fn new(
+        table: &Table,
+        scale_factor: f64,
+        format: OutputFormat,
+        parquet_row_group_bytes: i64,
+    ) -> Self {
         let row_count = Self::row_count_for_table(table, scale_factor);
 
         // The average row size in bytes for each table in the TPC-H schema
@@ -242,15 +260,12 @@ impl OutputSize {
         };
 
         let target_chunk_size_bytes = match format {
-            // for tbl/csv target chunks of about the same as the output buffer
-            // size, 16MB. Use 15MB to ensure we don't exceed the buffer size.
+            // for tbl/csv target chunks, this value does not affect the output
+            // file. Use 15MB, slightly smaller than the 16MB buffer size,  to
+            // ensure small overages don't exceed the buffer size and require a
+            // reallocation
             OutputFormat::Tbl | OutputFormat::Csv => 15 * 1024 * 1024,
-            // target 7MB row groups
-            // todo make this configurable
-            // https://github.com/clflushopt/tpchgen-rs/issues/146
-            // Use 128MB for parquet files, which is the default
-            // row group size used by spark
-            OutputFormat::Parquet => 128 * 1024 * 1024,
+            OutputFormat::Parquet => parquet_row_group_bytes,
         };
 
         // parquet files can have at most 32767 row groups so cap the number of parts at that number
@@ -668,6 +683,49 @@ mod tests {
                 "Expected parts {expected_parts:?} should not exceed 32k row groups",
             );
         }
+
+        mod parquet_row_group_size {
+            use super::*;
+            #[test]
+            fn parquet_sf1_lineitem_default_row_group() {
+                Test::new()
+                    .with_table(Table::Lineitem)
+                    .with_format(OutputFormat::Parquet)
+                    .with_scale_factor(10.0)
+                    .assert(524, 1..=524);
+            }
+
+            #[test]
+            fn parquet_sf1_lineitem_small_row_group() {
+                Test::new()
+                    .with_table(Table::Lineitem)
+                    .with_format(OutputFormat::Parquet)
+                    .with_scale_factor(10.0)
+                    .with_parquet_row_group_bytes(1024 * 1024) // 1MB row groups
+                    .assert(3663, 1..=3663);
+            }
+
+            #[test]
+            fn parquet_sf1_lineitem_large_row_group() {
+                Test::new()
+                    .with_table(Table::Lineitem)
+                    .with_format(OutputFormat::Parquet)
+                    .with_scale_factor(10.0)
+                    .with_parquet_row_group_bytes(20 * 1024 * 1024) // 20MB row groups
+                    .assert(184, 1..=184);
+            }
+
+            #[test]
+            fn parquet_sf1_lineitem_small_row_group_max_groups() {
+                Test::new()
+                    .with_table(Table::Lineitem)
+                    .with_format(OutputFormat::Parquet)
+                    .with_scale_factor(100000.0)
+                    .with_parquet_row_group_bytes(1024 * 1024) // 1MB row groups
+                    // parquet is limited to no more than 32k actual row groups in a parquet file
+                    .assert(32767, 1..=32767);
+            }
+        }
     }
 
     /// Test fixture for [`GenerationPlan`].
@@ -678,6 +736,7 @@ mod tests {
         scale_factor: f64,
         cli_part: Option<i32>,
         cli_part_count: Option<i32>,
+        parquet_row_group_bytes: i64,
     }
 
     impl Test {
@@ -694,6 +753,7 @@ mod tests {
                 self.scale_factor,
                 self.cli_part,
                 self.cli_part_count,
+                self.parquet_row_group_bytes,
             )
             .unwrap();
             assert_eq!(plan.part_count, expected_part_count);
@@ -708,6 +768,7 @@ mod tests {
                 self.scale_factor,
                 self.cli_part,
                 self.cli_part_count,
+                self.parquet_row_group_bytes,
             )
             .unwrap_err();
             assert_eq!(actual_error, expected_error);
@@ -737,9 +798,15 @@ mod tests {
             self
         }
 
-        /// Set CLI partitition count
+        /// Set CLI partition count
         fn with_cli_part_count(mut self, cli_part_count: i32) -> Self {
             self.cli_part_count = Some(cli_part_count);
+            self
+        }
+
+        /// Set parquet row group size
+        fn with_parquet_row_group_bytes(mut self, parquet_row_group_bytes: i64) -> Self {
+            self.parquet_row_group_bytes = parquet_row_group_bytes;
             self
         }
     }
@@ -752,6 +819,7 @@ mod tests {
                 scale_factor: 1.0,
                 cli_part: None,
                 cli_part_count: None,
+                parquet_row_group_bytes: DEFAULT_PARQUET_ROW_GROUP_BYTES,
             }
         }
     }
