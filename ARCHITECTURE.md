@@ -3,20 +3,20 @@
 ## Crate Organization
 The project is organized into two crates:
 
-1. `tpchgen`: The core library that implements the data generation logic for SpatialBench.
-2. `tpchgen-arrow`: Generates the Spatial Bench data directly as the [Apache Arrow](https://arrow.apache.org/) in memory format
-3. `tpchgen-cli`: A CLI tool that uses the `tpchgen` library to generate SpatialBench data.
+1. `spatialbench`: The core library that implements the data generation logic for SpatialBench.
+2. `spatialbench-arrow`: Generates the Spatial Bench data directly as the [Apache Arrow](https://arrow.apache.org/) in memory format
+3. `spatialbench-cli`: A CLI tool that uses the `spatialbench` library to generate SpatialBench data.
 
 ## Dependencies
 
-The `tpchgen` crate is designed to be embeddable in as many locations as
+The `spatialbench` crate is designed to be embeddable in as many locations as
 possible and thus has no dependencies by design. For example, it does
 not depend on arrow or parquet crates or display libraries.
 
-`tpchgen-arrow` is similarly designed to be embeddable with minimal dependencies
+`spatialbench-arrow` is similarly designed to be embeddable with minimal dependencies
 and only depends on the [`arrow` crate](https://docs.rs/arrow)
 
-The `tpchgen-cli` crate is designed to include many useful features, and thus
+The `spatialbench-cli` crate is designed to include many useful features, and thus
 has many more dependencies.
 
 ## Performance

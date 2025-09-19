@@ -61,7 +61,7 @@ North North America: POLYGON ((-166.478008 42.681087, -52.053245 42.681087, -52.
 
 ## Performance
 
-SpatialBench inherits its speed and efficiency from the tpchgen-rs project, which is one of the fastest open-source data generators available.
+SpatialBench inherits its speed and efficiency from the spatialbench-rs project, which is one of the fastest open-source data generators available.
 
 Key performance benefits:
 - **Zero-copy, streaming architecture**: Generates data in constant memory, suitable for very large datasets.
@@ -71,7 +71,7 @@ Key performance benefits:
 
 ## How is SpatialBench dbgen built?
 
-SpatialBench is a Rust-based fork of the tpchgen-rs project. It preserves the original’s high-performance, multi-threaded, streaming architecture, while extending it with a spatial star schema and geometry generation logic.
+SpatialBench is a Rust-based fork of the spatialbench-rs project. It preserves the original’s high-performance, multi-threaded, streaming architecture, while extending it with a spatial star schema and geometry generation logic.
 
 You can build the SpatialBench data generator using Cargo:
 
@@ -82,30 +82,30 @@ cargo build --release
 Alternatively, install it directly using:
 
 ```bash
-cargo install --path ./tpchgen-cli
+cargo install --path ./spatialbench-cli
 ```
 
 ### Notes
 
-- The core generator logic lives in the tpchgen crate.
-- Geometry-aware logic is in tpchgen-arrow and integrated via Arrow-based schemas.
-- The spatial extension modules like the Spider geometry generator reside in the [spatial](https://github.com/wherobots/sedona-tpchgen/blob/main/tpchgen/src/spatial) directory.
+- The core generator logic lives in the spatialbench crate.
+- Geometry-aware logic is in spatialbench-arrow and integrated via Arrow-based schemas.
+- The spatial extension modules like the Spider geometry generator reside in the [spatial](https://github.com/wherobots/sedona-spatialbench/blob/main/spatialbench/src/spatial) directory.
 - The generator supports output formats like .tbl and Apache Parquet via the Arrow writer.
 
-For contribution or debugging, refer to the [ARCHITECTURE.md](https://github.com/wherobots/sedona-tpchgen/blob/main/ARCHITECTURE.md) guide.
+For contribution or debugging, refer to the [ARCHITECTURE.md](https://github.com/wherobots/sedona-spatialbench/blob/main/ARCHITECTURE.md) guide.
 
 ## Usage
 
 #### Generate All Tables (Scale Factor 1)
 
 ```bash
-tpchgen-cli -s 1 --format=parquet
+spatialbench-cli -s 1 --format=parquet
 ```
 
 #### Generate Individual Tables
 
 ```bash
-tpchgen-cli -s 1 --format=parquet --tables trip,building --output-dir sf1-parquet
+spatialbench-cli -s 1 --format=parquet --tables trip,building --output-dir sf1-parquet
 ```
 
 #### Partitioned Output Example
@@ -113,7 +113,7 @@ tpchgen-cli -s 1 --format=parquet --tables trip,building --output-dir sf1-parque
 ```bash
 for PART in $(seq 1 4); do
   mkdir part-$PART
-  tpchgen-cli -s 10 --tables trip,building --output-dir part-$PART --parts 4 --part $PART
+  spatialbench-cli -s 10 --tables trip,building --output-dir part-$PART --parts 4 --part $PART
 done
 ```
 
@@ -122,16 +122,16 @@ done
 You can override these defaults at runtime by passing a YAML file via the `--config` flag:
 
 ```bash
-tpchgen-cli -s 1 --format=parquet --tables trip,building --config tpchgen-config.yml
+spatialbench-cli -s 1 --format=parquet --tables trip,building --config spatialbench-config.yml
 ```
 
-If --config is not provided, SpatialBench checks for ./tpchgen-config.yml. If absent, it falls back to built-in defaults.
+If --config is not provided, SpatialBench checks for ./spatialbench-config.yml. If absent, it falls back to built-in defaults.
 
-For reference, see the provided [tpchgen-config.yml](tpchgen-config.yml).
+For reference, see the provided [spatialbench-config.yml](spatialbench-config.yml).
 
-See [CONFIGURATION.md](./tpchgen-cli/CONFIGURATION.md) for more details about spatial data generation and the full YAML schema and examples.
+See [CONFIGURATION.md](./spatialbench-cli/CONFIGURATION.md) for more details about spatial data generation and the full YAML schema and examples.
 
 ## Acknowledgements
 - [TPC-H](https://www.tpc.org/tpch/)
 - [SpiderWeb: A Spatial Data Generator on the Web](https://dl.acm.org/doi/10.1145/3397536.3422351)
-- [tpchgen-rs for inspiration and baseline performance](https://datafusion.apache.org/blog/2025/04/10/fastest-tpch-generator/)
+- [spatialbench-rs for inspiration and baseline performance](https://datafusion.apache.org/blog/2025/04/10/fastest-tpch-generator/)

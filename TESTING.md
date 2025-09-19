@@ -3,7 +3,7 @@ This crate has extensive tests to ensure correctness. We compare the output
 of this crate with the original `dbgen` implementation as part of every checkin.
 See [conformance.sh](scripts/conformance.sh) for more details.
 
-`tpchgen-cli` generates **exactly** the same bytes as the original `dbgen`
+`spatialbench-cli` generates **exactly** the same bytes as the original `dbgen`
 program. You can verify this for yourself by using `shasum`, for example:
 
 ```sh
@@ -26,7 +26,7 @@ cd ..
 shasum tpch-dbgen/*.tbl
 ```
 
-You can compare these yourself with the output of `tpchgen-cli` to verify correctness:
+You can compare these yourself with the output of `spatialbench-cli` to verify correctness:
 
 [tpch-dbgen]: https://github.com/electrum/tpch-dbgen
 
