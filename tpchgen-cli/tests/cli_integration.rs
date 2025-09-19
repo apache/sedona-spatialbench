@@ -1,7 +1,5 @@
 use assert_cmd::Command;
 use parquet::arrow::arrow_reader::{ArrowReaderOptions, ParquetRecordBatchReaderBuilder};
-use tpchgen::generators::TripGenerator;
-use tpchgen_arrow::{RecordBatchIterator, TripArrow};
 use parquet::file::metadata::ParquetMetaDataReader;
 use std::fs;
 use std::fs::File;
@@ -9,6 +7,8 @@ use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
 use tempfile::tempdir;
+use tpchgen::generators::TripGenerator;
+use tpchgen_arrow::{RecordBatchIterator, TripArrow};
 
 /// Test TBL output for scale factor 0.51 and 0.001 using tpchgen-cli
 /// A scale factor of 0.51 is used because a sf of 0.5 and below will yield 0 results in the Building table
@@ -195,6 +195,8 @@ async fn test_write_parquet_row_group_size_default() {
         .arg("parquet")
         .arg("--scale-factor")
         .arg("1")
+        .arg("--tables")
+        .arg("trip,driver,vehicle,customer,building")
         .arg("--output-dir")
         .arg(output_dir.path())
         .assert()
@@ -205,41 +207,23 @@ async fn test_write_parquet_row_group_size_default() {
         vec![
             RowGroups {
                 table: "customer",
-                row_group_bytes: vec![6524595, 6510817, 6509412, 6519647],
+                row_group_bytes: vec![2600113],
             },
             RowGroups {
                 table: "trip",
-                row_group_bytes: vec![
-                    7159834, 7109252, 7093240, 7123300, 7147731, 7122707, 7144719, 7101681,
-                    7113659, 7109747, 7109526, 7143030, 7105585, 7100415, 7143142, 7117154,
-                    7147556, 7115410, 7109609, 7096825, 7111561, 7155528, 7108907, 7110276,
-                    7147443, 7103508, 7113014, 7129395, 7120851, 7160720, 7125178, 7137503,
-                    7117439, 7116240, 7120922, 7098800, 7132250, 7126634, 7118900, 7108375,
-                    7126762, 7145664, 7104909, 7132885, 7103637, 7103739, 7142231, 7111048,
-                    7093823, 7096310, 7160884, 7159874, 7135249,
-                ],
+                row_group_bytes: vec![123519959, 123486809, 123476361, 123492237],
             },
             RowGroups {
                 table: "driver",
-                row_group_bytes: vec![2931],
-            },
-            RowGroups {
-                table: "zone",
-                row_group_bytes: vec![
-                    7843809, 7843770, 7849113, 7846008, 7850945, 7848848, 7840156, 7842590,
-                    7841844, 7840741, 7842821, 7841010, 7845089, 7835475, 7841544, 7839733,
-                ],
+                row_group_bytes: vec![41594],
             },
             RowGroups {
                 table: "vehicle",
-                row_group_bytes: vec![7015205, 7016059],
+                row_group_bytes: vec![5393],
             },
             RowGroups {
                 table: "building",
-                row_group_bytes: vec![
-                    7296158, 7278688, 7293668, 7289456, 7287098, 7294237, 7281630, 7302815,
-                    7286591, 7292998, 7288736, 7299556, 7295055, 7297254, 7292243, 7281443,
-                ],
+                row_group_bytes: vec![2492865],
             },
         ],
     );

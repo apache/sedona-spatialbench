@@ -3,6 +3,8 @@
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::SchemaRef;
+use std::io::Write;
+use std::sync::Arc;
 use tpchgen::csv::{BuildingCsv, CustomerCsv, DriverCsv, TripCsv, VehicleCsv, ZoneCsv};
 use tpchgen::generators::{
     Building, BuildingGenerator, Customer, CustomerGenerator, Driver, DriverGenerator, Trip,
@@ -12,8 +14,6 @@ use tpchgen_arrow::{
     BuildingArrow, CustomerArrow, DriverArrow, RecordBatchIterator, TripArrow, VehicleArrow,
     ZoneArrow,
 };
-use std::io::Write;
-use std::sync::Arc;
 
 use arrow::array::Array;
 use arrow::array::BinaryArray;

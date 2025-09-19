@@ -2,12 +2,12 @@
 
 use crate::{OutputFormat, Table};
 use log::debug;
+use std::fmt::Display;
+use std::ops::RangeInclusive;
 use tpchgen::generators::{
     BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
     ZoneGenerator,
 };
-use std::fmt::Display;
-use std::ops::RangeInclusive;
 
 /// A list of generator "parts" (data generator chunks, not Spatial Bench parts)
 ///

@@ -3,8 +3,8 @@ use crate::{DEFAULT_BATCH_SIZE, RecordBatchIterator};
 use arrow::array::{BinaryArray, Int64Array, RecordBatch};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use geozero::{CoordDimensions, ToWkb};
-use tpchgen::generators::{ZoneGenerator, ZoneGeneratorIterator};
 use std::sync::{Arc, LazyLock};
+use tpchgen::generators::{ZoneGenerator, ZoneGeneratorIterator};
 
 /// Generate [`Zone`]s in [`RecordBatch`] format
 ///

@@ -1,9 +1,9 @@
 //! Routines to convert TPCH types to Arrow types
 
 use arrow::array::{StringViewArray, StringViewBuilder};
+use std::fmt::Write;
 use tpchgen::dates::TPCHDate;
 use tpchgen::decimal::TPCHDecimal;
-use std::fmt::Write;
 
 /// Convert a TPCHDecimal to an Arrow Decimal(15,2)
 #[inline(always)]

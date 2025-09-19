@@ -1,11 +1,11 @@
 use anyhow::Result;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer};
+use std::fmt;
+use std::sync::OnceLock;
 use tpchgen::spatial::{
     DistributionParams, DistributionType, GeomType, SpatialConfig, SpatialGenerator,
 };
-use std::fmt;
-use std::sync::OnceLock;
 
 // Deserializer for DistributionType
 fn deserialize_distribution_type<'de, D>(deserializer: D) -> Result<DistributionType, D::Error>
