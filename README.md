@@ -61,7 +61,7 @@ North North America: POLYGON ((-166.478008 42.681087, -52.053245 42.681087, -52.
 
 ## Performance
 
-SpatialBench inherits its speed and efficiency from the spatialbench-rs project, which is one of the fastest open-source data generators available.
+SpatialBench inherits its speed and efficiency from the tpchgen-rs project, which is one of the fastest open-source data generators available.
 
 Key performance benefits:
 - **Zero-copy, streaming architecture**: Generates data in constant memory, suitable for very large datasets.
@@ -71,7 +71,7 @@ Key performance benefits:
 
 ## How is SpatialBench dbgen built?
 
-SpatialBench is a Rust-based fork of the spatialbench-rs project. It preserves the original’s high-performance, multi-threaded, streaming architecture, while extending it with a spatial star schema and geometry generation logic.
+SpatialBench is a Rust-based fork of the tpchgen-rs project. It preserves the original’s high-performance, multi-threaded, streaming architecture, while extending it with a spatial star schema and geometry generation logic.
 
 You can build the SpatialBench data generator using Cargo:
 
@@ -89,10 +89,10 @@ cargo install --path ./spatialbench-cli
 
 - The core generator logic lives in the spatialbench crate.
 - Geometry-aware logic is in spatialbench-arrow and integrated via Arrow-based schemas.
-- The spatial extension modules like the Spider geometry generator reside in the [spatial](https://github.com/wherobots/sedona-spatialbench/blob/main/spatialbench/src/spatial) directory.
+- The spatial extension modules like the Spider geometry generator reside in the [spatial](./spatialbench/src/spatial) directory.
 - The generator supports output formats like .tbl and Apache Parquet via the Arrow writer.
 
-For contribution or debugging, refer to the [ARCHITECTURE.md](https://github.com/wherobots/sedona-spatialbench/blob/main/ARCHITECTURE.md) guide.
+For contribution or debugging, refer to the [ARCHITECTURE.md](./ARCHITECTURE.md) guide.
 
 ## Usage
 
