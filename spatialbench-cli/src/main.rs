@@ -19,7 +19,7 @@
 //!         --part <N>               Which part to generate (1-based, default: 1)
 //!     -n, --num-threads <N>        Number of threads to use (default: number of CPUs)
 //!     -c, --parquet-compression <C> Parquet compression codec, e.g., SNAPPY, ZSTD(1), UNCOMPRESSED (default: SNAPPY)
-//!         --parquet-row-group-size <N> Number of rows per row group in Parquet files (default: 134,217,728)
+//!         --parquet-row-group-size <N> Target size in bytes per row group in Parquet files (default: 134,217,728)
 //!     -v, --verbose                Verbose output
 //!         --stdout                 Write output to stdout instead of files
 //!```
