@@ -134,4 +134,4 @@ See [CONFIGURATION.md](./spatialbench-cli/CONFIGURATION.md) for more details abo
 ## Acknowledgements
 - [TPC-H](https://www.tpc.org/tpch/)
 - [SpiderWeb: A Spatial Data Generator on the Web](https://dl.acm.org/doi/10.1145/3397536.3422351)
-- [spatialbench-rs for inspiration and baseline performance](https://datafusion.apache.org/blog/2025/04/10/fastest-tpch-generator/)
+- [tpchgen-rs for inspiration and baseline performance](https://datafusion.apache.org/blog/2025/04/10/fastest-tpch-generator/)
