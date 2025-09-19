@@ -85,14 +85,20 @@ WHERE ST_Intersects(ST_GeomFromWKB(t.t_pickuploc), (SELECT ST_GeomFromWKB(z.z_bo
     @staticmethod
     def q3() -> str:
         return """
--- Q3: Count trips that cross between different zones
-SELECT COUNT(*) AS cross_zone_trip_count
-FROM
-   trip t
-       JOIN zone pickup_zone ON ST_Within(ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(pickup_zone.z_boundary))
-       JOIN zone dropoff_zone ON ST_Within(ST_GeomFromWKB(t.t_dropoffloc), ST_GeomFromWKB(dropoff_zone.z_boundary))
-WHERE pickup_zone.z_zonekey != dropoff_zone.z_zonekey
-               """
+-- Q3: Monthly trip statistics within 15km radius of Sedona city center (10km base + 5km buffer)
+SELECT
+   DATE_TRUNC('month', t.t_pickuptime) AS pickup_month, COUNT(t.t_tripkey) AS total_trips,
+   AVG(t.t_distance) AS avg_distance, AVG(t.t_dropofftime - t.t_pickuptime) AS avg_duration,
+   AVG(t.t_fare) AS avg_fare
+FROM trip t
+WHERE ST_DWithin(
+             ST_GeomFromWKB(t.t_pickuploc),
+             ST_GeomFromText('POLYGON((-111.9060 34.7347, -111.6160 34.7347, -111.6160 35.0047, -111.9060 35.0047, -111.9060 34.7347))'), -- 10km bounding box around Sedona
+             0.045 -- Additional 5km buffer
+     )
+GROUP BY pickup_month
+ORDER BY pickup_month
+"""
 
     @staticmethod
     def q4() -> str:
