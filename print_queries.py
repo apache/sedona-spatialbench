@@ -298,9 +298,9 @@ ORDER BY dropoff_count DESC, c.c_custkey ASC
                """
 
     @staticmethod
-    def q8() -> str:
+    def q7() -> str:
         return """
--- Q8 (Databricks): ST_MakeLine takes an array of points rather than varargs
+-- Q7 (Databricks): ST_MakeLine takes an array of points rather than varargs
 WITH trip_lengths AS (
    SELECT
        t.t_tripkey,
