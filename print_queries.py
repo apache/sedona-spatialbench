@@ -124,12 +124,13 @@ ORDER BY trip_count DESC, z.z_zonekey ASC
 SELECT
    c.c_custkey, c.c_name AS customer_name,
    DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,
-   ST_Area(ST_ConvexHull(ST_Collect(ARRAY_AGG(ST_GeomFromWKB(t.t_dropoffloc))))) AS monthly_travel_hull_area
+   ST_Area(ST_ConvexHull(ST_Collect(ARRAY_AGG(ST_GeomFromWKB(t.t_dropoffloc))))) AS monthly_travel_hull_area,
+   COUNT(*) as dropoff_count
 FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
-HAVING COUNT(*) > 5 -- Only include repeat customers for meaningful hulls
-ORDER BY COUNT(*) DESC, c.c_custkey ASC
-               """
+HAVING dropoff_count > 5 -- Only include repeat customers for meaningful hulls
+ORDER BY dropoff_count DESC, c.c_custkey ASC
+            """
 
     @staticmethod
     def q6() -> str:
@@ -288,17 +289,18 @@ class DatabricksSpatialBenchBenchmark(SpatialBenchBenchmark):
 SELECT
    c.c_custkey, c.c_name AS customer_name,
    DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,
-   ST_Area(ST_ConvexHull(ST_Union_Agg(ST_GeomFromWKB(t.t_dropoffloc)))) AS monthly_travel_hull_area
+   ST_Area(ST_ConvexHull(ST_Union_Agg(ST_GeomFromWKB(t.t_dropoffloc)))) AS monthly_travel_hull_area,
+   COUNT(*) as dropoff_count
 FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
-HAVING COUNT(*) > 5 -- Only include repeat customers for meaningful hulls
-ORDER BY COUNT(*) DESC, c.c_custkey ASC
+HAVING dropoff_count > 5 -- Only include repeat customers for meaningful hulls
+ORDER BY dropoff_count DESC, c.c_custkey ASC
                """
 
     @staticmethod
-    def q8() -> str:
+    def q7() -> str:
         return """
--- Q8 (Databricks): ST_MakeLine takes an array of points rather than varargs
+-- Q7 (Databricks): ST_MakeLine takes an array of points rather than varargs
 WITH trip_lengths AS (
    SELECT
        t.t_tripkey,
@@ -404,23 +406,15 @@ class SedonaDBSpatialBenchBenchmark(SpatialBenchBenchmark):
         return """
 -- Q5 (SedonaDB): In SedonaDB ST_Collect is an aggregate function so no need to use ARRAY_AGG first.
 -- ST_Collect does not accept an array as input so we cannot use the query with ARRAY_AGG.
-WITH per AS (
-   SELECT
-       c.c_custkey,
-       c.c_name AS customer_name,
-       DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,
-       COUNT(t.t_tripkey) AS n_trips,
-       ST_Area(ST_ConvexHull(
-               ST_Collect(ST_GeomFromWKB(t.t_dropoffloc))
-               )) AS monthly_travel_hull_area
-   FROM trip t
-            JOIN customer c ON t.t_custkey = c.c_custkey
-   GROUP BY c.c_custkey, c.c_name, pickup_month
-)
-SELECT *
-FROM per
-WHERE n_trips > 5
-ORDER BY n_trips DESC, c_custkey ASC;
+SELECT
+    c.c_custkey, c.c_name AS customer_name,
+    DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,
+    ST_Area(ST_ConvexHull(ST_Collect(ST_GeomFromWKB(t.t_dropoffloc)))) AS monthly_travel_hull_area,
+    COUNT(*) as dropoff_count
+FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
+GROUP BY c.c_custkey, c.c_name, pickup_month
+HAVING dropoff_count > 5 -- Only include repeat customers for meaningful hulls
+ORDER BY dropoff_count DESC, c.c_custkey ASC
                """
 
 
