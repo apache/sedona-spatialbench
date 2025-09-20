@@ -289,11 +289,12 @@ class DatabricksSpatialBenchBenchmark(SpatialBenchBenchmark):
 SELECT
    c.c_custkey, c.c_name AS customer_name,
    DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,
-   ST_Area(ST_ConvexHull(ST_Union_Agg(ST_GeomFromWKB(t.t_dropoffloc)))) AS monthly_travel_hull_area
+   ST_Area(ST_ConvexHull(ST_Union_Agg(ST_GeomFromWKB(t.t_dropoffloc)))) AS monthly_travel_hull_area,
+   COUNT(*) as dropoff_count
 FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
-HAVING COUNT(*) > 5 -- Only include repeat customers for meaningful hulls
-ORDER BY COUNT(*) DESC, c.c_custkey ASC
+HAVING dropoff_count > 5 -- Only include repeat customers for meaningful hulls
+ORDER BY dropoff_count DESC, c.c_custkey ASC
                """
 
     @staticmethod
