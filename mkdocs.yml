@@ -22,6 +22,7 @@ nav:
     - SpatialBench: index.md
     - Overview and Methodology: overview-methodology.md
     - Datasets and Generators: datasets-generators.md
+    - Queries: queries.ipynb
   - Blog: "https://sedona.apache.org/latest/blog/"
   - Community: "https://sedona.apache.org/latest/community/contact/"
   - Apache Software Foundation: "https://sedona.apache.org/latest/asf/asf/"

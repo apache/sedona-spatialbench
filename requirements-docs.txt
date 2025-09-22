@@ -9,3 +9,4 @@ mkdocs-jupyter
 jupyter
 notebook
 jupyterlab
+apache-sedona[db]
