@@ -41,7 +41,7 @@ General-purpose analytics query benchmarks don’t cover spatial queries.  They 
 
 The analytical benchmarks help analyze analytical performance, but that doesn’t necessarily translate to spatial queries.  An engine can be blazing fast for a large tabular aggregation and terrible for spatial joins.
 
-SpatialBench is tailored for spatial queries.  It’s the best modern option to assess the spatial performance of an engine.  Let’s take a look at some of the older spatial benchmarks.
+SpatialBench is tailored for spatial queries.  It’s the best modern option to assess the spatial performance of an engine.  Here are some suggestions for how to use it for the most accurate and fairest results.
 
 ## Hardware and software
 
