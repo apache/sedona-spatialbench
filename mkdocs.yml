@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-site_name: Apache Sedona SpatialBench
+site_name: SpatialBench
 site_description: SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems
 nav:
   - Home:

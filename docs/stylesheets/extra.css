@@ -67,3 +67,18 @@
   background-color: var(--color-red); /* Use your red color */
   box-shadow: none; /* Optional: removes the shadow */
 }
+
+
+/* ==========================================================================
+   Logo Size Adjustment
+   ========================================================================== */
+
+/*
+  Targets the logo in the header, whether it's an SVG or a standard image file.
+  Adjust the height value as needed to get the perfect size.
+*/
+.md-header .md-logo img,
+.md-header .md-logo svg {
+  height: 42px; /* This should match the Apache Sedona logo size */
+  width: auto;  /* Ensures the width scales proportionally */
+}
