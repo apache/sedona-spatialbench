@@ -6,3 +6,6 @@ mkdocs-git-revision-date-localized-plugin
 mkdocstrings[python]
 mike
 mkdocs-jupyter
+jupyter
+notebook
+jupyterlab
