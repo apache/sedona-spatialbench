@@ -7,3 +7,8 @@ mkdocstrings[python]
 nbconvert
 pyproj
 ruff
+mkdocs-jupyter
+jupyter
+notebook
+jupyterlab
+apache-sedona[db]
