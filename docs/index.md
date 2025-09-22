@@ -19,7 +19,9 @@ title: Sedona SpatialBench
   under the License.
 -->
 
-Sedona SpatialBench makes it easy to run spatial benchmarks on a realistic dataset with any query engine.
+SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems
+
+SpatialBench makes it easy to run spatial benchmarks on a realistic dataset with any query engine.
 
 The methodology is unbiased and the benchmarks in any environment to compare relative performance between runtimes.
 
