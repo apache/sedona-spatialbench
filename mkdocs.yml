@@ -58,11 +58,7 @@ nav:
       - contributors-guide.md
       # Use the alias (*) to insert the Get Involved links here
       - <<: *community_links
-<<<<<<< HEAD
   - Sedona Homepage: "https://sedona.apache.org"
-=======
-  - Sedona Homepage: "https://sedona.apache.org/"
->>>>>>> e3b34ab (fixing comments)
 
 repo_url: https://github.com/apache/sedona-spatialbench/
 edit_uri: https://github.com/apache/sedona-spatialbench/blob/main/docs/
