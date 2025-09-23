@@ -5,13 +5,21 @@ on:
     branches: ["main"]
     paths-ignore:
       - 'docs/**'
+      - 'docs-overrides/**'
       - 'images/**'
       - '*.md'
+      - 'mkdocs.yml'
+      - '*.png'
+      - '*.py'
   pull_request:
     paths-ignore:
       - 'docs/**'
+      - 'docs-overrides/**'
       - 'images/**'
       - '*.md'
+      - 'mkdocs.yml'
+      - '*.png'
+      - '*.py'
   workflow_dispatch:
 
 concurrency:
