@@ -35,7 +35,6 @@ The remainder of this document summarizes the hardware and software versions, qu
 
 This benchmark was run on an AWS EC2 m7i.2xlarge instance, which has 8 CPUs and 32 GB of RAM. We encourage you to try running SpatialBench on different hardware configurations and share your results with the community.
 
-Below are the software versions used in this benchmark.
 
 ## Benchmark settings
 
