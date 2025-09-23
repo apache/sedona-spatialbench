@@ -18,7 +18,7 @@
 site_name: SpatialBench
 site_description: SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems
 # Define a reusable block of links with a YAML anchor (&)
-x-community-links: &community_links
+.community-links: &community_links
   - Get Involved:
       - Community: "https://sedona.apache.org/latest/community/contact/"
       - Apache Software Foundation: "https://sedona.apache.org/latest/asf/asf/"
