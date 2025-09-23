@@ -6,7 +6,7 @@ free to open an issue.
 
 ## Our Development Process
 
-To contribute, please find an existing issue or open a new one. Claiming the issue you are working on helps us better track progress.
+To contribute, please find [an existing GitHub issue or open a new one](https://github.com/apache/sedona-spatialbench/issues). Claiming the issue you are working on helps us better track progress.
 
 ## Pull Requests
 
@@ -14,10 +14,9 @@ We actively welcome your pull requests.
 
 1. Fork the repo and create your branch from `main`.
 2. If you've added code that should be tested, add tests.
-3. If you've changed APIs, update the related documentation.
-4. Ensure the standard tests and conformance tests are passing.
-5. Ensure your code follows Rust best practices and addresses all lints from clippy.
-6. Open your pull request and wait for a review and approval.
+3. Ensure the standard tests and conformance tests are passing.
+4. Ensure your code follows Rust best practices and addresses all lints from clippy.
+5. Open your pull request and wait for a review and approval.
 
 ## Filing Issues
 

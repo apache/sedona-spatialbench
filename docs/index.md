@@ -1,5 +1,5 @@
 ---
-title: Sedona SpatialBench
+title: SpatialBench
 ---
 
 <!---
