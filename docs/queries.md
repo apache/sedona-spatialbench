@@ -7,177 +7,27 @@ SpatialBench is a benchmark for assessing geospatial SQL analytics query perform
 The benchmark uses a realistic but synthetic, transportation-themed dataset to ensure the queries reflect practical use cases. By running these queries, you can evaluate and compare the relative performance of different spatial query engines in a consistent and unbiased manner.
 
 ## Before you start
-Before running this notebook, ensure that you have installed the packages in the `requirements.txt` file: 
+
+Before running this notebook, ensure that you have installed the packages in the `requirements.txt` file:
 
 
 ```python
 %pip install -r ~/sedona-spatialbench/docs/requirements.txt
 ```
 
-    Requirement already satisfied: jupyter in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from -r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (1.1.1)
-    Requirement already satisfied: jupyterlab in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from -r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (4.4.7)
-    Requirement already satisfied: mike in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from -r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 4)) (2.1.3)
-    Requirement already satisfied: mkdocs-git-revision-date-localized-plugin in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from -r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 5)) (1.4.7)
-    Requirement already satisfied: mkdocs-glightbox in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from -r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 6)) (0.5.1)
-    Requirement already satisfied: mkdocs-macros-plugin in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from -r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 7)) (1.3.9)
-    Requirement already satisfied: mkdocs-material in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from -r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 8)) (9.6.20)
-    Requirement already satisfied: mkdocs-jupyter in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from -r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 9)) (0.25.1)
-    Requirement already satisfied: notebook in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from -r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 11)) (7.4.5)
-    Requirement already satisfied: nbconvert in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from -r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 12)) (7.16.6)
-    Requirement already satisfied: pyproj in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from -r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 13)) (3.7.2)
-    Requirement already satisfied: ruff in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from -r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 14)) (0.13.1)
-    Requirement already satisfied: apache-sedona[db] in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from -r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 1)) (1.8.0)
-    Requirement already satisfied: mkdocstrings[python] in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from -r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 10)) (0.30.1)
-    Requirement already satisfied: attrs in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from apache-sedona[db]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 1)) (25.3.0)
-    Requirement already satisfied: shapely>=1.7.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from apache-sedona[db]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 1)) (2.1.1)
-    Requirement already satisfied: sedonadb[geopandas] in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from apache-sedona[db]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 1)) (0.1.0)
-    Requirement already satisfied: jupyter-console in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (6.6.3)
-    Requirement already satisfied: ipykernel in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (6.30.1)
-    Requirement already satisfied: ipywidgets in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (8.1.7)
-    Requirement already satisfied: async-lru>=1.0.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (2.0.5)
-    Requirement already satisfied: httpx<1,>=0.25.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (0.28.1)
-    Requirement already satisfied: jinja2>=3.0.3 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (3.1.6)
-    Requirement already satisfied: jupyter-core in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (5.8.1)
-    Requirement already satisfied: jupyter-lsp>=2.0.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (2.3.0)
-    Requirement already satisfied: jupyter-server<3,>=2.4.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (2.17.0)
-    Requirement already satisfied: jupyterlab-server<3,>=2.27.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (2.27.3)
-    Requirement already satisfied: notebook-shim>=0.2 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (0.2.4)
-    Requirement already satisfied: packaging in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (25.0)
-    Requirement already satisfied: setuptools>=41.1.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (80.9.0)
-    Requirement already satisfied: tornado>=6.2.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (6.5.2)
-    Requirement already satisfied: traitlets in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (5.14.3)
-    Requirement already satisfied: anyio in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from httpx<1,>=0.25.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (4.10.0)
-    Requirement already satisfied: certifi in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from httpx<1,>=0.25.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (2025.8.3)
-    Requirement already satisfied: httpcore==1.* in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from httpx<1,>=0.25.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (1.0.9)
-    Requirement already satisfied: idna in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from httpx<1,>=0.25.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (3.10)
-    Requirement already satisfied: h11>=0.16 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from httpcore==1.*->httpx<1,>=0.25.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (0.16.0)
-    Requirement already satisfied: argon2-cffi>=21.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (25.1.0)
-    Requirement already satisfied: jupyter-client>=7.4.4 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (8.6.3)
-    Requirement already satisfied: jupyter-events>=0.11.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (0.12.0)
-    Requirement already satisfied: jupyter-server-terminals>=0.4.4 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (0.5.3)
-    Requirement already satisfied: nbformat>=5.3.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (5.10.4)
-    Requirement already satisfied: prometheus-client>=0.9 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (0.23.1)
-    Requirement already satisfied: pyzmq>=24 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (27.1.0)
-    Requirement already satisfied: send2trash>=1.8.2 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (1.8.3)
-    Requirement already satisfied: terminado>=0.8.3 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (0.18.1)
-    Requirement already satisfied: websocket-client>=1.7 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (1.8.0)
-    Requirement already satisfied: babel>=2.10 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab-server<3,>=2.27.1->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (2.17.0)
-    Requirement already satisfied: json5>=0.9.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab-server<3,>=2.27.1->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (0.12.1)
-    Requirement already satisfied: jsonschema>=4.18.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab-server<3,>=2.27.1->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (4.25.1)
-    Requirement already satisfied: requests>=2.31 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyterlab-server<3,>=2.27.1->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (2.32.5)
-    Requirement already satisfied: importlib-metadata in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mike->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 4)) (8.7.0)
-    Requirement already satisfied: importlib-resources in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mike->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 4)) (6.5.2)
-    Requirement already satisfied: mkdocs>=1.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mike->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 4)) (1.6.1)
-    Requirement already satisfied: pyparsing>=3.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mike->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 4)) (3.2.4)
-    Requirement already satisfied: pyyaml>=5.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mike->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 4)) (6.0.2)
-    Requirement already satisfied: pyyaml-env-tag in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mike->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 4)) (1.1)
-    Requirement already satisfied: verspec in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mike->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 4)) (0.1.0)
-    Requirement already satisfied: gitpython>=3.1.44 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-git-revision-date-localized-plugin->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 5)) (3.1.45)
-    Requirement already satisfied: pytz>=2025.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-git-revision-date-localized-plugin->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 5)) (2025.2)
-    Requirement already satisfied: selectolax==0.3.29 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-glightbox->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 6)) (0.3.29)
-    Requirement already satisfied: hjson in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-macros-plugin->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 7)) (3.1.0)
-    Requirement already satisfied: pathspec in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-macros-plugin->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 7)) (0.12.1)
-    Requirement already satisfied: python-dateutil in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-macros-plugin->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 7)) (2.9.0.post0)
-    Requirement already satisfied: super-collections in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-macros-plugin->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 7)) (0.5.5)
-    Requirement already satisfied: termcolor in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-macros-plugin->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 7)) (3.1.0)
-    Requirement already satisfied: backrefs~=5.7.post1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-material->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 8)) (5.9)
-    Requirement already satisfied: click<8.2.2 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-material->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 8)) (8.2.1)
-    Requirement already satisfied: colorama~=0.4 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-material->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 8)) (0.4.6)
-    Requirement already satisfied: markdown~=3.2 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-material->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 8)) (3.9)
-    Requirement already satisfied: mkdocs-material-extensions~=1.3 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-material->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 8)) (1.3.1)
-    Requirement already satisfied: paginate~=0.5 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-material->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 8)) (0.5.7)
-    Requirement already satisfied: pygments~=2.16 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-material->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 8)) (2.19.2)
-    Requirement already satisfied: pymdown-extensions~=10.2 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-material->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 8)) (10.16.1)
-    Requirement already satisfied: MarkupSafe>=2.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jinja2>=3.0.3->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (3.0.2)
-    Requirement already satisfied: ghp-import>=1.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs>=1.0->mike->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 4)) (2.1.0)
-    Requirement already satisfied: mergedeep>=1.3.4 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs>=1.0->mike->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 4)) (1.3.4)
-    Requirement already satisfied: mkdocs-get-deps>=0.2.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs>=1.0->mike->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 4)) (0.2.0)
-    Requirement already satisfied: watchdog>=2.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs>=1.0->mike->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 4)) (6.0.0)
-    Requirement already satisfied: charset_normalizer<4,>=2 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from requests>=2.31->jupyterlab-server<3,>=2.27.1->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (3.4.3)
-    Requirement already satisfied: urllib3<3,>=1.21.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from requests>=2.31->jupyterlab-server<3,>=2.27.1->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (2.5.0)
-    Requirement already satisfied: jupytext<2,>1.13.8 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocs-jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 9)) (1.17.3)
-    Requirement already satisfied: beautifulsoup4 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from nbconvert->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 12)) (4.13.5)
-    Requirement already satisfied: bleach!=5.0.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from bleach[css]!=5.0.0->nbconvert->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 12)) (6.2.0)
-    Requirement already satisfied: defusedxml in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from nbconvert->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 12)) (0.7.1)
-    Requirement already satisfied: jupyterlab-pygments in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from nbconvert->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 12)) (0.3.0)
-    Requirement already satisfied: mistune<4,>=2.0.3 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from nbconvert->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 12)) (3.1.4)
-    Requirement already satisfied: nbclient>=0.5.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from nbconvert->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 12)) (0.10.2)
-    Requirement already satisfied: pandocfilters>=1.4.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from nbconvert->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 12)) (1.5.1)
-    Requirement already satisfied: appnope>=0.1.2 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (0.1.4)
-    Requirement already satisfied: comm>=0.1.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (0.2.3)
-    Requirement already satisfied: debugpy>=1.6.5 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (1.8.17)
-    Requirement already satisfied: ipython>=7.23.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (9.5.0)
-    Requirement already satisfied: matplotlib-inline>=0.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (0.1.7)
-    Requirement already satisfied: nest-asyncio>=1.4 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (1.6.0)
-    Requirement already satisfied: psutil>=5.7 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (7.0.0)
-    Requirement already satisfied: markdown-it-py>=1.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupytext<2,>1.13.8->mkdocs-jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 9)) (4.0.0)
-    Requirement already satisfied: mdit-py-plugins in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupytext<2,>1.13.8->mkdocs-jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 9)) (0.5.0)
-    Requirement already satisfied: mkdocs-autorefs>=1.4 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocstrings[python]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 10)) (1.4.3)
-    Requirement already satisfied: mkdocstrings-python>=1.16.2 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocstrings[python]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 10)) (1.18.2)
-    Requirement already satisfied: sniffio>=1.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from anyio->httpx<1,>=0.25.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (1.3.1)
-    Requirement already satisfied: argon2-cffi-bindings in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from argon2-cffi>=21.1->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (25.1.0)
-    Requirement already satisfied: webencodings in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from bleach!=5.0.0->bleach[css]!=5.0.0->nbconvert->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 12)) (0.5.1)
-    Requirement already satisfied: tinycss2<1.5,>=1.1.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from bleach[css]!=5.0.0->nbconvert->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 12)) (1.4.0)
-    Requirement already satisfied: gitdb<5,>=4.0.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from gitpython>=3.1.44->mkdocs-git-revision-date-localized-plugin->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 5)) (4.0.12)
-    Requirement already satisfied: smmap<6,>=3.0.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from gitdb<5,>=4.0.1->gitpython>=3.1.44->mkdocs-git-revision-date-localized-plugin->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 5)) (5.0.2)
-    Requirement already satisfied: decorator in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from ipython>=7.23.1->ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (5.2.1)
-    Requirement already satisfied: ipython-pygments-lexers in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from ipython>=7.23.1->ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (1.1.1)
-    Requirement already satisfied: jedi>=0.16 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from ipython>=7.23.1->ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (0.19.2)
-    Requirement already satisfied: pexpect>4.3 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from ipython>=7.23.1->ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (4.9.0)
-    Requirement already satisfied: prompt_toolkit<3.1.0,>=3.0.41 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from ipython>=7.23.1->ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (3.0.52)
-    Requirement already satisfied: stack_data in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from ipython>=7.23.1->ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (0.6.3)
-    Requirement already satisfied: wcwidth in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from prompt_toolkit<3.1.0,>=3.0.41->ipython>=7.23.1->ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (0.2.13)
-    Requirement already satisfied: parso<0.9.0,>=0.8.4 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jedi>=0.16->ipython>=7.23.1->ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (0.8.5)
-    Requirement already satisfied: jsonschema-specifications>=2023.03.6 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jsonschema>=4.18.0->jupyterlab-server<3,>=2.27.1->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (2025.9.1)
-    Requirement already satisfied: referencing>=0.28.4 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jsonschema>=4.18.0->jupyterlab-server<3,>=2.27.1->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (0.36.2)
-    Requirement already satisfied: rpds-py>=0.7.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jsonschema>=4.18.0->jupyterlab-server<3,>=2.27.1->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (0.27.1)
-    Requirement already satisfied: platformdirs>=2.5 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter-core->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (4.4.0)
-    Requirement already satisfied: python-json-logger>=2.0.4 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (3.3.0)
-    Requirement already satisfied: rfc3339-validator in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (0.1.4)
-    Requirement already satisfied: rfc3986-validator>=0.1.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (0.1.1)
-    Requirement already satisfied: fqdn in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (1.5.1)
-    Requirement already satisfied: isoduration in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (20.11.0)
-    Requirement already satisfied: jsonpointer>1.13 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (3.0.0)
-    Requirement already satisfied: rfc3987-syntax>=1.1.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (1.1.0)
-    Requirement already satisfied: uri-template in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (1.3.0)
-    Requirement already satisfied: webcolors>=24.6.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (24.11.1)
-    Requirement already satisfied: mdurl~=0.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from markdown-it-py>=1.0->jupytext<2,>1.13.8->mkdocs-jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 9)) (0.1.2)
-    Requirement already satisfied: griffe>=1.13 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from mkdocstrings-python>=1.16.2->mkdocstrings[python]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 10)) (1.14.0)
-    Requirement already satisfied: fastjsonschema>=2.15 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from nbformat>=5.3.0->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (2.21.2)
-    Requirement already satisfied: ptyprocess>=0.5 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from pexpect>4.3->ipython>=7.23.1->ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (0.7.0)
-    Requirement already satisfied: six>=1.5 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from python-dateutil->mkdocs-macros-plugin->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 7)) (1.17.0)
-    Requirement already satisfied: lark>=1.2.2 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from rfc3987-syntax>=1.1.0->jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (1.3.0)
-    Requirement already satisfied: numpy>=1.21 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from shapely>=1.7.0->apache-sedona[db]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 1)) (2.3.3)
-    Requirement already satisfied: cffi>=1.0.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from argon2-cffi-bindings->argon2-cffi>=21.1->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (2.0.0)
-    Requirement already satisfied: pycparser in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from cffi>=1.0.1->argon2-cffi-bindings->argon2-cffi>=21.1->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (2.23)
-    Requirement already satisfied: soupsieve>1.2 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from beautifulsoup4->nbconvert->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 12)) (2.8)
-    Requirement already satisfied: typing-extensions>=4.0.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from beautifulsoup4->nbconvert->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 12)) (4.15.0)
-    Requirement already satisfied: zipp>=3.20 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from importlib-metadata->mike->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 4)) (3.23.0)
-    Requirement already satisfied: widgetsnbextension~=4.0.14 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from ipywidgets->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (4.0.14)
-    Requirement already satisfied: jupyterlab_widgets~=3.0.15 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from ipywidgets->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (3.0.15)
-    Requirement already satisfied: arrow>=0.15.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from isoduration->jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (1.3.0)
-    Requirement already satisfied: types-python-dateutil>=2.8.10 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from arrow>=0.15.0->isoduration->jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->jupyterlab->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 3)) (2.9.0.20250822)
-    Requirement already satisfied: adbc-driver-manager[dbapi] in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from sedonadb[geopandas]; extra == "db"->apache-sedona[db]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 1)) (1.8.0)
-    Requirement already satisfied: geoarrow-pyarrow in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from sedonadb[geopandas]; extra == "db"->apache-sedona[db]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 1)) (0.2.0)
-    Requirement already satisfied: geopandas in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from sedonadb[geopandas]; extra == "db"->apache-sedona[db]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 1)) (1.1.1)
-    Requirement already satisfied: pandas in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from adbc-driver-manager[dbapi]; extra == "geopandas"->sedonadb[geopandas]; extra == "db"->apache-sedona[db]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 1)) (2.3.2)
-    Requirement already satisfied: pyarrow>=14.0.1 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from adbc-driver-manager[dbapi]; extra == "geopandas"->sedonadb[geopandas]; extra == "db"->apache-sedona[db]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 1)) (21.0.0)
-    Requirement already satisfied: geoarrow-types>=0.3.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from geoarrow-pyarrow->sedonadb[geopandas]; extra == "db"->apache-sedona[db]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 1)) (0.3.0)
-    Requirement already satisfied: geoarrow-c>=0.3.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from geoarrow-pyarrow->sedonadb[geopandas]; extra == "db"->apache-sedona[db]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 1)) (0.3.0)
-    Requirement already satisfied: pyogrio>=0.7.2 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from geopandas->sedonadb[geopandas]; extra == "db"->apache-sedona[db]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 1)) (0.11.1)
-    Requirement already satisfied: tzdata>=2022.7 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from pandas->adbc-driver-manager[dbapi]; extra == "geopandas"->sedonadb[geopandas]; extra == "db"->apache-sedona[db]->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 1)) (2025.2)
-    Requirement already satisfied: executing>=1.2.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from stack_data->ipython>=7.23.1->ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (2.2.1)
-    Requirement already satisfied: asttokens>=2.1.0 in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from stack_data->ipython>=7.23.1->ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (3.0.0)
-    Requirement already satisfied: pure-eval in /Users/kelly/sedona-spatialbench/.venv/lib/python3.13/site-packages (from stack_data->ipython>=7.23.1->ipykernel->jupyter->-r /Users/kelly/sedona-spatialbench/docs/requirements.txt (line 2)) (0.2.3)
+    ...
+    ...
     Note: you may need to restart the kernel to use updated packages.
 
 
-Additionally, install the SpatialBench CLI and synthetic data generator on your machine:
+Additionally, install the SpatialBench CLI and generate the synthetic data on your machine:
 
-    ```
-    # SpatialBench CLI
-    cargo install --path ./spatialbench-cli
-    ```
+```
+# SpatialBench CLI
+cargo install --path ./spatialbench-cli
+# Generate the benchmarking data to the sf1-parquet directory
+spatialbench-cli -s 1 --format=parquet --output-dir sf1-parquet
+```
 
 
 ```python
@@ -382,7 +232,7 @@ ORDER BY trip_count DESC, z.z_zonekey ASC
 
 ## Q5: Monthly travel patterns for repeat customers (convex hull of dropoff locations)
 
-**Real-life scenario:** Analyze the geographic spread of travel patterns for frequent customers to understand their mobility behavior.  
+**Real-life scenario:** Analyze the geographic spread of travel patterns for frequent customers to understand their mobility behavior.
 
 This query analyzes the monthly travel patterns of frequent customers by measuring how much geographic area they cover with their trips. For each customer who took more than five trips in a month, it calculates the size of the "travel hull" - the area enclosed by connecting all their dropoff locations that month. The results reveal which customers have the most expansive travel patterns, helping to identify power users who cover large geographic areas versus those who stick to smaller, local areas.
 
@@ -417,11 +267,11 @@ ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC
     │ c_custkey ┆    customer_name   ┆     pickup_month    ┆ monthly_travel_hul ┆ dropoff_count │
     │   int64   ┆        utf8        ┆      timestamp      ┆       l_area…      ┆     int64     │
     ╞═══════════╪════════════════════╪═════════════════════╪════════════════════╪═══════════════╡
-    │     12049 ┆ Customer#000012049 ┆ 1997-10-01T00:00:00 ┆  22290.72518508209 ┆            18 │
+    │     25975 ┆ Customer#000025975 ┆ 1992-02-01T00:00:00 ┆ 34941.303419053635 ┆            10 │
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │     12091 ┆ Customer#000012091 ┆ 1997-08-01T00:00:00 ┆ 18901.827089935185 ┆            18 │
+    │     12061 ┆ Customer#000012061 ┆ 1997-03-01T00:00:00 ┆  34607.53871953154 ┆            14 │
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │     13231 ┆ Customer#000013231 ┆ 1994-09-01T00:00:00 ┆ 24930.673726244015 ┆            18 │
+    │     21418 ┆ Customer#000021418 ┆ 1993-08-01T00:00:00 ┆  34465.32323910264 ┆             9 │
     └───────────┴────────────────────┴─────────────────────┴────────────────────┴───────────────┘
 
 
@@ -467,11 +317,11 @@ ORDER BY total_pickups DESC, z.z_zonekey ASC
     │ z_zonekey ┆      z_name     ┆ total_pickups ┆ avg_distance ┆            avg_duration            │
     │   int64   ┆       utf8      ┆     int64     ┆  decimal128  ┆              duration              │
     ╞═══════════╪═════════════════╪═══════════════╪══════════════╪════════════════════════════════════╡
-    │     30084 ┆ Coconino County ┆           541 ┆  0.000085323 ┆ 0 days 1 hours 45 mins 16.591 secs │
+    │     30084 ┆ Coconino County ┆           541 ┆  0.000030406 ┆ 0 days 1 hours 45 mins 16.591 secs │
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │     30083 ┆ Yavapai County  ┆           292 ┆  0.000076643 ┆ 0 days 1 hours 36 mins 43.647 secs │
+    │     30083 ┆ Yavapai County  ┆           292 ┆  0.000027157 ┆ 0 days 1 hours 36 mins 43.647 secs │
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │     29488 ┆ Gila County     ┆            39 ┆  0.000065641 ┆ 0 days 1 hours 16 mins 59.769 secs │
+    │     29488 ┆ Gila County     ┆            39 ┆  0.000021282 ┆ 0 days 1 hours 16 mins 59.769 secs │
     └───────────┴─────────────────┴───────────────┴──────────────┴────────────────────────────────────┘
 
 
@@ -520,11 +370,11 @@ ORDER BY
     │ t_tripkey ┆ reported_distance_m ┆   line_distance_m  ┆     detour_ratio     │
     │   int64   ┆      decimal128     ┆       float64      ┆        float64       │
     ╞═══════════╪═════════════════════╪════════════════════╪══════════════════════╡
-    │   4688563 ┆             0.00010 ┆ 11111.126052681648 ┆  8.99998789734414e-9 │
+    │   4688563 ┆             0.00010 ┆ 11111.114941555596 ┆ 8.999996897341038e-9 │
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │   2380123 ┆             0.00010 ┆ 11111.126095065882 ┆ 8.999987863013003e-9 │
+    │   2380123 ┆             0.00010 ┆ 11111.114983939786 ┆ 8.999996863009868e-9 │
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │   3077131 ┆             0.00010 ┆ 11111.126138581423 ┆  8.99998782776551e-9 │
+    │   3077131 ┆             0.00010 ┆ 11111.115027455284 ┆ 8.999996827762339e-9 │
     └───────────┴─────────────────────┴────────────────────┴──────────────────────┘
 
 
@@ -749,14 +599,14 @@ ORDER BY t.t_tripkey ASC, distance_to_building ASC, b.b_buildingkey ASC
 """).show(3)
 ```
 
-    ┌───────────┬───────────────────────────────┬───────────────┬───────────────┬──────────────────────┐
-    │ t_tripkey ┆          t_pickuploc          ┆ b_buildingkey ┆ building_name ┆ distance_to_building │
-    │   int64   ┆             binary            ┆     int64     ┆      utf8     ┆        float64       │
-    ╞═══════════╪═══════════════════════════════╪═══════════════╪═══════════════╪══════════════════════╡
-    │   5854027 ┆ 01010000001afa27b85825504001… ┆            79 ┆ gainsboro     ┆                  0.0 │
-    ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │   3326828 ┆ 01010000001bfcc5b8b7a95d4083… ┆           466 ┆ deep          ┆                  0.0 │
-    ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │   1239844 ┆ 0101000000ce471770d6ce2a40f9… ┆           618 ┆ ivory         ┆                  0.0 │
-    └───────────┴───────────────────────────────┴───────────────┴───────────────┴──────────────────────┘
+    ┌───────────┬─────────────────────────────────┬───────────────┬───────────────┬────────────────────┐
+    │ t_tripkey ┆           t_pickuploc           ┆ b_buildingkey ┆ building_name ┆ distance_to_buildi │
+    │   int64   ┆              binary             ┆     int64     ┆      utf8     ┆         ng…        │
+    ╞═══════════╪═════════════════════════════════╪═══════════════╪═══════════════╪════════════════════╡
+    │         1 ┆ 01010000009f3c318dd43735405930… ┆         15870 ┆ purple        ┆  0.984633987957188 │
+    ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │         1 ┆ 01010000009f3c318dd43735405930… ┆          6800 ┆ ghost         ┆  1.205725156670704 │
+    ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │         1 ┆ 01010000009f3c318dd43735405930… ┆          8384 ┆ lavender      ┆ 1.4195012994942622 │
+    └───────────┴─────────────────────────────────┴───────────────┴───────────────┴────────────────────┘
 
