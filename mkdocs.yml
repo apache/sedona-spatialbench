@@ -39,17 +39,14 @@ nav:
       - Home: index.md
       # Use the alias (*) to insert the Get Involved links here
       - <<: *community_links
-
   - Methodology:
       - overview-methodology.md
       # Use the alias (*) to insert the Get Involved links here
       - <<: *community_links
-
   - Data Generation:
       - datasets-generators.md
       # Use the alias (*) to insert the Get Involved links here
       - <<: *community_links
-
   - SpatialBench Queries:
       - queries.md
       # Use the alias (*) to insert the Get Involved links here
@@ -58,8 +55,11 @@ nav:
       - contributors-guide.md
       # Use the alias (*) to insert the Get Involved links here
       - <<: *community_links
+  - Single node benchmarks:
+      - single-node-benchmarks.md
+      # Use the alias (*) to insert the Get Involved links here
+      - <<: *community_links
   - Sedona Homepage: "https://sedona.apache.org"
-
 repo_url: https://github.com/apache/sedona-spatialbench/
 edit_uri: https://github.com/apache/sedona-spatialbench/blob/main/docs/
 repo_name: apache/sedona-spatialbench
