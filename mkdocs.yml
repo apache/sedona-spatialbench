@@ -15,15 +15,25 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# Define the anchor at the top so it's available for the nav section
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: 'https://github.com/apache/spatialbench'
+    - icon: fontawesome/brands/twitter
+      link: 'https://twitter.com/ApacheSedona'
+    - icon: fontawesome/brands/discord
+      link: 'https://discord.gg/9A3k5dEBsY'
+  community_links: &community_links
+    - Get Involved:
+        - Sedona OSS Blog: "https://sedona.apache.org/latest/blog/"
+        - Community: "https://sedona.apache.org/latest/community/contact/"
+        - Apache Software Foundation: "https://sedona.apache.org/latest/asf/asf/"
+        - Sedona Homepage: "https://sedona.apache.org/latest/"
+
 site_name: SpatialBench
 site_description: SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems
 # Define a reusable block of links with a YAML anchor (&)
-.community-links: &community_links
-  - Get Involved:
-      - Community: "https://sedona.apache.org/latest/community/contact/"
-      - Apache Software Foundation: "https://sedona.apache.org/latest/asf/asf/"
-      - Sedona Homepage: "https://sedona.apache.org/latest/"
-      - Sedona OSS Blog: "https://sedona.apache.org/latest/blog/"
 
 nav:
   # This becomes the 'SpatialBench' tab
@@ -47,6 +57,10 @@ nav:
   # This becomes the 'Run the SpatialBench Queries' tab
   - SpatialBench Queries:
       - queries.md
+      # Use the alias (*) to insert the links here
+      - <<: *community_links
+  - Contributors Guide:
+      - contributors-guide.md
       # Use the alias (*) to insert the links here
       - <<: *community_links
   - Sedona Homepage: "https://sedona.apache.org/latest/"
@@ -80,15 +94,7 @@ theme:
     - navigation.sections
     - navigation.tabs
     - navigation.tabs.sticky
-extra:
-  social:
-    - icon: fontawesome/brands/github
-      link: 'https://github.com/apache/spatialbench'
-    - icon: fontawesome/brands/twitter
-      link: 'https://twitter.com/ApacheSedona'
-    - icon: fontawesome/brands/discord
-      link: 'https://discord.gg/9A3k5dEBsY'
-# (Removed Sedona-specific version variables; no replacement needed)
+
 extra_css:
   - stylesheets/extra.css
 
