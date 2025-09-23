@@ -1,14 +1,12 @@
 # Contributing to SpatialBench
 
-We want to make contributing to this project as easy and transparent as
-possible, if you have suggestions to improve the contributions guide feel
+We want to make contributing to SpatialBench as easy and transparent as
+possible. If you have suggestions to improve this contribution guide, feel
 free to open an issue.
 
 ## Our Development Process
 
-We follow a very standard development process, start by picking an existing issue or opening a new
-one to address a problem you've found. Letting us know which issue you are working on allows us to
-better track progress.
+To contribute, please find an existing issue or open a new one. Claiming the issue you are working on helps us better track progress.
 
 ## Pull Requests
 
@@ -16,24 +14,22 @@ We actively welcome your pull requests.
 
 1. Fork the repo and create your branch from `main`.
 2. If you've added code that should be tested, add tests.
-3. If you've changed APIs, update the documentation.
+3. If you've changed APIs, update the related documentation.
 4. Ensure the standard tests and conformance tests are passing.
-5. Make sure your code follows Rust best practices, address any linting issues clippy might find.
-6. Open your pull request and wait for a review and approval.book.com/cla>
+5. Ensure your code follows Rust best practices and addresses all lints from clippy.
+6. Open your pull request and wait for a review and approval.
 
-## Issues
+## Filing Issues
 
-When opening a new issue try and follow the issue template, there are no specific
-requirements with regards to the overall format but we do like to have as much
-details as possible and even better reproducible examples.
+When opening a new issue, please follow the issue template and provide as many details
+as possible, including a reproducible example if applicable.
 
 ## Coding Style
 
-Prefer following standard Rust guidelines with regards to formatting as for coding
-style, [Effective Rust](https://www.lurklurk.org/effective-rust/title-page.html) is
-a good resource for idiomatic code.
+Follow standard Rust formatting guidelines. For idiomatic code
+style, consult [Effective Rust](https://www.lurklurk.org/effective-rust/title-page.html).
 
 ## License
 
 By contributing to SpatialBench, you agree that your contributions will be licensed
-under the LICENSE file in the root directory of this source tree.
+under the `LICENSE` file in the root directory of this source tree.
