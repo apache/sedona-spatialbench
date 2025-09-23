@@ -17,15 +17,38 @@
 
 site_name: SpatialBench
 site_description: SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems
+# Define a reusable block of links with a YAML anchor (&)
+x-community-links: &community_links
+  - Get Involved:
+      - Community: "https://sedona.apache.org/latest/community/contact/"
+      - Apache Software Foundation: "https://sedona.apache.org/latest/asf/asf/"
+      - Sedona Homepage: "https://sedona.apache.org/latest/"
+      - Sedona OSS Blog: "https://sedona.apache.org/latest/blog/"
+
 nav:
-  - Home:
-    - SpatialBench: index.md
-    - Overview and Methodology: overview-methodology.md
-    - Datasets and Generators: datasets-generators.md
-    - Run the SpatialBench Queries: queries.md
-  - Blog: "https://sedona.apache.org/latest/blog/"
-  - Community: "https://sedona.apache.org/latest/community/contact/"
-  - Apache Software Foundation: "https://sedona.apache.org/latest/asf/asf/"
+  # This becomes the 'SpatialBench' tab
+  - SpatialBench:
+      - Home: index.md
+      # Use the alias (*) to insert the links here
+      - <<: *community_links
+
+  # This becomes the 'Overview and Methodology' tab
+  - Methodology:
+      - overview-methodology.md
+      # Use the alias (*) to insert the links here
+      - <<: *community_links
+
+  # This becomes the 'Datasets and Generators' tab
+  - Data Generation:
+      - datasets-generators.md
+      # Use the alias (*) to insert the links here
+      - <<: *community_links
+
+  # This becomes the 'Run the SpatialBench Queries' tab
+  - SpatialBench Queries:
+      - queries.md
+      # Use the alias (*) to insert the links here
+      - <<: *community_links
   - Sedona Homepage: "https://sedona.apache.org/latest/"
 
 repo_url: https://github.com/apache/sedona-spatialbench/

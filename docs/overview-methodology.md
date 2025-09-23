@@ -1,5 +1,5 @@
 ---
-title: SpatialBench Overview and Methodology
+title: SpatialBench Methodology
 ---
 
 <!---
@@ -18,8 +18,6 @@ title: SpatialBench Overview and Methodology
   specific language governing permissions and limitations
   under the License.
 -->
-
-# SpatialBench Overview and Methodology
 
 SpatialBench is an open benchmark suite of representative spatial queries designed to evaluate the performance of different engines at multiple scale factors.
 
