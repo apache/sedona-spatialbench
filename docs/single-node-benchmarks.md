@@ -107,7 +107,7 @@ The repository has an issue tracker where you can file bug reports or suggest co
 
 ## Raw Benchmark Performance Numbers
 
-The following tables present the recorded benchmark results in full detail.
+The following tables present the benchmark results in detail. All times are in seconds. ERROR indicates that the software failed to complete the query due to an exception (e.g., out-of-memory). TIMEOUT indicates that the query exceeded 1200 seconds without returning results.
 
 === "Scale Factor = 1"
 
