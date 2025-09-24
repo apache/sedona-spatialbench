@@ -96,19 +96,11 @@ This distribution produces realistic multi-scale patterns: large cities with man
 ## References
 
 - **Spider distributions (Uniform, Normal, Bit, Sierpinski, Diagonal):**
-
-  - Puloma Katiyar, Tin Vu, Sara Migliorini, Alberto Belussi, Ahmed Eldawy. *SpiderWeb: A Spatial Data Generator on the Web*. [ACM SIGSPATIAL 2020](https://dl.acm.org/doi/10.1145/3397536.3422351), Seattle, WA.
-
+     - Puloma Katiyar, Tin Vu, Sara Migliorini, Alberto Belussi, Ahmed Eldawy. *SpiderWeb: A Spatial Data Generator on the Web*. [ACM SIGSPATIAL 2020](https://dl.acm.org/doi/10.1145/3397536.3422351), Seattle, WA.
 - **Thomas / Neyman–Scott cluster processes:**
-
-  - Thomas, M. (1949). *A Generalization of Poisson’s Binomial Limit For use in Ecology*. [*Biometrika*, *36*(1/2)](https://doi.org/10.2307/2332526), 18–25.
-
-  - Jerzy Neyman, Elizabeth L. Scott, *Statistical Approach to Problems of Cosmology*, [*Journal of the Royal Statistical Society: Series B (Methodological)*, Volume 20, Issue 1, January 1958](https://doi.org/10.1111/j.2517-6161.1958.tb00272.x), Pages 1–29 
-    
+     - Thomas, M. (1949). *A Generalization of Poisson’s Binomial Limit For use in Ecology*. [*Biometrika*, *36*(1/2)](https://doi.org/10.2307/2332526), 18–25.
+- Jerzy Neyman, Elizabeth L. Scott, *Statistical Approach to Problems of Cosmology*, [*Journal of the Royal Statistical Society: Series B (Methodological)*, Volume 20, Issue 1, January 1958](https://doi.org/10.1111/j.2517-6161.1958.tb00272.x), Pages 1–29   
 - **Point process theory:**
-
-  - Illian, J., Penttinen, A., Stoyan, H., & Stoyan, D. (2008). *Statistical Analysis and Modelling of Spatial Point Patterns*. Wiley.
-
+     - Illian, J., Penttinen, A., Stoyan, H., & Stoyan, D. (2008). *Statistical Analysis and Modelling of Spatial Point Patterns*. Wiley.
 - **Fractal generation (Sierpinski):**
-
-  - Barnsley, M. F., & Demko, S. (1985). *Iterated function systems and the global construction of fractals*. [Proceedings of the Royal Society of London. Series A, 399(1817)](https://doi.org/10.1098/rspa.1985.0057), 243–275.
+     - Barnsley, M. F., & Demko, S. (1985). *Iterated function systems and the global construction of fractals*. [Proceedings of the Royal Society of London. Series A, 399(1817)](https://doi.org/10.1098/rspa.1985.0057), 243–275.
