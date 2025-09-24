@@ -95,7 +95,7 @@ For more realism, you can choose from a variety of spatial distributions when ge
 
 These options let you tailor the spatial skew to your benchmarking needs.  
 
-See the [SpatialBench Distributions](spatialbench-distributions.md) page to learn more about the supported spatial distributions, the parameters that control them, and how they impact the data.
+See the [SpatialBench Data Distributions](spatialbench-distributions.md) page to learn more about the supported spatial distributions, the parameters that control them, and how they impact the data.
 
 
 ## Data generators
