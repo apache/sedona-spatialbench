@@ -77,17 +77,17 @@ Since GeoPandas executes in a single thread and lacks a query optimizer, any par
 
 ## Result analysis
 
-### Spatial filters (Q1–Q3, Q6)
+### Spatial filters and basic operations (Q1–Q6)
 
-DuckDB and SedonaDB achieve similar low-latency performance at both SF 1 and SF 10, while GeoPandas struggles to keep up at larger scales. The main reasons are the lack of a query optimizer to choose efficient execution strategies and the absence of multi-core parallelism. By contrast, DuckDB and SedonaDB leverage columnar data layouts, vectorized execution, multi-core parallelism, and query optimization to achieve strong performance.
+DuckDB and SedonaDB achieve similar low-latency performance at both SF 1 and SF 10, while GeoPandas struggles to keep up at larger scales. The main reasons are the lack of a query optimizer to choose efficient execution strategies and the absence of multi-core parallelism. By contrast, DuckDB and SedonaDB leverage columnar data layouts, vectorized execution, multi-core parallelism, and query optimization to achieve strong performance. However, SedonaDB faces challenges with spatial aggregation (Q5), where DuckDB performs significantly better. This is a known issue in SedonaDB and is planned for improvement.
 
-### Aggregation with spatial joins (Q4, Q10, Q11)
+### Geometric computations (Q7–Q9)
+
+SedonaDB is especially effective on intersection/IoU (Q9), showing substantial efficiency improvements. These queries focus on geometric operations like area calculations, distance computations, and spatial intersections.
+
+### Complex spatial joins and aggregations (Q10–Q11)
 
 SedonaDB consistently delivers strong results on heavier joins, particularly Q10 and Q11, aided by its adaptive spatial join strategy that picks the best algorithm per partition based on spatial statistics. DuckDB handles some join queries well but encounters scaling issues in certain cases, while GeoPandas completes SF 1 but not SF 10.
-
-### Geometric computations (Q5, Q7, Q9)
-
-SedonaDB is especially effective on intersection/IoU (Q9), showing substantial efficiency improvements, while Q5 (convex hull aggregation) highlights areas where DuckDB currently performs faster. SedonaDB's overhead in geometry copying in spatial aggregation is a known bottleneck and is planned for improvement.
 
 ### Nearest-neighbor joins (Q12)
 
@@ -95,7 +95,7 @@ SedonaDB completes KNN joins at both SF 1 and SF 10, thanks to its native operat
 
 ### Overall
 
-SedonaDB demonstrates balanced strengths across all queries and successfully scales to SF 10. DuckDB delivers solid performance on simpler filters and certain geometric computations, but has room to improve on complex joins and KNN queries. GeoPandas, while not scaling as effectively in this benchmark, remains a widely used tool in the Python ecosystem; however, it currently requires manual optimization and parallelization to be deployed at scale.
+SedonaDB demonstrates balanced performance across all query types and scales effectively to SF 10. DuckDB excels at spatial filters and some geometric operations but faces challenges with complex joins and KNN queries. GeoPandas, while popular in the Python ecosystem, requires manual optimization and parallelization to handle larger datasets effectively.
 
 ## Benchmark code
 
@@ -111,38 +111,38 @@ The following tables present the recorded benchmark results in full detail.
 
 === "Scale Factor = 1"
 
-    | Query | DuckDB | SedonaDB | GeoPandas |
-    |-------|--------|----------|-----------|
-    | q1    | 0.96   | 0.66     | 12.78     |
-    | q2    | 9.95   | 8.07     | 20.74     |
-    | q3    | 1.17   | 0.80     | 13.59     |
-    | q4    | 9.83   | 8.41     | 25.24     |
-    | q5    | 1.80   | 5.10     | 47.08     |
-    | q6    | 9.36   | 8.59     | 24.43     |
-    | q7    | 1.82   | 1.66     | 137.00    |
-    | q8    | 1.08   | 1.10     | 16.08     |
-    | q9    | 50.15  | 0.23     | 0.28      |
-    | q10   | 207.84 | 18.79    | 46.13     |
-    | q11   | TIMEOUT| 32.98    | 51.01     |
-    | q12   | ERROR  | 14.55    | TIMEOUT   |
+    | Query | SedonaDB | DuckDB | GeoPandas |
+    |-------|----------|--------|-----------|
+    | q1    | 0.66     | 0.96   | 12.78     |
+    | q2    | 8.07     | 9.95   | 20.74     |
+    | q3    | 0.80     | 1.17   | 13.59     |
+    | q4    | 8.41     | 9.83   | 25.24     |
+    | q5    | 5.10     | 1.80   | 47.08     |
+    | q6    | 8.59     | 9.36   | 24.43     |
+    | q7    | 1.66     | 1.82   | 137.00    |
+    | q8    | 1.10     | 1.08   | 16.08     |
+    | q9    | 0.23     | 50.15  | 0.28      |
+    | q10   | 18.79    | 207.84 | 46.13     |
+    | q11   | 32.98    | TIMEOUT| 51.01     |
+    | q12   | 14.55    | ERROR  | TIMEOUT   |
+
 
 === "Scale Factor = 10"
 
-    | Query | DuckDB | SedonaDB | GeoPandas |
-    |-------|--------|----------|-----------|
-    | q1    | 4.58   | 3.04     | ERROR     |
-    | q2    | 8.26   | 8.89     | ERROR     |
-    | q3    | 5.17   | 4.09     | TIMEOUT   |
-    | q4    | 8.51   | 7.52     | ERROR     |
-    | q5    | 14.40  | 50.81    | ERROR     |
-    | q6    | 10.67  | 9.11     | ERROR     |
-    | q7    | 14.03  | 14.44    | ERROR     |
-    | q8    | 7.57   | 7.24     | TIMEOUT   |
-    | q9    | 942.98 | 0.38     | 0.49      |
-    | q10   | ERROR  | 42.02    | ERROR     |
-    | q11   | ERROR  | 97.52    | ERROR     |
-    | q12   | ERROR  | 145.66   | TIMEOUT   |
-
+    | Query | SedonaDB | DuckDB | GeoPandas |
+    |-------|----------|--------|-----------|
+    | q1    | 3.04     | 4.58   | ERROR     |
+    | q2    | 8.89     | 8.26   | ERROR     |
+    | q3    | 4.09     | 5.17   | TIMEOUT   |
+    | q4    | 7.52     | 8.51   | ERROR     |
+    | q5    | 50.81    | 14.40  | ERROR     |
+    | q6    | 9.11     | 10.67  | ERROR     |
+    | q7    | 14.44    | 14.03  | ERROR     |
+    | q8    | 7.24     | 7.57   | TIMEOUT   |
+    | q9    | 0.38     | 942.98 | 0.49      |
+    | q10   | 42.02    | ERROR  | ERROR     |
+    | q11   | 97.52    | ERROR  | ERROR     |
+    | q12   | 145.66   | ERROR  | TIMEOUT   |
 
 ## Future work
 
