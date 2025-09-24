@@ -21,20 +21,17 @@ title: SpatialBench Single Node Benchmarks
 
 This page presents the SpatialBench single-node benchmark results for SedonaDB, DuckDB, and GeoPandas. The benchmark was conducted on September 22, 2025, using SpatialBench v0.1.0 pre-release (commit 9094be8 on the main branch).
 
-Here are the results for v0.1 of the SpatialBench queries for scale factor 1 (SF1):
+Here are the results for v0.1 of the SpatialBench queries for scale factor 1 (SF1) and scale factor 10 (SF10):
 
-![Scale Factor 1 benchmark results](image/sf1.png)
-
-Here are the results for SF10:
-
-![Scale Factor 10 benchmark results](image/sf10.png)
+![Scale Factor 1 benchmark results](image/sf1.png){ width="400" }
+![Scale Factor 10 benchmark results](image/sf10.png){ width="400" }
+{: .grid }
 
 The remainder of this document summarizes the hardware and software versions, query methodologies for specific engines, and provides information on where to find the benchmark code.
 
 ## Hardware
 
 This benchmark was run on an AWS EC2 m7i.2xlarge instance, which has 8 CPUs and 32 GB of RAM. We encourage you to try running SpatialBench on different hardware configurations and share your results with the community.
-
 
 ## Benchmark settings
 
