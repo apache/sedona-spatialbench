@@ -1,5 +1,5 @@
 ---
-title: SpatialBench Distributions
+title: SpatialBench Data Distributions
 ---
 
 <!---
