@@ -19,44 +19,48 @@ title: SpatialBench
   under the License.
 -->
 
-SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems.
+SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems, making it easy to run tests on a realistic dataset with any query engine.
 
-SpatialBench makes it easy to run spatial benchmarks on a realistic dataset with any query engine.
-
-The methodology is unbiased and the benchmarks in any environment to compare relative performance between runtimes.
+The methodology is unbiased, allowing you to run the benchmarks in any environment to compare the relative performance between runtimes.
 
 ## Why SpatialBench
 
-SpatialBench is a geospatial benchmark for testing and optimizing spatial analytical query performance in database systems. Inspired by the SSB and NYC taxi data, it combines realistic urban mobility scenarios with a star schema extended with spatial attributes like pickup/dropoff points, zones, and building footprints.
+SpatialBench was created because standard database benchmarks don't adequately test the unique demands of geospatial queries. SpatialBench provides an open-source, standardized, and scalable framework designed specifically for geospatial analytics.
+
+Inspired by the Star Schema Benchmark (SSB) and NYC taxi data, SpatialBench combines realistic urban mobility scenarios
+with a star schema extended with spatial attributes like pickup/dropoff points, zones, and building footprints.
 
 This design enables evaluation of the following geospatial operations:
 
-* spatial joins
-* distance queries
-* aggregations
-* point-in-polygon analysis
+* Spatial joins
+* Distance queries
+* Aggregations
+* Point-in-polygon analysis
 
-Let’s dive into the advantages of SpatialBench.
+Let's dive into the advantages of SpatialBench.
 
-## Key advantages
+## Key Features
 
-* Uses spatial datasets with geometry columns.
-* Includes queries with different spatial predicates.
-* Easily reproducible results.
-* Includes a dataset generator to so results are reproducible.
-* The scale factors of the datasets can be changed so that you can run the queries locally, in a data warehouse, or on a large cluster in the cloud.
-* All the specifications used to run the benchmarks are documented, and the methodology is unbiased.
-* The code is open source, allowing the community to provide feedback and keep the benchmarks up-to-date and reliable over time.
+To ensure fair and comprehensive testing, SpatialBench provides the following advantages:
+
+* Features realistic spatial datasets with native geometry columns.
+* Includes a suite of queries that test various operations such as spatial predicates and joins.
+* Provides a built-in synthetic data generator for creating consistent test data.
+* Offers a configurable scale factor to benchmark performance across various
+  environments, from a single local machine to a large-scale cloud cluster.
+* Ensures consistent and reproducible benchmark results across all environments.
+* Utilizes a fully documented and unbiased methodology to facilitate fair comparisons.
+* Open-source and community-driven to foster transparency and continuous improvement.
 
 ## Generate synthetic data
 
-Here’s how you can install the synthetic data generator:
+Here's how you can install the synthetic data generator:
 
 ```
 cargo install --path ./spatialbench-cli
 ```
 
-Here’s how you can generate the synthetic dataset:
+Here's how you can generate the synthetic dataset:
 
 ```
 spatialbench-cli -s 1 --format=parquet
@@ -66,7 +70,7 @@ See the project repository [README](https://github.com/apache/sedona-spatialbenc
 
 ## Example query
 
-Here’s an example query that counts the number of trips that start within 500 meters of each building:
+Here's an example query that counts the number of trips that start within 500 meters of each building:
 
 ```sql
 SELECT
@@ -80,7 +84,7 @@ GROUP BY b.b_buildingkey, b.b_name
 ORDER BY nearby_pickup_count DESC;
 ```
 
-This query performs a distance join, followed by an aggregation.  It’s a great example of a query that’s useful for performance benchmarking a spatial engine that can process vector geometries.
+This query performs a distance join, followed by an aggregation. It's a great example of a query that's useful for performance benchmarking a spatial engine that can process vector geometries.
 
 ## Join the community
 

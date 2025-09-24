@@ -43,7 +43,7 @@ Here are the software versions used in this benchmark:
 * DuckDB: 1.4.0
 * SedonaDB: 0.1
 
-This benchmark report lists software versions, so it’s easy to track how engine performance improves over time.  We use the default settings of all software unless otherwise noted. For DuckDB, we explicitly set enable_external_file_cache to false to focus on the cold start queries runtime, consistent with the other engines.
+This benchmark report lists software versions, so it's easy to track how engine performance improves over time.  We use the default settings of all software unless otherwise noted. For DuckDB, we explicitly set enable_external_file_cache to false to focus on the cold start queries runtime, consistent with the other engines.
 
 The code execution runtime includes the entire query runtime for all engines. The query timeout is set to 1200 seconds.
 
@@ -51,7 +51,7 @@ The code execution runtime includes the entire query runtime for all engines. Th
 
 The GeoPandas queries are written in Python, since GeoPandas does not support SQL. GeoPandas executes queries by loading data fully into memory and then processing it directly.
 
-Since GeoPandas runs in a single thread and lacks a query optimizer, any parallelization or optimization must be implemented manually. This benchmark implemented a straightforward implementation that mirrors the SQL queries used for other engines. If you’re a GeoPandas expert, we’d be glad to collaborate on a more optimized and/or parallelized version.
+Since GeoPandas runs in a single thread and lacks a query optimizer, any parallelization or optimization must be implemented manually. This benchmark implemented a straightforward implementation that mirrors the SQL queries used for other engines. If you're a GeoPandas expert, we'd be glad to collaborate on a more optimized and/or parallelized version.
 
 ## Result analysis
 
@@ -65,7 +65,7 @@ SedonaDB consistently delivers strong results on heavier joins, particularly Q10
 
 ### Geometric computations (Q5, Q7, Q9)
 
-SedonaDB is especially effective on intersection/IoU (Q9), showing substantial efficiency improvements, while Q5 (convex hull aggregation) highlights areas where DuckDB currently performs faster. SedonaDB’s overhead in geometry copying in spatial aggregation is a known bottleneck and is planned for improvement.
+SedonaDB is especially effective on intersection/IoU (Q9), showing substantial efficiency improvements, while Q5 (convex hull aggregation) highlights areas where DuckDB currently performs faster. SedonaDB's overhead in geometry copying in spatial aggregation is a known bottleneck and is planned for improvement.
 
 ### Nearest-neighbor joins (Q12)
 
@@ -79,7 +79,7 @@ SedonaDB demonstrates balanced strengths across all categories and successfully 
 
 You can access and run the benchmark code in the [sedona-spatialbench GitHub](https://github.com/apache/sedona-spatialbench) repository.
 
-It’s easy to generate the datasets locally or in the cloud.  You can also run the benchmarks locally or in the cloud.
+It's easy to generate the datasets locally or in the cloud.  You can also run the benchmarks locally or in the cloud.
 
 The repository has an issue tracker where you can file bug reports or suggest code improvements.
 
@@ -87,11 +87,10 @@ The repository has an issue tracker where you can file bug reports or suggest co
 
 It would be great to include other engines and databases in the future:
 
-* dask-geopandas for single-node parallelism across cores
-* PostGIS (Postgres SQL extension)
+* `dask-geopandas` for single-node parallelism across cores
 * An R geospatial engine
 
-If you’re an expert in any of these technologies, we welcome you to take on this project or reach out to us about collaborating.
+If you're an expert in any of these technologies, we welcome you to take on this project or reach out to us about collaborating.
 
 Note that compute engines designed for multi-node environments are intentionally excluded from these single-node results for clarity and simplicity.
 
