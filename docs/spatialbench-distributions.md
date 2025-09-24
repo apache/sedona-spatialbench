@@ -67,7 +67,6 @@ Sierpinski patterns come from iterating the “chaos game” toward the vertices
 
 While this is not meant to reflect any natural process, it does generate extreme skew — dense regions interspersed with large gaps — making it a good way to see how systems handle pathological clustering.
 
----
 
 ## Thomas Process
 
