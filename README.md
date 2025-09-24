@@ -158,7 +158,7 @@ See [CONFIGURATION.md](./spatialbench-cli/CONFIGURATION.md) for more details abo
 - [TPC-H](https://www.tpc.org/tpch/)
 - [SpiderWeb: A Spatial Data Generator on the Web](https://dl.acm.org/doi/10.1145/3397536.3422351)
 - [tpchgen-rs for inspiration and baseline performance](https://datafusion.apache.org/blog/2025/04/10/fastest-tpch-generator/)
-- [Thomas, M. (1949). A Generalization of Poisson’s Binomial Limit For use in Ecology. Biometrika, 36(1/2)](https://doi.org/10.2307/2332526)
+- [Thomas, M. (1949). A Generalization of Poisson’s Binomial Limit For Use in Ecology. Biometrika, 36(1/2)](https://doi.org/10.2307/2332526)
 - [Neyman, J. & Scott, E. L. (1958). Statistical Approach to Problems of Cosmology. Journal of the Royal Statistical Society: Series B (Methodological), 20(1)](https://doi.org/10.1111/j.2517-6161.1958.tb00272.x)
 - [Illian, J., Penttinen, A., Stoyan, H., & Stoyan, D. (2008). Statistical Analysis and Modelling of Spatial Point Patterns. Wiley](https://www.wiley.com/en-us/Statistical+Analysis+and+Modelling+of+Spatial+Point+Patterns-p-9780470014912)
 - [Barnsley, M. F., & Demko, S. (1985). Iterated function systems and the global construction of fractals. Proceedings of the Royal Society of London. Series A, 399(1817)](https://doi.org/10.1098/rspa.1985.0057)
