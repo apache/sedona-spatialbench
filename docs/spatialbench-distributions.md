@@ -54,7 +54,6 @@ The diagonal distribution forces correlation between x and y. With probability p
 
 This pattern is not realistic geographically, but it is useful for experiments that need a known correlation structure — for example, seeing how indexing or filtering behaves when coordinates are not independent.
 
----
 
 ## Bit
 
