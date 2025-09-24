@@ -92,7 +92,7 @@
   as a background image, overriding the theme's default icon.
 */
 .md-sidebar--primary .md-nav__title a.md-nav__button.md-logo {
-  background-image: url('/docs-overrides/.icons/sedona_logo_symbol_white.svg');
+  background-image: url('/docs/image/sedona_logo_symbol.svg');
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
