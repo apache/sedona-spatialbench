@@ -17,7 +17,6 @@
 #  under the License.
 
 import argparse
-import concurrent
 import logging
 import os
 import shutil
