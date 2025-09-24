@@ -46,7 +46,6 @@ $$
 
 Here, `mu` determines where the hotspot sits in the square, while `sigma` sets the spread - a small `sigma` produces a sharp, dense cluster, while a larger sigma spreads points more thinly across space. This is appropriate if you want to mimic a single dense center of activity, like one city in an otherwise empty region. The tradeoff is that it’s too simplistic for modeling multiple hotspots or urban complexity.
 
----
 
 ## Diagonal
 
