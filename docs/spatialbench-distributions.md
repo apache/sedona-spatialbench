@@ -60,7 +60,6 @@ Bit distributions use recursive binary subdivision of the square. Each bit posit
 
 The result looks like a lattice of points at varying resolutions. Increasing digits refines the grid; lowering probability sparsifies it. This distribution is intentionally synthetic, good for stress-testing systems against very regular data.
 
----
 
 ## Sierpinski
 
