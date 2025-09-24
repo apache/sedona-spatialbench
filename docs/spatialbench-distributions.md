@@ -35,7 +35,6 @@ $$
 
 There are no parameters to adjust here. The result is an even, flat distribution — useful as a baseline, but one that rarely resembles any real-world spatial dataset. If your goal is to test systems without the confounding factor of skew, this is the place to start.
 
----
 
 ## Normal
 
