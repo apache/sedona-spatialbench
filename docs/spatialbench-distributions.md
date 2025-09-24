@@ -19,7 +19,6 @@ title: SpatialBench Data Distributions
   under the License.
 -->
 
-# **SpatialBench Distributions**
 
 SpatialBench offers a set of spatial distributions to generate synthetic datasets with different levels of skew and realism. Each distribution has its own mathematical foundation, parameters, and characteristic spatial patterns. The choice of distribution directly determines whether your data looks like evenly spaced dots on a map, concentrated hotspots, or layered urban clusters.
 
