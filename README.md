@@ -60,7 +60,7 @@ The Zone table uses **scale factor–aware generation** so that zone granularity
 
 This tiered scaling reflects **geometry complexity** and **area distributions** observed in the Overture `division_area` dataset which represents administrative boundaries, release version 2025-08-20.1.
 
-![image.png](images/data_model.png)
+![image.png](docs/image/datasets-schema.png)
 
 ### Geographic Coverage
 
@@ -79,7 +79,7 @@ South North America: POLYGON ((-124.890724 12.382931, -69.511192 12.382931, -69.
 North North America: POLYGON ((-166.478008 42.681087, -52.053245 42.681087, -52.053245 72.659041, -166.478008 72.659041, -166.478008 42.681087))
 ```
 
-![image.png](images/continent_bounds.png)
+![image.png](docs/image/datasets-continents.png)
 
 ## Performance
 
