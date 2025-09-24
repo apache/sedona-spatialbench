@@ -87,7 +87,7 @@ def generate_data(scale_factor: int, target_mb: int, output_dir: str) -> dict[st
 
     # buildings scale sublinearly with sf: 20,000 × (1 + log₂(10)) rows
     buildings_rows_per_mb = 13367.47  # did some empirical testing
-    building_size_mb = 20_000.0 * (1.0 + log(10, 2)) / buildings_rows_per_mb
+    building_size_mb = 20_000.0 * (1.0 + log(scale_factor, 2)) / buildings_rows_per_mb
     num_partitions["building"] = max(1, int(ceil(building_size_mb / target_mb)))
 
     return _generate_data(scale_factor, num_partitions, output_dir)
