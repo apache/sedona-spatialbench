@@ -1,0 +1,78 @@
+name: test-generate-data-script
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - tools/generate_data.py
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          cargo install --path ./spatialbench-cli
+          export PATH=$PATH:$HOME/.cargo/bin
+
+      - name: Run generate_data script
+        run: |
+          tools/generate_data.py --output-dir test_output --scale-factor 1 --mb-per-file 12
+
+      - name: Verify output files
+        run: |
+          # Check if output directory exists
+          if [ ! -d test_output ]; then
+            echo "Output directory test_output not found!"
+            exit 1
+          fi
+          
+          echo "Output directory structure:"
+          tree test_output
+          
+          expected_tables=("building" "customer" "driver" "trip" "vehicle" "zone")
+          declare -A expected_files=(
+            ["building"]=1
+            ["customer"]=1
+            ["driver"]=1
+            ["trip"]=24
+            ["vehicle"]=1
+            ["zone"]=12
+          )
+          
+          # Verify each table directory and count parquet files
+          for table in "${expected_tables[@]}"; do
+            table_dir="test_output/$table"
+            
+            if [ ! -d "$table_dir" ]; then
+              echo "ERROR: Table directory $table_dir not found!"
+              exit 1
+            fi
+            
+            # Count parquet files in the directory
+            parquet_count=$(find "$table_dir" -name "*.parquet" -type f | wc -l)
+            expected_count=${expected_files[$table]}
+            
+            echo "Table $table: found $parquet_count parquet files, expected $expected_count"
+            
+            if [ "$parquet_count" -ne "$expected_count" ]; then
+              echo "ERROR: Table $table has $parquet_count parquet files, expected $expected_count"
+              echo "Files found:"
+              find "$table_dir" -name "*.parquet" -type f
+              exit 1
+            fi
+            
+            echo "✓ Table $table verification passed"
+          done
+          
+          echo "All output files verified successfully!"

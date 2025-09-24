@@ -139,6 +139,18 @@ for PART in $(seq 1 4); do
 done
 ```
 
+#### Generate Multiple Parquet Files of Similar Size
+
+The generator cli itself supports generating multiple files via the `--parts` and `--part` flags. However, if you want
+to generate multiple files per table of roughly a specific size, you can use the provided script
+`tools/generate_data.py`.
+
+This algorithm is how data was generated for the benchmark results cited in the SedonaDB launch blog post.
+
+```bash
+tools/generate_data.py --scale 10 --mb-per-file 256 --output-dir sf10-parquet
+```
+
 #### Custom Spider Configuration
 
 You can override these defaults at runtime by passing a YAML file via the `--config` flag:
