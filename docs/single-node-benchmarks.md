@@ -23,8 +23,8 @@ This page presents the SpatialBench single-node benchmark results for SedonaDB, 
 
 Here are the results from SpatialBench v0.1 for Queries 1–12 at scale factor 1 (SF1) and scale factor 10 (SF10).
 
-![Scale Factor 1 benchmark results](image/sf1.png){ width="400" }
-![Scale Factor 10 benchmark results](image/sf10.png){ width="400" }
+![Scale Factor 1 benchmark results](image/sf1-09242025.png){ width="400" }
+![Scale Factor 10 benchmark results](image/sf10-09242025.png){ width="400" }
 {: .grid }
 
 ## Hardware

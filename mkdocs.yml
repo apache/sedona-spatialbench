@@ -51,12 +51,12 @@ nav:
       - queries.md
       # Use the alias (*) to insert the Get Involved links here
       - <<: *community_links
-  - Contributors Guide:
-      - contributors-guide.md
-      # Use the alias (*) to insert the Get Involved links here
-      - <<: *community_links
   - Single node benchmarks:
       - single-node-benchmarks.md
+      # Use the alias (*) to insert the Get Involved links here
+      - <<: *community_links
+  - Contributors Guide:
+      - contributors-guide.md
       # Use the alias (*) to insert the Get Involved links here
       - <<: *community_links
   - Sedona Homepage: "https://sedona.apache.org"
