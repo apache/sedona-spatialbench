@@ -25,7 +25,7 @@ SpatialBench offers a set of spatial distributions to generate synthetic dataset
 
 ## Uniform
 
-The simplest case: every point is drawn independently from a uniform distribution in the unit square [0,1]^2.
+The simplest case: every point is drawn independently from a uniform distribution in the unit square $[0,1]^2$.
 
 $$
 X \sim U(0,1), \quad Y \sim U(0,1)
@@ -47,7 +47,7 @@ Here, `mu` determines where the hotspot sits in the square, while `sigma` sets t
 
 ## Diagonal
 
-The diagonal distribution forces correlation between x and y. With probability percentage, a point is placed exactly on the line y=x. Otherwise, it is perturbed by Gaussian noise with width controlled by buffer. The result is a band of points hugging the diagonal.
+The diagonal distribution forces correlation between x and y. With probability percentage, a point is placed exactly on the line $y=x$. Otherwise, it is perturbed by Gaussian noise with width controlled by buffer. The result is a band of points hugging the diagonal.
 
 This pattern is not realistic geographically, but it is useful for experiments that need a known correlation structure — for example, seeing how indexing or filtering behaves when coordinates are not independent.
 
