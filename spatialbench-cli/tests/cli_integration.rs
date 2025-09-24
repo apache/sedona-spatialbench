@@ -142,7 +142,7 @@ fn test_spatialbench_cli_parts() {
 async fn test_write_parquet_trips() {
     // Run the CLI command to generate parquet data
     let output_dir = tempdir().unwrap();
-    let output_path = output_dir.path().join("../../sf1-parquet/trip.parquet");
+    let output_path = output_dir.path().join("trip.parquet");
     Command::cargo_bin("spatialbench-cli")
         .expect("Binary not found")
         .arg("--format")
