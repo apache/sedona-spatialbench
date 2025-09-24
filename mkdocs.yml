@@ -47,6 +47,10 @@ nav:
       - datasets-generators.md
       # Use the alias (*) to insert the Get Involved links here
       - <<: *community_links
+  - SpatialBench Distributions:
+      - spatialbench-distributions.md
+      # Use the alias (*) to insert the Get Involved links here
+      - <<: *community_links
   - SpatialBench Queries:
       - queries.md
       # Use the alias (*) to insert the Get Involved links here
