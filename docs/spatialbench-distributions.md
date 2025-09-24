@@ -81,7 +81,6 @@ Key parameters:
 
 The result is a landscape of uneven hotspots - some bustling, others barely populated. This makes it much closer to real-world trip or building distributions than uniform or normal alone.
 
----
 
 ## Hierarchical Thomas
 
