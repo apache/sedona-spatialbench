@@ -148,7 +148,7 @@ to generate multiple files per table of roughly a specific size, you can use the
 This algorithm is how data was generated for the benchmark results cited in the SedonaDB launch blog post.
 
 ```bash
-tools/generate_data.py --scale 10 --mb-per-file 256 --output-dir sf10-parquet
+tools/generate_data.py --scale-factor 10 --mb-per-file 256 --output-dir sf10-parquet
 ```
 
 #### Custom Spider Configuration
