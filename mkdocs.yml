@@ -29,6 +29,13 @@ extra:
         - Sedona OSS Blog: "https://sedona.apache.org/latest/blog/"
         - Community: "https://sedona.apache.org/latest/community/contact/"
         - Apache Software Foundation: "https://sedona.apache.org/latest/asf/asf/"
+  spatialbench_links: &spatialbench_links
+    - Framework:
+        - Methodology: overview-methodology.md
+        - SpatialBench Queries: queries.md
+        - Datasets & Generators: datasets-generators.md
+        - Data Distributions: spatialbench-distributions.md
+
 
 site_name: SpatialBench
 site_description: SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems
@@ -38,32 +45,20 @@ nav:
   - SpatialBench:
       - Home: index.md
       # Use the alias (*) to insert the Get Involved links here
+      - <<: *spatialbench_links
       - <<: *community_links
-  - Methodology:
-      - overview-methodology.md
-      # Use the alias (*) to insert the Get Involved links here
-      - <<: *community_links
-  - Data Generation:
-      - datasets-generators.md
-      # Use the alias (*) to insert the Get Involved links here
-      - <<: *community_links
-  - SpatialBench Data Distributions:
-      - spatialbench-distributions.md
-      # Use the alias (*) to insert the Get Involved links here
-      - <<: *community_links
-  - SpatialBench Queries:
-      - queries.md
-      # Use the alias (*) to insert the Get Involved links here
-      - <<: *community_links
-  - Single node benchmarks:
+  - Single Node Benchmarks:
       - single-node-benchmarks.md
       # Use the alias (*) to insert the Get Involved links here
+      - <<: *spatialbench_links
       - <<: *community_links
   - Contributors Guide:
       - contributors-guide.md
       # Use the alias (*) to insert the Get Involved links here
+      - <<: *spatialbench_links
       - <<: *community_links
   - Sedona Homepage: "https://sedona.apache.org"
+
 repo_url: https://github.com/apache/sedona-spatialbench/
 edit_uri: https://github.com/apache/sedona-spatialbench/blob/main/docs/
 repo_name: apache/sedona-spatialbench
