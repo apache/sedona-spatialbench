@@ -3,7 +3,6 @@
 
 use spatialbench::generators::{
     BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
-    ZoneGenerator,
 };
 
 struct TestIntoIterator<G>
@@ -100,22 +99,6 @@ fn test_vehicle_into_iter() {
     {
         let vehicle = VehicleGenerator::new(0.01, 1, 1);
         assert_eq!(TestIntoIterator::new(vehicle).to_string_vec(5).len(), 1);
-    }
-}
-
-#[test]
-fn test_zone_into_iter() {
-    {
-        assert_eq!(
-            TestIntoIterator::new(ZoneGenerator::new(0.001, 1, 1))
-                .to_string_vec(5)
-                .len(),
-            5
-        );
-    }
-    {
-        let zone = ZoneGenerator::new(0.001, 1, 1);
-        assert_eq!(TestIntoIterator::new(zone).to_string_vec(5).len(), 5);
     }
 }
 

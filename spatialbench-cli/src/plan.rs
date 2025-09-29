@@ -4,7 +4,6 @@ use crate::{OutputFormat, Table};
 use log::debug;
 use spatialbench::generators::{
     BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
-    ZoneGenerator,
 };
 use std::fmt::Display;
 use std::ops::RangeInclusive;
@@ -329,10 +328,7 @@ impl OutputSize {
             Table::Customer => CustomerGenerator::calculate_row_count(scale_factor, 1, 1),
             Table::Trip => TripGenerator::calculate_row_count(scale_factor, 1, 1),
             Table::Building => BuildingGenerator::calculate_row_count(scale_factor, 1, 1),
-            Table::Zone => {
-                let generator = ZoneGenerator::new(scale_factor, 1, 1);
-                generator.calculate_row_count()
-            }
+            Table::Zone => todo!(),
         }
     }
 }

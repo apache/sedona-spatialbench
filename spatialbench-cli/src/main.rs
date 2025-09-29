@@ -47,6 +47,7 @@ mod plan;
 mod spatial_config_file;
 mod statistics;
 mod tbl;
+mod zone_df;
 
 use crate::csv::*;
 use crate::generate::{generate_in_chunks, Sink, Source};
@@ -62,13 +63,11 @@ use log::{debug, info, LevelFilter};
 use spatialbench::distribution::Distributions;
 use spatialbench::generators::{
     BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
-    ZoneGenerator,
 };
 use spatialbench::spatial::overrides::{set_overrides, SpatialOverrides};
 use spatialbench::text::TextPool;
 use spatialbench_arrow::{
     BuildingArrow, CustomerArrow, DriverArrow, RecordBatchIterator, TripArrow, VehicleArrow,
-    ZoneArrow,
 };
 use std::fmt::Display;
 use std::fs::{self, File};
@@ -408,6 +407,28 @@ impl Cli {
         Ok(())
     }
 
+    async fn generate_zone(&self) -> io::Result<()> {
+        match self.format {
+            OutputFormat::Parquet => {
+                let args = zone_df::ZoneDfArgs {
+                    scale_factor: self.scale_factor,
+                    output_dir: self.output_dir.clone(),
+                    parts: self.parts.unwrap_or(1),
+                    part: self.part.unwrap_or(1),
+                    parquet_row_group_bytes: self.parquet_row_group_bytes,
+                    parquet_compression: self.parquet_compression,
+                };
+                zone_df::generate_zone_parquet(args)
+                    .await
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+            }
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Zone table is only supported in --format=parquet (via DataFusion/S3).",
+            )),
+        }
+    }
+
     define_generate!(
         generate_vehicle,
         Table::Vehicle,
@@ -447,14 +468,6 @@ impl Cli {
         BuildingTblSource,
         BuildingCsvSource,
         BuildingArrow
-    );
-    define_generate!(
-        generate_zone,
-        Table::Zone,
-        ZoneGenerator,
-        ZoneTblSource,
-        ZoneCsvSource,
-        ZoneArrow
     );
 
     /// return the output filename for the given table

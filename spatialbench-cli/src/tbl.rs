@@ -3,7 +3,6 @@
 use super::generate::Source;
 use spatialbench::generators::{
     BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
-    ZoneGenerator,
 };
 use std::io::Write;
 
@@ -43,4 +42,3 @@ define_tbl_source!(DriverTblSource, DriverGenerator<'static>);
 define_tbl_source!(CustomerTblSource, CustomerGenerator<'static>);
 define_tbl_source!(TripTblSource, TripGenerator);
 define_tbl_source!(BuildingTblSource, BuildingGenerator<'static>);
-define_tbl_source!(ZoneTblSource, ZoneGenerator);

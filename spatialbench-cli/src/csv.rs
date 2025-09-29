@@ -1,9 +1,8 @@
 //! Implementations of [`Source`] for generating data in TBL format
 use super::generate::Source;
-use spatialbench::csv::{BuildingCsv, CustomerCsv, DriverCsv, TripCsv, VehicleCsv, ZoneCsv};
+use spatialbench::csv::{BuildingCsv, CustomerCsv, DriverCsv, TripCsv, VehicleCsv};
 use spatialbench::generators::{
     BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
-    ZoneGenerator,
 };
 use std::io::Write;
 
@@ -45,4 +44,3 @@ define_csv_source!(DriverCsvSource, DriverGenerator<'static>, DriverCsv);
 define_csv_source!(CustomerCsvSource, CustomerGenerator<'static>, CustomerCsv);
 define_csv_source!(TripCsvSource, TripGenerator, TripCsv);
 define_csv_source!(BuildingCsvSource, BuildingGenerator<'static>, BuildingCsv);
-define_csv_source!(ZoneCsvSource, ZoneGenerator, ZoneCsv);

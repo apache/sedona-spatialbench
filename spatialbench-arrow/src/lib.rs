@@ -41,7 +41,6 @@ mod customer;
 mod driver;
 mod trip;
 mod vehicle;
-mod zone;
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::SchemaRef;
@@ -50,7 +49,6 @@ pub use customer::CustomerArrow;
 pub use driver::DriverArrow;
 pub use trip::TripArrow;
 pub use vehicle::VehicleArrow;
-pub use zone::ZoneArrow;
 
 /// Iterator of Arrow [`RecordBatch`] that also knows its schema
 pub trait RecordBatchIterator: Iterator<Item = RecordBatch> + Send {
