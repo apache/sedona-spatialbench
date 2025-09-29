@@ -1,4 +1,4 @@
-//! Generators for each TPC-H Tables
+//! Generators for each Spatial Bench Tables
 use crate::dates;
 use crate::dates::{GenerateUtils, TPCHDate};
 use crate::decimal::TPCHDecimal;
@@ -15,7 +15,6 @@ use crate::spatial::utils::{hash_to_unit_u64, spider_seed_for_index};
 use crate::spatial::{ContinentAffines, SpatialDefaults, SpatialGenerator};
 use crate::text::TextPool;
 use geo::Point;
-use geozero::ToGeo;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::convert::TryInto;
