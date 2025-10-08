@@ -42,22 +42,22 @@ site_description: SpatialBench is a benchmark for assessing geospatial SQL analy
 # Define a reusable block of links with a YAML anchor (&)
 
 nav:
+  - Home: https://sedona.apache.org/latest/
+  - Setup: https://sedona.apache.org/latest/setup/overview/
+  - Download: https://sedona.apache.org/latest/download/
+  - Programming Guides: https://sedona.apache.org/latest/tutorial/sql/
+  - API Docs: https://sedona.apache.org/latest/api/sql/Overview/
+  - SedonaDB: https://sedona.apache.org/sedonadb/
   - SpatialBench:
       - Home: index.md
-      # Use the alias (*) to insert the Get Involved links here
-      - <<: *spatialbench_links
-      - <<: *community_links
-  - Single Node Benchmarks:
-      - single-node-benchmarks.md
-      # Use the alias (*) to insert the Get Involved links here
-      - <<: *spatialbench_links
-      - <<: *community_links
-  - Contributors Guide:
-      - contributors-guide.md
-      # Use the alias (*) to insert the Get Involved links here
-      - <<: *spatialbench_links
-      - <<: *community_links
-  - Sedona Homepage: "https://sedona.apache.org"
+      - Methodology: overview-methodology.md
+      - Queries: queries.md
+      - Datasets & Generators: datasets-generators.md
+      - Data Distributions: spatialbench-distributions.md
+      - Single Node Results: single-node-benchmarks.md
+  - Blog: https://sedona.apache.org/latest/blog/
+  - Community: https://sedona.apache.org/latest/setup/compile/
+  - Apache Software Foundation: https://sedona.apache.org/latest/asf/asf/
 
 repo_url: https://github.com/apache/sedona-spatialbench/
 edit_uri: https://github.com/apache/sedona-spatialbench/blob/main/docs/
