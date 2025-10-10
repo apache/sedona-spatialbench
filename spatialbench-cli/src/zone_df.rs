@@ -17,6 +17,7 @@ use parquet::{
     file::properties::WriterProperties,
 };
 use url::Url;
+use crate::plan::DEFAULT_PARQUET_ROW_GROUP_BYTES;
 
 const OVERTURE_RELEASE_DATE: &str = "2025-08-20.1";
 const OVERTURE_S3_BUCKET: &str = "overturemaps-us-west-2";
@@ -71,9 +72,11 @@ fn get_zone_table_stats(sf: f64) -> (f64, i64) {
     if sf < 10.0 {
         (1.42, 156_095)
     } else if sf < 100.0 {
-        (5.68, 455_711)
+        (2.09, 455_711)
+    } else if sf < 1000.0 {
+        (5.68, 1_035_371)
     } else {
-        (6.13, 1_035_371)
+        (6.13, 1_035_749)
     }
 }
 
@@ -81,25 +84,27 @@ fn compute_rows_per_group_from_stats(size_gb: f64, total_rows: i64, target_bytes
     let total_bytes = size_gb * 1024.0 * 1024.0 * 1024.0; // Convert GB to bytes
     let bytes_per_row = total_bytes / total_rows as f64;
 
-    debug!("Using hardcoded stats: {:.2} GB, {} rows, {:.2} bytes/row",
-           size_gb, total_rows, bytes_per_row);
+    // Use default if target_bytes is not specified or invalid
+    let effective_target = if target_bytes <= 0 {
+        DEFAULT_PARQUET_ROW_GROUP_BYTES
+    } else {
+        target_bytes
+    };
 
-    if bytes_per_row <= 0.0 {
-        return 128_000; // fallback
-    }
+    debug!(
+        "Using hardcoded stats: {:.2} GB, {} rows, {:.2} bytes/row, target: {} bytes",
+        size_gb, total_rows, bytes_per_row, effective_target
+    );
 
-    let est = (target_bytes as f64 / bytes_per_row).floor();
+    let est = (effective_target as f64 / bytes_per_row).floor();
     // Keep RG count <= 32k, but avoid too-tiny RGs
     est.max(10_000.0).min(10_000_000.0) as usize
 }
 
-fn writer_props_with_rowgroup(
-    comp: ParquetCompression,
-    rows_per_group: usize,
-) -> WriterProperties {
+fn writer_props_with_rowgroup(comp: ParquetCompression, rows_per_group: usize) -> WriterProperties {
     WriterProperties::builder()
         .set_compression(comp)
-        .set_max_row_group_size(rows_per_group) // <-- the key line
+        .set_max_row_group_size(rows_per_group)
         .build()
 }
 
@@ -112,10 +117,15 @@ fn write_parquet_with_rowgroup_bytes(
     scale_factor: f64,
 ) -> Result<()> {
     let (size_gb, total_rows) = get_zone_table_stats(scale_factor);
-    let rows_per_group = compute_rows_per_group_from_stats(size_gb, total_rows, target_rowgroup_bytes);
+    debug!("size_gb={}, total_rows={} for scale_factor={}", size_gb, total_rows, scale_factor);
+    let rows_per_group =
+        compute_rows_per_group_from_stats(size_gb, total_rows, target_rowgroup_bytes);
     let props = writer_props_with_rowgroup(comp, rows_per_group);
 
-    debug!("Using row group size: {} rows (based on hardcoded stats)", rows_per_group);
+    debug!(
+        "Using row group size: {} rows (based on hardcoded stats)",
+        rows_per_group
+    );
 
     let mut writer = ArrowWriter::try_new(std::fs::File::create(out_path)?, schema, Some(props))?;
 
@@ -218,14 +228,13 @@ pub async fn generate_zone_parquet(args: ZoneDfArgs) -> Result<()> {
     // debug!("Applied sorting by id");
 
     let total = estimated_total_rows_for_sf(args.scale_factor);
-    let parts = args.parts as i64;
     let this = (args.part as i64) - 1;
-    let rows_per_part = (total + parts - 1) / parts;
+    let rows_per_part = total / (args.parts as i64);
     let offset = this * rows_per_part;
 
     info!(
         "Partitioning data: total_rows={}, parts={}, rows_per_part={}, offset={}",
-        total, parts, rows_per_part, offset
+        total, args.parts, rows_per_part, offset
     );
 
     df = df.limit(offset as usize, Some(rows_per_part as usize))?;
