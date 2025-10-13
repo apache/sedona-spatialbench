@@ -8,6 +8,7 @@ use datafusion::{
     sql::TableReference,
 };
 
+use crate::plan::DEFAULT_PARQUET_ROW_GROUP_BYTES;
 use datafusion::execution::runtime_env::RuntimeEnv;
 use log::{debug, info};
 use object_store::aws::AmazonS3Builder;
@@ -17,7 +18,6 @@ use parquet::{
     file::properties::WriterProperties,
 };
 use url::Url;
-use crate::plan::DEFAULT_PARQUET_ROW_GROUP_BYTES;
 
 const OVERTURE_RELEASE_DATE: &str = "2025-08-20.1";
 const OVERTURE_S3_BUCKET: &str = "overturemaps-us-west-2";
@@ -51,17 +51,17 @@ fn estimated_total_rows_for_sf(sf: f64) -> i64 {
             "microhood" => 74797,
             "macrohood" => 42619,
             "neighborhood" => 298615,
-            "county" => 39680,
+            "county" => 38679,
             "localadmin" => 19007,
             "locality" => 555834,
-            "region" => 4714,
-            "dependency" => 105,
-            "country" => 378,
+            "region" => 3905,
+            "dependency" => 53,
+            "country" => 219,
             _ => 0,
         };
     }
     if sf < 1.0 {
-        (total as f64 * sf).ceil() as i64
+        (total as f64 * sf).floor() as i64
     } else {
         total
     }
@@ -69,14 +69,16 @@ fn estimated_total_rows_for_sf(sf: f64) -> i64 {
 
 fn get_zone_table_stats(sf: f64) -> (f64, i64) {
     // Returns (size_in_gb, total_rows) for the given scale factor
-    if sf < 10.0 {
+    if sf < 1.0 {
+        (0.92 * sf, (156_095.0 * sf).floor() as i64)
+    } else if sf < 10.0 {
         (1.42, 156_095)
     } else if sf < 100.0 {
-        (2.09, 455_711)
+        (2.09, 454_710)
     } else if sf < 1000.0 {
-        (5.68, 1_035_371)
+        (5.68, 1_033_456)
     } else {
-        (6.13, 1_035_749)
+        (6.13, 1_033_675)
     }
 }
 
@@ -117,7 +119,10 @@ fn write_parquet_with_rowgroup_bytes(
     scale_factor: f64,
 ) -> Result<()> {
     let (size_gb, total_rows) = get_zone_table_stats(scale_factor);
-    debug!("size_gb={}, total_rows={} for scale_factor={}", size_gb, total_rows, scale_factor);
+    debug!(
+        "size_gb={}, total_rows={} for scale_factor={}",
+        size_gb, total_rows, scale_factor
+    );
     let rows_per_group =
         compute_rows_per_group_from_stats(size_gb, total_rows, target_rowgroup_bytes);
     let props = writer_props_with_rowgroup(comp, rows_per_group);
@@ -136,6 +141,7 @@ fn write_parquet_with_rowgroup_bytes(
     Ok(())
 }
 
+#[derive(Clone)]
 pub struct ZoneDfArgs {
     pub scale_factor: f64,
     pub output_dir: PathBuf,
@@ -147,11 +153,12 @@ pub struct ZoneDfArgs {
 
 impl ZoneDfArgs {
     fn output_filename(&self) -> PathBuf {
-        let fname = if self.parts > 1 {
-            format!("zone.part-{:03}-of-{:03}.parquet", self.part, self.parts)
-        } else {
-            "zone.parquet".to_string()
-        };
+        // let fname = if self.parts > 1 {
+        //     format!("zone.part-{:03}-of-{:03}.parquet", self.part, self.parts)
+        // } else {
+        //     "zone.parquet".to_string()
+        // };
+        let fname = "zone.parquet".to_string();
         self.output_dir.join(fname)
     }
 }
