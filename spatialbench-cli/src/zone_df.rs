@@ -200,14 +200,14 @@ pub async fn generate_zone_parquet(args: ZoneDfArgs) -> Result<()> {
     let rt: Arc<RuntimeEnv> = Arc::new(RuntimeEnvBuilder::new().build()?);
     debug!("Built DataFusion runtime environment");
 
-    // Register S3 store for Overture bucket (object_store 0.11)
-    let bucket = OVERTURE_S3_BUCKET; // "overturemaps-us-west-2"
+    // Register S3 store for Overture bucket
+    let bucket = OVERTURE_S3_BUCKET;
     info!("Registering S3 store for bucket: {}", bucket);
     let s3 = AmazonS3Builder::new()
         .with_bucket_name(bucket)
         .with_skip_signature(true)
         .with_region("us-west-2")
-        .build()?; // -> object_store 0.11 AmazonS3
+        .build()?;
 
     let s3_url = Url::parse(&format!("s3://{bucket}"))?;
     let s3_store: Arc<dyn ObjectStore> = Arc::new(s3);
@@ -339,4 +339,163 @@ pub async fn generate_zone_parquet(args: ZoneDfArgs) -> Result<()> {
     );
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use parquet::basic::Compression;
+    use tempfile::TempDir;
+
+    fn create_test_args(scale_factor: f64, temp_dir: &TempDir) -> ZoneDfArgs {
+        ZoneDfArgs {
+            scale_factor,
+            output_dir: temp_dir.path().to_path_buf(),
+            parts: 1,
+            part: 1,
+            parquet_row_group_bytes: DEFAULT_PARQUET_ROW_GROUP_BYTES,
+            parquet_compression: Compression::SNAPPY,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_zone_generation_invalid_part() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut args = create_test_args(1.0, &temp_dir);
+        args.parts = 2;
+        args.part = 3; // Invalid part number
+
+        let result = generate_zone_parquet(args).await;
+        assert!(result.is_err(), "Should fail with invalid part number");
+    }
+
+    #[tokio::test]
+    async fn test_subtypes_for_different_scale_factors() {
+        // Test scale factor categorization
+        let sf_01_subtypes = subtypes_for_scale_factor(0.1);
+        assert_eq!(sf_01_subtypes, vec!["microhood", "macrohood", "county"]);
+
+        let sf_10_subtypes = subtypes_for_scale_factor(10.0);
+        assert_eq!(
+            sf_10_subtypes,
+            vec!["microhood", "macrohood", "county", "neighborhood"]
+        );
+
+        let sf_100_subtypes = subtypes_for_scale_factor(100.0);
+        assert!(sf_100_subtypes.contains(&"localadmin"));
+        assert!(sf_100_subtypes.contains(&"locality"));
+
+        let sf_1000_subtypes = subtypes_for_scale_factor(1000.0);
+        assert!(sf_1000_subtypes.contains(&"country"));
+    }
+
+    #[test]
+    fn test_partition_distribution_logic() {
+        // Test the mathematical logic for distributing rows across partitions
+        let total_rows = 100i64;
+        let parts = 3i64;
+
+        let mut collected_rows = Vec::new();
+        let mut collected_offsets = Vec::new();
+
+        // Simulate the partition calculation for each part
+        for part_idx in 0..parts {
+            let i = part_idx;
+            let base = total_rows / parts;
+            let rem = total_rows % parts;
+            let rows_this = base + if i < rem { 1 } else { 0 };
+            let offset = i * base + std::cmp::min(i, rem);
+
+            collected_rows.push(rows_this);
+            collected_offsets.push(offset);
+        }
+
+        // Verify partitioning logic
+        assert_eq!(collected_rows.iter().sum::<i64>(), total_rows); // All rows accounted for
+        assert_eq!(collected_offsets[0], 0); // First partition starts at 0
+
+        // Verify no gaps or overlaps between partitions
+        for i in 1..parts as usize {
+            let expected_offset = collected_offsets[i - 1] + collected_rows[i - 1];
+            assert_eq!(collected_offsets[i], expected_offset);
+        }
+
+        // Verify remainder distribution (first partitions get extra rows)
+        let remainder = (total_rows % parts) as usize;
+        for i in 0..remainder {
+            assert_eq!(collected_rows[i], collected_rows[remainder] + 1);
+        }
+    }
+
+    #[test]
+    fn test_rows_per_group_bounds() {
+        // Test that compute_rows_per_group_from_stats respects bounds
+
+        // Test minimum bound (should be at least 1000)
+        let rows_per_group_tiny = compute_rows_per_group_from_stats(0.001, 1000, 1_000_000);
+        assert!(rows_per_group_tiny >= 1000);
+
+        // Test maximum bound (should not exceed 32767)
+        let rows_per_group_huge = compute_rows_per_group_from_stats(1000.0, 1000, 1);
+        assert!(rows_per_group_huge <= 32767);
+
+        // Test negative target bytes falls back to default
+        let rows_per_group_negative = compute_rows_per_group_from_stats(1.0, 100000, -1);
+        let rows_per_group_default =
+            compute_rows_per_group_from_stats(1.0, 100000, DEFAULT_PARQUET_ROW_GROUP_BYTES);
+        assert_eq!(rows_per_group_negative, rows_per_group_default);
+    }
+
+    #[test]
+    fn test_subtype_selection_logic() {
+        // Test the cumulative nature of subtype selection
+        let base_subtypes = subtypes_for_scale_factor(1.0);
+        let sf10_subtypes = subtypes_for_scale_factor(10.0);
+        let sf100_subtypes = subtypes_for_scale_factor(100.0);
+        let sf1000_subtypes = subtypes_for_scale_factor(1000.0);
+
+        // Each higher scale factor should include all previous subtypes
+        for subtype in &base_subtypes {
+            assert!(sf10_subtypes.contains(subtype));
+            assert!(sf100_subtypes.contains(subtype));
+            assert!(sf1000_subtypes.contains(subtype));
+        }
+
+        for subtype in &sf10_subtypes {
+            assert!(sf100_subtypes.contains(subtype));
+            assert!(sf1000_subtypes.contains(subtype));
+        }
+
+        for subtype in &sf100_subtypes {
+            assert!(sf1000_subtypes.contains(subtype));
+        }
+
+        // Verify progressive addition
+        assert!(sf10_subtypes.len() > base_subtypes.len());
+        assert!(sf100_subtypes.len() > sf10_subtypes.len());
+        assert!(sf1000_subtypes.len() > sf100_subtypes.len());
+    }
+
+    #[test]
+    fn test_estimated_rows_scaling_consistency() {
+        // Test that estimated rows scale proportionally for SF < 1.0
+        let base_rows = estimated_total_rows_for_sf(1.0);
+        let half_rows = estimated_total_rows_for_sf(0.5);
+        let quarter_rows = estimated_total_rows_for_sf(0.25);
+
+        // Should scale proportionally (within rounding)
+        assert!((half_rows as f64 - (base_rows as f64 * 0.5)).abs() < 1.0);
+        assert!((quarter_rows as f64 - (base_rows as f64 * 0.25)).abs() < 1.0);
+
+        // Test that SF >= 1.0 gives discrete jumps (not proportional scaling)
+        let sf1_rows = estimated_total_rows_for_sf(1.0);
+        let sf5_rows = estimated_total_rows_for_sf(5.0);
+        let sf10_rows = estimated_total_rows_for_sf(10.0);
+
+        // These should be equal (same category)
+        assert_eq!(sf1_rows, sf5_rows);
+
+        // This should be different (different category)
+        assert_ne!(sf5_rows, sf10_rows);
+    }
 }
