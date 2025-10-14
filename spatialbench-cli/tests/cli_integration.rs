@@ -1,3 +1,4 @@
+use arrow_array::RecordBatch;
 use assert_cmd::Command;
 use parquet::arrow::arrow_reader::{ArrowReaderOptions, ParquetRecordBatchReaderBuilder};
 use parquet::file::metadata::ParquetMetaDataReader;
@@ -6,7 +7,7 @@ use spatialbench_arrow::{RecordBatchIterator, TripArrow};
 use std::fs;
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tempfile::tempdir;
 
@@ -76,6 +77,112 @@ fn test_spatialbench_cli_tbl_scale_factor_v1() {
             "Contents of {:?} do not match reference",
             file
         );
+    }
+}
+
+/// Test zone parquet output determinism - same data should be generated every time
+#[tokio::test]
+async fn test_zone_deterministic_parts_generation() {
+    let temp_dir1 = tempdir().expect("Failed to create temporary directory 1");
+    
+    Command::cargo_bin("spatialbench-cli")
+        .expect("Binary not found")
+        .arg("--format")
+        .arg("parquet")
+        .arg("--scale-factor")
+        .arg("1.0")
+        .arg("--output-dir")
+        .arg(temp_dir1.path())
+        .arg("--tables")
+        .arg("zone")
+        .arg("--parts")
+        .arg("100")
+        .arg("--part")
+        .arg("1")
+        .assert()
+        .success();
+
+    let zone_file1 = temp_dir1.path().join("zone.parquet");
+    
+    // Reference file is a sf=0.01 zone table with z_boundary column removed
+    let reference_file = PathBuf::from("../spatialbench/data/sf-v1//zone.parquet");
+
+    assert!(
+        zone_file1.exists(),
+        "First zone.parquet file was not created"
+    );
+    assert!(
+        reference_file.exists(),
+        "Reference zone.parquet file does not exist"
+    );
+
+    let file1 = File::open(&zone_file1).expect("Failed to open generated zone.parquet file");
+    let file2 = File::open(&reference_file).expect("Failed to open reference zone.parquet file");
+
+    let reader1 = ParquetRecordBatchReaderBuilder::try_new(file1)
+        .expect("Failed to create reader for generated file")
+        .build()
+        .expect("Failed to build reader for generated file");
+
+    let reader2 = ParquetRecordBatchReaderBuilder::try_new(file2)
+        .expect("Failed to create reader for reference file")
+        .build()
+        .expect("Failed to build reader for reference file");
+
+    let batches1: Result<Vec<RecordBatch>, _> = reader1.collect();
+    let batches2: Result<Vec<RecordBatch>, _> = reader2.collect();
+
+    let batches1 = batches1.expect("Failed to read batches from generated file");
+    let batches2 = batches2.expect("Failed to read batches from reference file");
+
+    // Check that files are non-empty
+    assert!(
+        !batches1.is_empty(),
+        "Generated zone parquet file has no data"
+    );
+    assert!(
+        !batches2.is_empty(),
+        "Reference zone parquet file has no data"
+    );
+
+    // Check that both files have the same number of batches
+    assert_eq!(
+        batches1.len(),
+        batches2.len(),
+        "Different number of record batches"
+    );
+
+    // Compare each batch, excluding z_boundary column
+    for (i, (batch1, batch2)) in batches1.iter().zip(batches2.iter()).enumerate() {
+        assert_eq!(
+            batch1.num_rows(),
+            batch2.num_rows(),
+            "Batch {} has different number of rows",
+            i
+        );
+
+        let schema1 = batch1.schema();
+
+        // Compare all columns except z_boundary
+        for field in schema1.fields() {
+            let column_name = field.name();
+            if column_name == "z_boundary" {
+                continue;
+            }
+
+            let col1 = batch1
+                .column_by_name(column_name)
+                .unwrap_or_else(|| panic!("Column {} not found in generated file", column_name));
+            let col2 = batch2
+                .column_by_name(column_name)
+                .unwrap_or_else(|| panic!("Column {} not found in reference file", column_name));
+
+            assert_eq!(
+                col1, col2,
+                "Column {} differs between generated and reference files in batch {}",
+                column_name, i
+            );
+        }
     }
 }
 
@@ -230,6 +337,36 @@ async fn test_write_parquet_row_group_size_default() {
 }
 
 #[tokio::test]
+async fn test_zone_write_parquet_row_group_size_default() {
+    // Run the CLI command to generate parquet data with default settings
+    let output_dir = tempdir().unwrap();
+    Command::cargo_bin("spatialbench-cli")
+        .expect("Binary not found")
+        .arg("--format")
+        .arg("parquet")
+        .arg("--scale-factor")
+        .arg("1")
+        .arg("--tables")
+        .arg("zone")
+        .arg("--output-dir")
+        .arg(output_dir.path())
+        .arg("--parts")
+        .arg("10")
+        .arg("--part")
+        .arg("1")
+        .assert()
+        .success();
+
+    expect_row_group_sizes(
+        output_dir.path(),
+        vec![RowGroups {
+            table: "zone",
+            row_group_bytes: vec![91351103],
+        }],
+    );
+}
+
+#[tokio::test]
 async fn test_write_parquet_row_group_size_20mb() {
     // Run the CLI command to generate parquet data with larger row group size
     let output_dir = tempdir().unwrap();
@@ -276,6 +413,38 @@ async fn test_write_parquet_row_group_size_20mb() {
                 row_group_bytes: vec![2492865],
             },
         ],
+    );
+}
+
+#[tokio::test]
+async fn test_zone_write_parquet_row_group_size_20mb() {
+    // Run the CLI command to generate parquet data with larger row group size
+    let output_dir = tempdir().unwrap();
+    Command::cargo_bin("spatialbench-cli")
+        .expect("Binary not found")
+        .arg("--format")
+        .arg("parquet")
+        .arg("--scale-factor")
+        .arg("1")
+        .arg("--tables")
+        .arg("zone")
+        .arg("--output-dir")
+        .arg(output_dir.path())
+        .arg("--parquet-row-group-bytes")
+        .arg("20000000") // 20 MB
+        .arg("--parts")
+        .arg("10")
+        .arg("--part")
+        .arg("1")
+        .assert()
+        .success();
+
+    expect_row_group_sizes(
+        output_dir.path(),
+        vec![RowGroups {
+            table: "zone",
+            row_group_bytes: vec![16284828, 19041211, 20977976, 17291992, 18079175],
+        }],
     );
 }
 
@@ -399,6 +568,27 @@ async fn test_incompatible_options_warnings() {
         ))
         .stderr(predicates::str::contains(
             "Warning: Parquet row group size option set but not generating Parquet files",
+        ));
+}
+
+#[test]
+fn test_zone_generation_tbl_fails() {
+    let temp_dir = tempdir().expect("Failed to create temporary directory");
+
+    Command::cargo_bin("spatialbench-cli")
+        .expect("Binary not found")
+        .arg("--format")
+        .arg("tbl")
+        .arg("--scale-factor")
+        .arg("1")
+        .arg("--tables")
+        .arg("zone")
+        .arg("--output-dir")
+        .arg(temp_dir.path())
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains(
+            "Zone table is only supported in --format=parquet",
         ));
 }
 
