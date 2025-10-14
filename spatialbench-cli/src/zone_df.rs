@@ -61,7 +61,7 @@ fn estimated_total_rows_for_sf(sf: f64) -> i64 {
         };
     }
     if sf < 1.0 {
-        (total as f64 * sf).floor() as i64
+        (total as f64 * sf).ceil() as i64
     } else {
         total
     }
@@ -70,7 +70,7 @@ fn estimated_total_rows_for_sf(sf: f64) -> i64 {
 fn get_zone_table_stats(sf: f64) -> (f64, i64) {
     // Returns (size_in_gb, total_rows) for the given scale factor
     if sf < 1.0 {
-        (0.92 * sf, (156_095.0 * sf).floor() as i64)
+        (0.92 * sf, (156_095.0 * sf).ceil() as i64)
     } else if sf < 10.0 {
         (1.42, 156_095)
     } else if sf < 100.0 {
@@ -100,7 +100,7 @@ fn compute_rows_per_group_from_stats(size_gb: f64, total_rows: i64, target_bytes
 
     let est = (effective_target as f64 / bytes_per_row).floor();
     // Keep RG count <= 32k, but avoid too-tiny RGs
-    est.max(10_000.0).min(10_000_000.0) as usize
+    est.clamp(1000.0, 32767.0) as usize
 }
 
 fn writer_props_with_rowgroup(comp: ParquetCompression, rows_per_group: usize) -> WriterProperties {
@@ -117,8 +117,15 @@ fn write_parquet_with_rowgroup_bytes(
     target_rowgroup_bytes: i64,
     comp: ParquetCompression,
     scale_factor: f64,
+    parts: i32,
 ) -> Result<()> {
-    let (size_gb, total_rows) = get_zone_table_stats(scale_factor);
+    let (mut size_gb, mut total_rows) = get_zone_table_stats(scale_factor);
+
+    // Use linear scaling stats for SF <= 1.0 with parts > 1
+    if scale_factor <= 1.0 && parts > 1 {
+        (size_gb, total_rows) = get_zone_table_stats(scale_factor / parts as f64);
+    }
+
     debug!(
         "size_gb={}, total_rows={} for scale_factor={}",
         size_gb, total_rows, scale_factor
@@ -235,20 +242,23 @@ pub async fn generate_zone_parquet(args: ZoneDfArgs) -> Result<()> {
     // debug!("Applied sorting by id");
 
     let total = estimated_total_rows_for_sf(args.scale_factor);
-    let this = (args.part as i64) - 1;
-    let rows_per_part = total / (args.parts as i64);
-    let offset = this * rows_per_part;
+    let i = (args.part as i64) - 1; // 0-based part index
+    let parts = args.parts as i64;
+
+    let base = total / parts;
+    let rem = total % parts;
+
+    // first `rem` parts get one extra row
+    let rows_this = base + if i < rem { 1 } else { 0 };
+    let offset = i * base + std::cmp::min(i, rem);
 
     info!(
-        "Partitioning data: total_rows={}, parts={}, rows_per_part={}, offset={}",
-        total, args.parts, rows_per_part, offset
+        "Partitioning data: total_rows={}, parts={}, base={}, rem={}, this_part_rows={}, offset={}",
+        total, parts, base, rem, rows_this, offset
     );
 
-    df = df.limit(offset as usize, Some(rows_per_part as usize))?;
-    debug!(
-        "Applied limit with offset={}, rows={}",
-        offset, rows_per_part
-    );
+    df = df.limit(offset as usize, Some(rows_this as usize))?;
+    debug!("Applied limit with offset={}, rows={}", offset, rows_this);
 
     ctx.register_table(TableReference::bare("zone_filtered"), df.into_view())?;
     debug!("Registered filtered data as 'zone_filtered' table");
@@ -319,6 +329,7 @@ pub async fn generate_zone_parquet(args: ZoneDfArgs) -> Result<()> {
         args.parquet_row_group_bytes,
         args.parquet_compression,
         args.scale_factor,
+        args.parts,
     )?;
     let write_dur = t1.elapsed();
 
