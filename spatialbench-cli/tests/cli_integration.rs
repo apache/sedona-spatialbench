@@ -84,7 +84,7 @@ fn test_spatialbench_cli_tbl_scale_factor_v1() {
 #[tokio::test]
 async fn test_zone_deterministic_parts_generation() {
     let temp_dir1 = tempdir().expect("Failed to create temporary directory 1");
-    
+
     Command::cargo_bin("spatialbench-cli")
         .expect("Binary not found")
         .arg("--format")
@@ -103,7 +103,7 @@ async fn test_zone_deterministic_parts_generation() {
         .success();
 
     let zone_file1 = temp_dir1.path().join("zone.parquet");
-    
+
     // Reference file is a sf=0.01 zone table with z_boundary column removed
     let reference_file = PathBuf::from("../spatialbench/data/sf-v1//zone.parquet");
 
