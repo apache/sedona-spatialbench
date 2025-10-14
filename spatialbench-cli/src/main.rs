@@ -411,7 +411,7 @@ impl Cli {
         match self.format {
             OutputFormat::Parquet => {
                 let args = zone_df::ZoneDfArgs {
-                    scale_factor: self.scale_factor,
+                    scale_factor: 1.0f64.max(self.scale_factor),
                     output_dir: self.output_dir.clone(),
                     parts: self.parts.unwrap_or(1),
                     part: self.part.unwrap_or(1),
