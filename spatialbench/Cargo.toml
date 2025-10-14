@@ -13,12 +13,6 @@ license = { workspace = true }
 # See ../ARCHITECTURE.md for more details
 [dependencies]
 rand = { version = "0.8", features = ["small_rng"] }
-duckdb = { version = "1.3.0", features = ["bundled"] }
 geo = { workspace = true }
-geozero = { workspace = true }
 once_cell = "1.21.3"
-log = "0.4.27"
 serde = { version = "1.0.219", features = ["derive"] }
-
-[dev-dependencies]
-flate2 = "1.1.0"
