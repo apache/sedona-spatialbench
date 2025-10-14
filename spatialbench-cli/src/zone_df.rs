@@ -160,13 +160,8 @@ pub struct ZoneDfArgs {
 
 impl ZoneDfArgs {
     fn output_filename(&self) -> PathBuf {
-        // let fname = if self.parts > 1 {
-        //     format!("zone.part-{:03}-of-{:03}.parquet", self.part, self.parts)
-        // } else {
-        //     "zone.parquet".to_string()
-        // };
-        let fname = "zone.parquet".to_string();
-        self.output_dir.join(fname)
+        let filename = "zone.parquet".to_string();
+        self.output_dir.join(filename)
     }
 }
 
