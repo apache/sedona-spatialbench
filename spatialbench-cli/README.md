@@ -43,7 +43,7 @@ Options:
       --part <PART>
           Which part to generate (1-based, only relevant if parts > 1) [default: 1]
   -f, --format <FORMAT>
-          Output format: tbl, csv, parquet (default: tbl) [default: tbl] [possible values: tbl, csv, parquet]
+          Output format: parquet, tbl, csv (default: parquet) [default: parquet] [possible values: parquet, tbl, csv]
   -n, --num-threads <NUM_THREADS>
           The number of threads for parallel generation, defaults to the number of CPUs [default: 8]
   -c, --parquet-compression <PARQUET_COMPRESSION>

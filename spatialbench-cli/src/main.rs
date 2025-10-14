@@ -13,7 +13,7 @@
 //!     -V, --version                 Prints version information
 //!     -s, --scale-factor <FACTOR>  Scale factor for the data generation (default: 1)
 //!     -T, --tables <TABLES>        Comma-separated list of tables to generate (default: all)
-//!     -f, --format <FORMAT>        Output format: tbl, csv, or parquet (default: tbl)
+//!     -f, --format <FORMAT>        Output format: parquet, tbl or csv (default: parquet)
 //!     -o, --output-dir <DIR>       Output directory (default: current directory)
 //!     -p, --parts <N>              Number of parts to split generation into (default: 1)
 //!         --part <N>               Which part to generate (1-based, default: 1)
@@ -109,7 +109,7 @@ struct Cli {
     part: Option<i32>,
 
     /// Output format: tbl, csv, parquet
-    #[arg(short, long, default_value = "tbl")]
+    #[arg(short, long, default_value = "parquet")]
     format: OutputFormat,
 
     /// The number of threads for parallel generation, defaults to the number of CPUs
