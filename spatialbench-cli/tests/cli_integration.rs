@@ -105,7 +105,7 @@ async fn test_zone_deterministic_parts_generation() {
     let zone_file1 = temp_dir1.path().join("zone.parquet");
 
     // Reference file is a sf=0.01 zone table with z_boundary column removed
-    let reference_file = PathBuf::from("../spatialbench/data/sf-v1//zone.parquet");
+    let reference_file = PathBuf::from("../spatialbench/data/sf-v1/zone.parquet");
 
     assert!(
         zone_file1.exists(),
