@@ -24,7 +24,7 @@ serde = { version = "1.0.219", features = ["derive"] }
 anyhow = "1.0.99"
 serde_yaml = "0.9.33"
 datafusion = "47.0.0"
-object_store = { version = "0.12.4", features = ["aws"] }
+object_store = { version = "0.12.4", features = ["http"] }
 arrow-array = "55.2.0"
 arrow-schema = "55.2.0"
 url = "2.5.7"
