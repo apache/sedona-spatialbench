@@ -200,16 +200,20 @@ pub async fn generate_zone_parquet(args: ZoneDfArgs) -> Result<()> {
     let ctx = SessionContext::new_with_config_rt(SessionConfig::from(cfg), rt);
     debug!("Created DataFusion session context");
 
-    // 4 Parquet parts from Hugging Face
-    let parquet_urls = vec![
-        format!("https://huggingface.co/datasets/apache-sedona/spatialbench/resolve/main/omf-division-area-{}/part-00000-c998b093-fa14-440c-98f0-bbdb2126ed22-c000.zstd.parquet", OVERTURE_RELEASE_DATE),
-        format!("https://huggingface.co/datasets/apache-sedona/spatialbench/resolve/main/omf-division-area-{}/part-00001-c998b093-fa14-440c-98f0-bbdb2126ed22-c000.zstd.parquet", OVERTURE_RELEASE_DATE),
-        format!("https://huggingface.co/datasets/apache-sedona/spatialbench/resolve/main/omf-division-area-{}/part-00002-c998b093-fa14-440c-98f0-bbdb2126ed22-c000.zstd.parquet", OVERTURE_RELEASE_DATE),
-        format!("https://huggingface.co/datasets/apache-sedona/spatialbench/resolve/main/omf-division-area-{}/part-00003-c998b093-fa14-440c-98f0-bbdb2126ed22-c000.zstd.parquet", OVERTURE_RELEASE_DATE),
-    ];
+    // Parquet parts from Hugging Face (programmatically generated)
+    const PARQUET_PART_COUNT: usize = 4;
+    const PARQUET_UUID: &str = "c998b093-fa14-440c-98f0-bbdb2126ed22";
+    let parquet_urls: Vec<String> = (0..PARQUET_PART_COUNT)
+        .map(|i| format!(
+            "https://huggingface.co/datasets/apache-sedona/spatialbench/resolve/main/omf-division-area-{}/part-{i:05}-{uuid}-c000.zstd.parquet",
+            OVERTURE_RELEASE_DATE,
+            i = i,
+            uuid = PARQUET_UUID
+        ))
+        .collect();
 
     info!(
-        "Reading {} Parquet parts from Hugging Face…",
+        "Reading {} Parquet parts from Hugging Face...",
         parquet_urls.len()
     );
 
