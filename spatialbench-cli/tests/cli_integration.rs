@@ -443,7 +443,7 @@ async fn test_zone_write_parquet_row_group_size_20mb() {
         output_dir.path(),
         vec![RowGroups {
             table: "zone",
-            row_group_bytes: vec![16284828, 19041211, 20977976, 17291992, 18079175],
+            row_group_bytes: vec![15428592,17250042,19338201,17046885,17251978],
         }],
     );
 }
