@@ -316,23 +316,23 @@ async fn test_write_parquet_row_group_size_default() {
         vec![
             RowGroups {
                 table: "customer",
-                row_group_bytes: vec![2600113],
+                row_group_bytes: vec![2599669],
             },
             RowGroups {
                 table: "trip",
-                row_group_bytes: vec![123519959, 123486809, 123476361, 123492237],
+                row_group_bytes: vec![123493205, 123460055, 123449607, 123465483],
             },
             RowGroups {
                 table: "driver",
-                row_group_bytes: vec![41594],
+                row_group_bytes: vec![41361],
             },
             RowGroups {
                 table: "vehicle",
-                row_group_bytes: vec![5393],
+                row_group_bytes: vec![5214],
             },
             RowGroups {
                 table: "building",
-                row_group_bytes: vec![2492865],
+                row_group_bytes: vec![2492359],
             },
         ],
     );
@@ -363,7 +363,7 @@ async fn test_zone_write_parquet_row_group_size_default() {
         output_dir.path(),
         vec![RowGroups {
             table: "zone",
-            row_group_bytes: vec![91351103],
+            row_group_bytes: vec![86288517],
         }],
     );
 }
@@ -390,27 +390,27 @@ async fn test_write_parquet_row_group_size_20mb() {
         vec![
             RowGroups {
                 table: "customer",
-                row_group_bytes: vec![2600113],
+                row_group_bytes: vec![2599669],
             },
             RowGroups {
                 table: "trip",
                 row_group_bytes: vec![
-                    24361422, 24361685, 24350928, 24348682, 24353605, 24335813, 24358941, 24343011,
-                    24345967, 24361312, 24337627, 24345972, 24348724, 24361400, 24361528, 24346264,
-                    24351137, 24338412, 24348304, 24361680, 24351433,
+                    24356144, 24356407, 24345650, 24343404, 24348327, 24330535, 24353663, 24337733,
+                    24340689, 24356034, 24332349, 24340694, 24343446, 24356122, 24356250, 24340986,
+                    24345859, 24333134, 24343026, 24356402, 24346155,
                 ],
             },
             RowGroups {
                 table: "driver",
-                row_group_bytes: vec![41594],
+                row_group_bytes: vec![41361],
             },
             RowGroups {
                 table: "vehicle",
-                row_group_bytes: vec![5393],
+                row_group_bytes: vec![5214],
             },
             RowGroups {
                 table: "building",
-                row_group_bytes: vec![2492865],
+                row_group_bytes: vec![2492359],
             },
         ],
     );
@@ -443,7 +443,7 @@ async fn test_zone_write_parquet_row_group_size_20mb() {
         output_dir.path(),
         vec![RowGroups {
             table: "zone",
-            row_group_bytes: vec![16284828, 19041211, 20977976, 17291992, 18079175],
+            row_group_bytes: vec![15428592, 17250042, 19338201, 17046885, 17251978],
         }],
     );
 }
