@@ -6,7 +6,7 @@ free to open an issue.
 
 ## Our Development Process
 
-To contribute, please find [an existing GitHub issue or open a new one](https://github.com/apache/sedona-spatialbench/issues). Claiming the issue you are working on helps us better track progress.
+To contribute, please find [an existing GitHub issue or open a new one](https://github.com/apache/sedona-tpchgen/issues). Claiming the issue you are working on helps us better track progress.
 
 ## Pull Requests
 
