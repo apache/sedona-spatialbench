@@ -420,7 +420,7 @@ impl Cli {
                 };
                 zone_df::generate_zone_parquet(args)
                     .await
-                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+                    .map_err(io::Error::other)
             }
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
