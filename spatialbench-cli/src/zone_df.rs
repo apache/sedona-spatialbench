@@ -20,6 +20,7 @@ use url::Url;
 
 const OVERTURE_RELEASE_DATE: &str = "2025-08-20.1";
 const HUGGINGFACE_URL: &str = "https://huggingface.co";
+const COMMIT_HASH: &str = "67822daa2fbc0039681922f0d7fea4157f41d13f";
 
 fn subtypes_for_scale_factor(sf: f64) -> Vec<&'static str> {
     let mut v = vec!["microhood", "macrohood", "county"];
@@ -200,6 +201,13 @@ pub async fn generate_zone_parquet(args: ZoneDfArgs) -> Result<()> {
     let ctx = SessionContext::new_with_config_rt(SessionConfig::from(cfg), rt);
     debug!("Created DataFusion session context");
 
+    // 4 Parquet parts from Hugging Face
+    let parquet_urls = vec![
+        format!("https://huggingface.co/datasets/apache-sedona/spatialbench/resolve/{}/omf-division-area-{}/part-00000-c998b093-fa14-440c-98f0-bbdb2126ed22-c000.zstd.parquet", COMMIT_HASH, OVERTURE_RELEASE_DATE),
+        format!("https://huggingface.co/datasets/apache-sedona/spatialbench/resolve/{}/omf-division-area-{}/part-00001-c998b093-fa14-440c-98f0-bbdb2126ed22-c000.zstd.parquet", COMMIT_HASH, OVERTURE_RELEASE_DATE),
+        format!("https://huggingface.co/datasets/apache-sedona/spatialbench/resolve/{}/omf-division-area-{}/part-00002-c998b093-fa14-440c-98f0-bbdb2126ed22-c000.zstd.parquet", COMMIT_HASH, OVERTURE_RELEASE_DATE),
+        format!("https://huggingface.co/datasets/apache-sedona/spatialbench/resolve/{}/omf-division-area-{}/part-00003-c998b093-fa14-440c-98f0-bbdb2126ed22-c000.zstd.parquet", COMMIT_HASH, OVERTURE_RELEASE_DATE),
+    ];
     // Parquet parts from Hugging Face (programmatically generated)
     const PARQUET_PART_COUNT: usize = 4;
     const PARQUET_UUID: &str = "c998b093-fa14-440c-98f0-bbdb2126ed22";
