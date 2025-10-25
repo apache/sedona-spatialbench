@@ -12,11 +12,7 @@ impl ZoneTransformer {
         Self { offset }
     }
 
-    pub async fn transform(
-        &self,
-        ctx: &SessionContext,
-        df: DataFrame,
-    ) -> Result<DataFrame> {
+    pub async fn transform(&self, ctx: &SessionContext, df: DataFrame) -> Result<DataFrame> {
         ctx.register_table(TableReference::bare("zone_filtered"), df.into_view())?;
         debug!("Registered filtered data as 'zone_filtered' table");
 

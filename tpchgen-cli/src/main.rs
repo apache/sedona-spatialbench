@@ -60,6 +60,12 @@ use ::parquet::basic::Compression;
 use clap::builder::TypedValueParser;
 use clap::{Parser, ValueEnum};
 use log::{debug, info, LevelFilter};
+use std::fmt::Display;
+use std::fs::{self, File};
+use std::io::{self, BufWriter, Stdout, Write};
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::time::Instant;
 use tpchgen::distribution::Distributions;
 use tpchgen::generators::{
     BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
@@ -69,12 +75,6 @@ use tpchgen::text::TextPool;
 use tpchgen_arrow::{
     BuildingArrow, CustomerArrow, DriverArrow, RecordBatchIterator, TripArrow, VehicleArrow,
 };
-use std::fmt::Display;
-use std::fs::{self, File};
-use std::io::{self, BufWriter, Stdout, Write};
-use std::path::PathBuf;
-use std::str::FromStr;
-use std::time::Instant;
 
 #[derive(Parser)]
 #[command(name = "tpchgen")]
@@ -423,7 +423,7 @@ impl Cli {
             self.parquet_row_group_bytes,
             self.parquet_compression,
         )
-            .await
+        .await
     }
 
     define_generate!(

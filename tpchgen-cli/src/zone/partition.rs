@@ -1,3 +1,4 @@
+use arrow_array::RecordBatch;
 use datafusion::prelude::*;
 use log::info;
 
@@ -19,17 +20,10 @@ impl PartitionStrategy {
 
         info!(
             "Partition: total={}, parts={}, part={}, offset={}, limit={}",
-            total_rows,
-            parts,
-            part,
-            offset,
-            limit
+            total_rows, parts, part, offset, limit
         );
 
-        Self {
-            offset,
-            limit,
-        }
+        Self { offset, limit }
     }
 
     pub fn offset(&self) -> i64 {
@@ -38,6 +32,36 @@ impl PartitionStrategy {
 
     pub fn apply_to_dataframe(&self, df: DataFrame) -> datafusion::common::Result<DataFrame> {
         df.limit(self.offset as usize, Some(self.limit as usize))
+    }
+
+    /// Apply partition to already-collected batches
+    pub fn apply_to_batches(&self, batches: &[RecordBatch]) -> anyhow::Result<Vec<RecordBatch>> {
+        let mut result = Vec::new();
+        let mut current_offset = 0i64;
+        let end_offset = self.offset + self.limit;
+
+        for batch in batches {
+            let batch_rows = batch.num_rows() as i64;
+            let batch_end = current_offset + batch_rows;
+
+            if batch_end <= self.offset || current_offset >= end_offset {
+                current_offset = batch_end;
+                continue;
+            }
+
+            let start_in_batch = (self.offset.saturating_sub(current_offset)).max(0) as usize;
+            let end_in_batch = ((end_offset - current_offset).min(batch_rows)) as usize;
+            let length = end_in_batch - start_in_batch;
+
+            if length > 0 {
+                let sliced = batch.slice(start_in_batch, length);
+                result.push(sliced);
+            }
+
+            current_offset = batch_end;
+        }
+
+        Ok(result)
     }
 }
 

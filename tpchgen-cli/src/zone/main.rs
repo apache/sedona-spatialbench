@@ -1,6 +1,7 @@
+use log::info;
+use parquet::basic::Compression as ParquetCompression;
 use std::io;
 use std::path::PathBuf;
-use parquet::basic::Compression as ParquetCompression;
 
 use super::config::ZoneDfArgs;
 
@@ -16,17 +17,36 @@ pub async fn generate_zone(
 ) -> io::Result<()> {
     match format {
         OutputFormat::Parquet => {
-            let args = ZoneDfArgs::new(
-                1.0f64.max(scale_factor),
-                output_dir,
-                parts.unwrap_or(1),
-                part.unwrap_or(1),
-                parquet_row_group_bytes,
-                parquet_compression,
-            );
-            super::generate_zone_parquet(args)
-                .await
-                .map_err(io::Error::other)
+            let parts = parts.unwrap_or(1);
+
+            if part.is_some() {
+                // Single part mode - use LIMIT/OFFSET
+                let args = ZoneDfArgs::new(
+                    1.0f64.max(scale_factor),
+                    output_dir,
+                    parts,
+                    part.unwrap(),
+                    parquet_row_group_bytes,
+                    parquet_compression,
+                );
+                super::generate_zone_parquet_single(args)
+                    .await
+                    .map_err(io::Error::other)
+            } else {
+                // Multi-part mode - collect once and partition in memory
+                info!("Generating all {} part(s) for zone table", parts);
+                let args = ZoneDfArgs::new(
+                    1.0f64.max(scale_factor),
+                    output_dir,
+                    parts,
+                    1, // dummy value, not used in multi mode
+                    parquet_row_group_bytes,
+                    parquet_compression,
+                );
+                super::generate_zone_parquet_multi(args)
+                    .await
+                    .map_err(io::Error::other)
+            }
         }
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidInput,

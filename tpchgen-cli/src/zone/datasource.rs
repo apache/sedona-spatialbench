@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use anyhow::Result;
 use datafusion::{
     common::config::ConfigOptions,
@@ -7,6 +6,7 @@ use datafusion::{
 };
 use log::{debug, info};
 use object_store::http::HttpBuilder;
+use std::sync::Arc;
 use url::Url;
 
 use super::stats::ZoneTableStats;
@@ -35,12 +35,13 @@ impl ZoneDataSource {
     }
 
     pub fn create_context(&self) -> Result<SessionContext> {
-        let cfg = ConfigOptions::new();
+        let mut cfg = ConfigOptions::new();
 
-        let ctx = SessionContext::new_with_config_rt(
-            SessionConfig::from(cfg),
-            Arc::clone(&self.runtime),
-        );
+        // Avoid parallelism to ensure ordering of source data
+        cfg.execution.target_partitions = 1;
+
+        let ctx =
+            SessionContext::new_with_config_rt(SessionConfig::from(cfg), Arc::clone(&self.runtime));
 
         debug!("Created DataFusion session context");
         Ok(ctx)
@@ -52,7 +53,10 @@ impl ZoneDataSource {
         scale_factor: f64,
     ) -> Result<DataFrame> {
         let parquet_urls = self.generate_parquet_urls();
-        info!("Reading {} Parquet parts from Hugging Face...", parquet_urls.len());
+        info!(
+            "Reading {} Parquet parts from Hugging Face...",
+            parquet_urls.len()
+        );
 
         let df = ctx
             .read_parquet(parquet_urls, ParquetReadOptions::default())
@@ -70,6 +74,10 @@ impl ZoneDataSource {
 
         let df = df.filter(pred.and(col("is_land").eq(lit(true))))?;
         info!("Applied subtype and is_land filters");
+
+        // Sort by 'id' to ensure deterministic ordering regardless of parallelism
+        // let df = df.sort(vec![col("id").sort(true, false)])?;
+        // info!("Sorted by id for deterministic ordering");
 
         Ok(df)
     }

@@ -1,12 +1,9 @@
-use std::{path::PathBuf, sync::Arc, time::Instant};
 use anyhow::Result;
 use arrow_array::RecordBatch;
 use arrow_schema::SchemaRef;
 use log::{debug, info};
-use parquet::{
-    arrow::ArrowWriter,
-    file::properties::WriterProperties,
-};
+use parquet::{arrow::ArrowWriter, file::properties::WriterProperties};
+use std::{path::PathBuf, sync::Arc, time::Instant};
 
 use super::config::ZoneDfArgs;
 use super::stats::ZoneTableStats;
@@ -20,10 +17,8 @@ pub struct ParquetWriter {
 
 impl ParquetWriter {
     pub fn new(args: &ZoneDfArgs, stats: &ZoneTableStats, schema: SchemaRef) -> Self {
-        let rows_per_group = stats.compute_rows_per_group(
-            args.parquet_row_group_bytes,
-            128 * 1024 * 1024,
-        );
+        let rows_per_group =
+            stats.compute_rows_per_group(args.parquet_row_group_bytes, 128 * 1024 * 1024);
 
         let props = WriterProperties::builder()
             .set_compression(args.parquet_compression)
@@ -46,7 +41,8 @@ impl ParquetWriter {
 
         let t0 = Instant::now();
         let file = std::fs::File::create(&self.output_path)?;
-        let mut writer = ArrowWriter::try_new(file, Arc::clone(&self.schema), Some(self.props.clone()))?;
+        let mut writer =
+            ArrowWriter::try_new(file, Arc::clone(&self.schema), Some(self.props.clone()))?;
 
         for batch in batches {
             writer.write(batch)?;

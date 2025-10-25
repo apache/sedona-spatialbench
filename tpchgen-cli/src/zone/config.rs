@@ -1,6 +1,6 @@
-use std::path::PathBuf;
 use anyhow::{anyhow, Result};
 use parquet::basic::Compression as ParquetCompression;
+use std::path::PathBuf;
 
 #[derive(Clone)]
 pub struct ZoneDfArgs {
@@ -43,6 +43,10 @@ impl ZoneDfArgs {
     }
 
     pub fn output_filename(&self) -> PathBuf {
-        self.output_dir.join("zone.parquet")
+        if self.parts > 1 {
+            self.output_dir.join(format!("zone.{}.parquet", self.part))
+        } else {
+            self.output_dir.join("zone.parquet")
+        }
     }
 }

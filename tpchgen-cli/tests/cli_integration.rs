@@ -2,14 +2,14 @@ use arrow_array::RecordBatch;
 use assert_cmd::Command;
 use parquet::arrow::arrow_reader::{ArrowReaderOptions, ParquetRecordBatchReaderBuilder};
 use parquet::file::metadata::ParquetMetaDataReader;
-use tpchgen::generators::TripGenerator;
-use tpchgen_arrow::{RecordBatchIterator, TripArrow};
 use std::fs;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tempfile::tempdir;
+use tpchgen::generators::TripGenerator;
+use tpchgen_arrow::{RecordBatchIterator, TripArrow};
 
 /// Test TBL output for scale factor 0.51 and 0.001 using tpchgen-cli
 /// A scale factor of 0.51 is used because a sf of 0.5 and below will yield 0 results in the Building table
@@ -106,7 +106,7 @@ async fn test_zone_deterministic_parts_generation() {
         .assert()
         .success();
 
-    let zone_file1 = temp_dir1.path().join("zone.parquet");
+    let zone_file1 = temp_dir1.path().join("zone.1.parquet");
 
     // Reference file is a sf=0.01 zone table with z_boundary column removed
     let reference_file = PathBuf::from("../tpchgen/data/sf-v1/zone.parquet");
@@ -362,7 +362,7 @@ async fn test_zone_write_parquet_row_group_size_default() {
     expect_row_group_sizes(
         output_dir.path(),
         vec![RowGroups {
-            table: "zone",
+            table: "zone.1",
             row_group_bytes: vec![86288517],
         }],
     );
@@ -442,7 +442,7 @@ async fn test_zone_write_parquet_row_group_size_20mb() {
     expect_row_group_sizes(
         output_dir.path(),
         vec![RowGroups {
-            table: "zone",
+            table: "zone.1",
             row_group_bytes: vec![15428592, 17250042, 19338201, 17046885, 17251978],
         }],
     );
