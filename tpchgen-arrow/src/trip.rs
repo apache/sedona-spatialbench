@@ -4,8 +4,8 @@ use arrow::array::{BinaryArray, Int64Array, RecordBatch, TimestampMillisecondArr
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef, TimeUnit};
 use geo::Geometry;
 use geozero::{CoordDimensions, ToWkb};
-use tpchgen::generators::{Trip, TripGenerator, TripGeneratorIterator};
 use std::sync::{Arc, LazyLock, Mutex};
+use tpchgen::generators::{Trip, TripGenerator, TripGeneratorIterator};
 
 // Thread-safe wrapper for TripGeneratorIterator
 struct ThreadSafeTripGenerator {

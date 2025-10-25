@@ -4,8 +4,8 @@ use arrow::array::{BinaryArray, Int64Array, RecordBatch};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use geo::Geometry;
 use geozero::{CoordDimensions, ToWkb};
-use tpchgen::generators::{BuildingGenerator, BuildingGeneratorIterator};
 use std::sync::{Arc, LazyLock};
+use tpchgen::generators::{BuildingGenerator, BuildingGeneratorIterator};
 
 /// Generate [`Building`]s in [`RecordBatch`] format
 ///

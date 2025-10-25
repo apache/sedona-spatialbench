@@ -1,10 +1,10 @@
 //! Implementations of [`Source`] for generating data in TBL format
 use super::generate::Source;
+use std::io::Write;
 use tpchgen::csv::{BuildingCsv, CustomerCsv, DriverCsv, TripCsv, VehicleCsv};
 use tpchgen::generators::{
     BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
 };
-use std::io::Write;
 
 /// Define a Source that writes the table in CSV format
 macro_rules! define_csv_source {

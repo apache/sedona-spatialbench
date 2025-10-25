@@ -2,8 +2,8 @@ use crate::conversions::string_view_array_from_display_iter;
 use crate::{DEFAULT_BATCH_SIZE, RecordBatchIterator};
 use arrow::array::{Int64Array, RecordBatch, StringViewArray};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-use tpchgen::generators::{VehicleGenerator, VehicleGeneratorIterator};
 use std::sync::{Arc, LazyLock};
+use tpchgen::generators::{VehicleGenerator, VehicleGeneratorIterator};
 
 /// Generate [`Vehicle`]s in [`RecordBatch`] format
 ///
