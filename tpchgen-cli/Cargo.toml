@@ -10,8 +10,8 @@ license = { workspace = true }
 repository = { workspace = true }
 
 [dependencies]
-arrow = "55.2"
-parquet = "55.2"
+arrow = "56"
+parquet = "56"
 clap = { version = "4.5.32", features = ["derive"] }
 tpchgen = { path = "../tpchgen", version = "1.1.1"}
 tpchgen-arrow = { path = "../tpchgen-arrow", version = "1.1.1" }
@@ -23,10 +23,10 @@ env_logger = "0.11.7"
 serde = { version = "1.0.219", features = ["derive"] }
 anyhow = "1.0.99"
 serde_yaml = "0.9.33"
-datafusion = "47.0.0"
-object_store = { version = "0.12.4", features = ["aws"] }
-arrow-array = "55.2.0"
-arrow-schema = "55.2.0"
+datafusion = "50.2"
+object_store = { version = "0.12.4", features = ["http"] }
+arrow-array = "56"
+arrow-schema = "56"
 url = "2.5.7"
 
 [dev-dependencies]

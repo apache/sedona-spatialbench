@@ -11,8 +11,7 @@ use datafusion::{
 use crate::plan::DEFAULT_PARQUET_ROW_GROUP_BYTES;
 use datafusion::execution::runtime_env::RuntimeEnv;
 use log::{debug, info};
-use object_store::aws::AmazonS3Builder;
-use object_store::ObjectStore;
+use object_store::http::HttpBuilder;
 use parquet::{
     arrow::ArrowWriter, basic::Compression as ParquetCompression,
     file::properties::WriterProperties,
@@ -20,15 +19,8 @@ use parquet::{
 use url::Url;
 
 const OVERTURE_RELEASE_DATE: &str = "2025-08-20.1";
-const OVERTURE_S3_BUCKET: &str = "overturemaps-us-west-2";
-const OVERTURE_S3_PREFIX: &str = "release";
-
-fn zones_parquet_url() -> String {
-    format!(
-        "s3://{}/{}/{}/theme=divisions/type=division_area/",
-        OVERTURE_S3_BUCKET, OVERTURE_S3_PREFIX, OVERTURE_RELEASE_DATE
-    )
-}
+const HUGGINGFACE_URL: &str = "https://huggingface.co";
+const COMMIT_HASH: &str = "67822daa2fbc0039681922f0d7fea4157f41d13f";
 
 fn subtypes_for_scale_factor(sf: f64) -> Vec<&'static str> {
     let mut v = vec!["microhood", "macrohood", "county"];
@@ -200,29 +192,39 @@ pub async fn generate_zone_parquet(args: ZoneDfArgs) -> Result<()> {
     let rt: Arc<RuntimeEnv> = Arc::new(RuntimeEnvBuilder::new().build()?);
     debug!("Built DataFusion runtime environment");
 
-    // Register S3 store for Overture bucket
-    let bucket = OVERTURE_S3_BUCKET;
-    info!("Registering S3 store for bucket: {}", bucket);
-    let s3 = AmazonS3Builder::new()
-        .with_bucket_name(bucket)
-        .with_skip_signature(true)
-        .with_region("us-west-2")
-        .build()?;
-
-    let s3_url = Url::parse(&format!("s3://{bucket}"))?;
-    let s3_store: Arc<dyn ObjectStore> = Arc::new(s3);
-    rt.register_object_store(&s3_url, s3_store);
-    debug!("Successfully registered S3 object store");
+    // Register HTTPS object store for Hugging Face
+    let hf_store = HttpBuilder::new().with_url(HUGGINGFACE_URL).build()?;
+    let hf_url = Url::parse(HUGGINGFACE_URL)?;
+    rt.register_object_store(&hf_url, Arc::new(hf_store));
+    debug!("Registered HTTPS object store for huggingface.co");
 
     let ctx = SessionContext::new_with_config_rt(SessionConfig::from(cfg), rt);
     debug!("Created DataFusion session context");
 
-    let url = zones_parquet_url();
-    info!("Reading parquet data from: {}", url);
+    // Parquet parts from Hugging Face (programmatically generated)
+    const PARQUET_PART_COUNT: usize = 4;
+    const PARQUET_UUID: &str = "c998b093-fa14-440c-98f0-bbdb2126ed22";
+    let parquet_urls: Vec<String> = (0..PARQUET_PART_COUNT)
+        .map(|i| format!(
+            "https://huggingface.co/datasets/apache-sedona/spatialbench/resolve/{}/omf-division-area-{}/part-{i:05}-{uuid}-c000.zstd.parquet",
+            COMMIT_HASH,
+            OVERTURE_RELEASE_DATE,
+            i = i,
+            uuid = PARQUET_UUID
+        ))
+        .collect();
+
+    info!(
+        "Reading {} Parquet parts from Hugging Face...",
+        parquet_urls.len()
+    );
+
     let t_read_start = Instant::now();
-    let mut df = ctx.read_parquet(url, ParquetReadOptions::default()).await?;
+    let mut df = ctx
+        .read_parquet(parquet_urls, ParquetReadOptions::default())
+        .await?;
     let read_dur = t_read_start.elapsed();
-    info!("Successfully read parquet data in {:?}", read_dur);
+    info!("Successfully read HF parquet data in {:?}", read_dur);
 
     // Build filter predicate
     debug!("Building filter predicate for subtypes: {:?}", subtypes);
