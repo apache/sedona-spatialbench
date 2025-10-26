@@ -1,0 +1,105 @@
+name: Build Python Packages
+
+on:
+  workflow_call:
+    inputs:
+      upload-artifacts:
+        description: "Whether to upload built distributions as artifacts"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  wheels:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          # Linux manylinux
+          - runner: ubuntu-22.04
+            target: x86_64
+            manylinux: auto
+            os: linux
+          - runner: ubuntu-22.04
+            target: x86
+            manylinux: auto
+            os: linux
+          - runner: ubuntu-22.04
+            target: aarch64
+            manylinux: auto
+            os: linux
+          - runner: ubuntu-22.04
+            target: armv7
+            manylinux: auto
+            os: linux
+          - runner: ubuntu-22.04
+            target: ppc64le
+            manylinux: auto
+            os: linux
+
+          # Linux musllinux
+          - runner: ubuntu-22.04
+            target: x86_64
+            manylinux: musllinux_1_2
+            os: musllinux
+          - runner: ubuntu-22.04
+            target: x86
+            manylinux: musllinux_1_2
+            os: musllinux
+          - runner: ubuntu-22.04
+            target: aarch64
+            manylinux: musllinux_1_2
+            os: musllinux
+          - runner: ubuntu-22.04
+            target: armv7
+            manylinux: musllinux_1_2
+            os: musllinux
+
+          # Windows
+          - runner: windows-latest
+            target: x64
+            os: windows
+          - runner: windows-latest
+            target: x86
+            os: windows
+
+          # macOS
+          - runner: macos-13
+            target: x86_64
+            os: macos
+          - runner: macos-14
+            target: aarch64
+            os: macos
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist
+          working-directory: spatialbench-cli
+          manylinux: ${{ matrix.manylinux || '' }}
+      - name: Upload wheels
+        if: ${{ inputs.upload-artifacts }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}-${{ matrix.target }}
+          path: spatialbench-cli/dist
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+          working-directory: spatialbench-cli
+      - name: Upload sdist
+        if: ${{ inputs.upload-artifacts }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-sdist
+          path: spatialbench-cli/dist

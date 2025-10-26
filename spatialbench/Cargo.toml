@@ -2,7 +2,7 @@
 name = "spatialbench"
 authors = ["clflushopt", "alamb"]
 description = "Blazing fast pure Rust no dependency TPC-H data generation library."
-repository = "https://github.com/wherobots/sedona-spatialbench"
+repository = "https://github.com/apache/sedona-spatialbench"
 readme = { workspace = true }
 version = { workspace = true }
 edition = { workspace = true }

@@ -1,6 +1,6 @@
 # SpatialBench Data Generator CLI
 
-See the main [README.md](https://github.com/wherobots/sedona-spatialbench) for full documentation.
+See the main [README.md](https://github.com/apache/sedona-spatialbench) for full documentation.
 
 ## Installation
 
