@@ -103,12 +103,8 @@ def _generate_data(scale_factor: int, num_partitions: dict[str, int], output_pat
         tables = list(num_partitions.keys())
         # Ensure base directories exist
         Path(output_path).mkdir(parents=True, exist_ok=True)
-        (Path(output_path) / "staging").mkdir(parents=True, exist_ok=True)
 
-        def run_one(table: str, part: int) -> None:
-            # Use a per-table, per-part staging dir to avoid collisions when parallel
-            staging_dir = Path(output_path) / "staging" / table / f"part-{part}"
-            staging_dir.mkdir(parents=True, exist_ok=True)
+        def run_one(table: str) -> None:
 
             result = subprocess.run(
                 [
@@ -118,8 +114,7 @@ def _generate_data(scale_factor: int, num_partitions: dict[str, int], output_pat
                     f"--format=parquet",
                     f"--parts={num_partitions[table]}",
                     f"--tables={table}",
-                    f"--part={part}",
-                    f"--output-dir={staging_dir}",
+                    f"--output-dir={output_path}",
                 ],
                 capture_output=True,
                 text=True,
@@ -129,32 +124,13 @@ def _generate_data(scale_factor: int, num_partitions: dict[str, int], output_pat
                 logging.warning("Command errors:")
                 logging.warning(result.stderr)
 
-            # Collate results by table instead of part
-            dest_dir = Path(output_path) / table
-            dest_dir.mkdir(parents=True, exist_ok=True)
-            src_file = staging_dir / f"{table}.parquet"
-            dest_file = dest_dir / f"part-{part}.parquet"
-            shutil.move(str(src_file), str(dest_file))
-
-            # Cleanup staging for this (table, part)
-            try:
-                shutil.rmtree(staging_dir)
-                # remove parent if empty
-                parent = staging_dir.parent
-                if parent.exists() and not any(parent.iterdir()):
-                    parent.rmdir()
-            except Exception as cleanup_err:
-                logging.debug(f"Cleanup warning for {staging_dir}: {cleanup_err}")
-
         # Launch all generation tasks in parallel threads
         futures = []
         with concurrent.futures.ThreadPoolExecutor(
                 max_workers=os.cpu_count() or 4
         ) as executor:
             for table in tables:
-                for idx in range(num_partitions[table]):
-                    part = idx + 1  # 1-indexed
-                    futures.append(executor.submit(run_one, table, part))
+                futures.append(executor.submit(run_one, table))
             # Raise the first exception if any
             for fut in concurrent.futures.as_completed(futures):
                 fut.result()

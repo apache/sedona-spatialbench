@@ -95,13 +95,7 @@ Key performance benefits:
 
 SpatialBench is a Rust-based fork of the tpchgen-rs project. It preserves the original’s high-performance, multi-threaded, streaming architecture, while extending it with a spatial star schema and geometry generation logic.
 
-You can build the SpatialBench data generator using Cargo:
-
-```bash
-cargo build --release
-```
-
-Alternatively, install it directly using:
+You can install the SpatialBench data generator using Cargo:
 
 ```bash
 cargo install --path ./spatialbench-cli
@@ -133,10 +127,7 @@ spatialbench-cli -s 1 --format=parquet --tables trip,building --output-dir sf1-p
 #### Partitioned Output Example
 
 ```bash
-for PART in $(seq 1 4); do
-  mkdir part-$PART
-  spatialbench-cli -s 10 --tables trip,building --output-dir part-$PART --parts 4 --part $PART
-done
+spatialbench-cli -s 10 --tables trip,building --parts 4
 ```
 
 #### Generate Multiple Parquet Files of Similar Size
