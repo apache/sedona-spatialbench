@@ -130,7 +130,7 @@ struct Cli {
     /// Target size in row group bytes in Parquet files
     ///
     /// Row groups are the typical unit of parallel processing and compression
-    /// with many query engines. Therfore, smaller row groups enable better
+    /// with many query engines. Therefore, smaller row groups enable better
     /// parallelism and lower peak memory use but may reduce compression
     /// efficiency.
     ///

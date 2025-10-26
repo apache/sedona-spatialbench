@@ -430,7 +430,7 @@ fn test_spatialbench_cli_parts_all_tables() {
     verify_table(temp_dir.path(), "driver", 1, "v1");
 }
 
-/// Read the N files from `output_dir/table_name/table_name.part.tml` into a
+/// Read the N files from `output_dir/table_name/table_name.part.tbl` into a
 /// single buffer and compare them to the contents of the reference file
 fn verify_table(output_dir: &Path, table_name: &str, parts: usize, scale_factor: &str) {
     let mut output_contents = Vec::new();

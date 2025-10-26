@@ -131,7 +131,7 @@ pub struct OutputPlanGenerator {
     output_dir: PathBuf,
     /// The generated output plans
     output_plans: Vec<OutputPlan>,
-    /// Output directores that have been created so far
+    /// Output directories that have been created so far
     /// (used to avoid creating the same directory multiple times)
     created_directories: HashSet<PathBuf>,
 }
