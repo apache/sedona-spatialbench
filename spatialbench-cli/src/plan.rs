@@ -526,7 +526,7 @@ mod tests {
                 .with_cli_part(1)
                 .with_cli_part_count(10)
                 // we expect there is still only one part
-                .assert(10, 1..=1)
+                .assert(1, 1..=1)
         }
 
         // #[test]
