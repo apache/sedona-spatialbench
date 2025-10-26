@@ -48,9 +48,9 @@ impl ParquetWriter {
         // Check if file already exists
         if self.output_path.exists() {
             info!(
-            "{} already exists, skipping generation",
-            self.output_path.display()
-        );
+                "{} already exists, skipping generation",
+                self.output_path.display()
+            );
             return Ok(());
         }
 
@@ -70,11 +70,11 @@ impl ParquetWriter {
         // Rename temp file to final output
         std::fs::rename(&temp_path, &self.output_path).map_err(|e| {
             anyhow::anyhow!(
-            "Failed to rename {:?} to {:?}: {}",
-            temp_path,
-            self.output_path,
-            e
-        )
+                "Failed to rename {:?} to {:?}: {}",
+                temp_path,
+                self.output_path,
+                e
+            )
         })?;
 
         let duration = t0.elapsed();

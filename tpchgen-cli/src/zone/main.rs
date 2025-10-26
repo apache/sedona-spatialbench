@@ -19,13 +19,14 @@ pub async fn generate_zone(
         OutputFormat::Parquet => {
             let parts = parts.unwrap_or(1);
 
-            if part.is_some() {
+            if let Some(part_num) = part {
                 // Single part mode - use LIMIT/OFFSET
+                info!("Generating part {} of {} for zone table", part_num, parts);
                 let args = ZoneDfArgs::new(
                     1.0f64.max(scale_factor),
                     output_dir,
                     parts,
-                    part.unwrap(),
+                    part_num,
                     parquet_row_group_bytes,
                     parquet_compression,
                 );

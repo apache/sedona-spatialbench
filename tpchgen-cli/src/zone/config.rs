@@ -52,5 +52,4 @@ impl ZoneDfArgs {
             self.output_dir.join("zone.parquet")
         }
     }
-
 }

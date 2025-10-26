@@ -11,11 +11,10 @@ use std::io;
 use std::io::BufWriter;
 use tokio::task::{JoinError, JoinSet};
 use tpchgen::generators::{
-    CustomerGenerator, TripGenerator, VehicleGenerator, BuildingGenerator, DriverGenerator,
+    BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
 };
 use tpchgen_arrow::{
-    CustomerArrow, TripArrow, VehicleArrow,
-    RecordBatchIterator, BuildingArrow, DriverArrow,
+    BuildingArrow, CustomerArrow, DriverArrow, RecordBatchIterator, TripArrow, VehicleArrow,
 };
 
 /// Runs multiple [`OutputPlan`]s in parallel, managing the number of threads
