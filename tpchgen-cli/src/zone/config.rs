@@ -44,9 +44,13 @@ impl ZoneDfArgs {
 
     pub fn output_filename(&self) -> PathBuf {
         if self.parts > 1 {
-            self.output_dir.join(format!("zone.{}.parquet", self.part))
+            // Create zone subdirectory and write parts within it
+            self.output_dir
+                .join("zone")
+                .join(format!("zone.{}.parquet", self.part))
         } else {
             self.output_dir.join("zone.parquet")
         }
     }
+
 }
