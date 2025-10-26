@@ -3,8 +3,6 @@
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::SchemaRef;
-use std::io::Write;
-use std::sync::Arc;
 use spatialbench::csv::{BuildingCsv, CustomerCsv, DriverCsv, TripCsv, VehicleCsv};
 use spatialbench::generators::{
     Building, BuildingGenerator, Customer, CustomerGenerator, Driver, DriverGenerator, Trip,
@@ -13,6 +11,8 @@ use spatialbench::generators::{
 use spatialbench_arrow::{
     BuildingArrow, CustomerArrow, DriverArrow, RecordBatchIterator, TripArrow, VehicleArrow,
 };
+use std::io::Write;
+use std::sync::Arc;
 
 use arrow::array::Array;
 use arrow::array::BinaryArray;

@@ -26,15 +26,15 @@ use ::parquet::basic::Compression;
 use clap::builder::TypedValueParser;
 use clap::{Parser, ValueEnum};
 use log::{debug, info, LevelFilter};
+use spatialbench::distribution::Distributions;
+use spatialbench::spatial::overrides::{set_overrides, SpatialOverrides};
+use spatialbench::text::TextPool;
 use std::fmt::Display;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Stdout, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Instant;
-use spatialbench::distribution::Distributions;
-use spatialbench::spatial::overrides::{set_overrides, SpatialOverrides};
-use spatialbench::text::TextPool;
 
 #[derive(Parser)]
 #[command(name = "spatialbench")]

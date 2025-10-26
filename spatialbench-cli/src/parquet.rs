@@ -10,11 +10,11 @@ use parquet::basic::Compression;
 use parquet::file::properties::WriterProperties;
 use parquet::file::writer::SerializedFileWriter;
 use parquet::schema::types::SchemaDescPtr;
+use spatialbench_arrow::RecordBatchIterator;
 use std::io;
 use std::io::Write;
 use std::sync::Arc;
 use tokio::sync::mpsc::{Receiver, Sender};
-use spatialbench_arrow::RecordBatchIterator;
 
 pub trait IntoSize {
     /// Convert the object into a size

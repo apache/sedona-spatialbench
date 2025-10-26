@@ -7,15 +7,15 @@ use crate::parquet::generate_parquet;
 use crate::tbl::*;
 use crate::{OutputFormat, Table, WriterSink};
 use log::{debug, info};
-use std::io;
-use std::io::BufWriter;
-use tokio::task::{JoinError, JoinSet};
 use spatialbench::generators::{
     BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
 };
 use spatialbench_arrow::{
     BuildingArrow, CustomerArrow, DriverArrow, RecordBatchIterator, TripArrow, VehicleArrow,
 };
+use std::io;
+use std::io::BufWriter;
+use tokio::task::{JoinError, JoinSet};
 
 /// Runs multiple [`OutputPlan`]s in parallel, managing the number of threads
 /// used to run them.

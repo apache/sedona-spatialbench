@@ -2,14 +2,14 @@ use arrow_array::RecordBatch;
 use assert_cmd::Command;
 use parquet::arrow::arrow_reader::{ArrowReaderOptions, ParquetRecordBatchReaderBuilder};
 use parquet::file::metadata::ParquetMetaDataReader;
+use spatialbench::generators::TripGenerator;
+use spatialbench_arrow::{RecordBatchIterator, TripArrow};
 use std::fs;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tempfile::tempdir;
-use spatialbench::generators::TripGenerator;
-use spatialbench_arrow::{RecordBatchIterator, TripArrow};
 
 /// Test TBL output for scale factor 0.51 and 0.001 using spatialbench-cli
 /// A scale factor of 0.51 is used because a sf of 0.5 and below will yield 0 results in the Building table
