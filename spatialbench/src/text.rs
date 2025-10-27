@@ -1,6 +1,6 @@
 //! Implementation of text pool and text generation.
 //!
-//! Most of this code has been ported from the Apache Trino TPC-H generator
+//! Most of this code has been ported from the Apache Trino SpatialBench generator
 //! implementation. The original code can be found in the following link:
 //!
 //! <https://github.com/trinodb/tpch/blob/master/src/main/java/io/trino/tpch/TextPool.java>
@@ -8,7 +8,7 @@
 use crate::{distribution::Distributions, random::RowRandomInt};
 use std::sync::OnceLock;
 
-/// Pool of random text that follows TPC-H grammar.
+/// Pool of random text that follows SpatialBench grammar.
 #[derive(Debug, Clone)]
 pub struct TextPool {
     /// Bytes making up the text pool, exact size.

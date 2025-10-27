@@ -11,9 +11,9 @@ pub struct RowRandomInt {
 }
 
 impl RowRandomInt {
-    /// The default multiplier value is a TPC-H constant.
+    /// The default multiplier value is a SpatialBench constant.
     const MULTIPLIER: i64 = 16807;
-    /// Modulus value is a TPC-H constant 2^31 - 1.
+    /// Modulus value is a SpatialBench constant 2^31 - 1.
     const MODULUS: i64 = 2147483647;
     /// Default seed value as specified in CMU's benchbase.
     const DEFAULT_SEED: i64 = 19620718;
@@ -105,14 +105,14 @@ pub struct RowRandomLong {
 }
 
 impl RowRandomLong {
-    /// The default multiplier value is a TPC-H constant.
+    /// The default multiplier value is a SpatialBench constant.
     const MULTIPLIER: i64 = 6364136223846793005;
     /// The default increment used.
     const INCREMENT: i64 = 1;
 
-    /// The default multiplier for 32-bit seeds (a TPC-H oddity).
+    /// The default multiplier for 32-bit seeds (a SpatialBench oddity).
     const MULTIPLIER_32: i64 = 16807;
-    /// The default modulus for 32-bit seeds (a TPC-H oddity).
+    /// The default modulus for 32-bit seeds (a SpatialBench oddity).
     const MODULUS_32: i64 = 2147483647;
 
     /// Instantiates a new random number generator with the specified seed and number of random
@@ -144,7 +144,7 @@ impl RowRandomLong {
     /// Signals that all seeds for the current row have been consumed and we need to start
     /// generating new ones.
     pub fn row_finished(&mut self) {
-        // For the 64-bit case, TPC-H actually uses the 32-bit advance method
+        // For the 64-bit case, SpatialBench actually uses the 32-bit advance method
         self.advance_seed_32((self.seeds_per_row - self.usage) as i64);
         self.usage = 0;
     }
@@ -160,7 +160,7 @@ impl RowRandomLong {
         self.advance_seed_32((self.seeds_per_row as i64) * row_count);
     }
 
-    // TPC-H uses this 32-bit method even for 64-bit numbers
+    // SpatialBench uses this 32-bit method even for 64-bit numbers
     fn advance_seed_32(&mut self, mut count: i64) {
         let mut multiplier: i64 = Self::MULTIPLIER_32;
 
@@ -308,7 +308,7 @@ impl RandomAlphaNumeric {
     const ALPHA_NUMERIC: &'static [u8] =
         b"0123456789abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ,";
 
-    // Length multipliers from TPC-H spec
+    // Length multipliers from SpatialBench spec
     const LOW_LENGTH_MULTIPLIER: f64 = 0.4;
     const HIGH_LENGTH_MULTIPLIER: f64 = 1.6;
 
@@ -395,14 +395,14 @@ impl Display for RandomAlphaNumericInstance {
     }
 }
 
-/// Generates phone numbers according to TPC-H spec
+/// Generates phone numbers according to SpatialBench spec
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RandomPhoneNumber {
     inner: RowRandomInt,
 }
 
 impl RandomPhoneNumber {
-    // Maximum number of nations in TPC-H
+    // Maximum number of nations in SpatialBench
     const NATIONS_MAX: i32 = 90;
 
     pub fn new(seed: i64) -> Self {
@@ -577,7 +577,7 @@ impl Display for StringSequenceInstance<'_> {
     }
 }
 
-/// Generates random text according to TPC-H spec
+/// Generates random text according to SpatialBench spec
 #[derive(Debug, Clone)]
 pub struct RandomText<'a> {
     inner: RowRandomInt,

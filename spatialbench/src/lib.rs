@@ -1,7 +1,7 @@
 //! Rust Spatial Bench Data Generator
 //!
 //! This crate provides a native Rust implementation of functions and utilities
-//! necessary for generating the TPC-H benchmark dataset in several popular
+//! necessary for generating the SpatialBench benchmark dataset in several popular
 //! formats.
 //!
 //! # Example: TBL output format
@@ -27,7 +27,7 @@
 //!  );
 //! ```
 //!
-//! The TPC-H dataset is composed of several tables with foreign key relations
+//! The SpatialBench dataset is composed of several tables with foreign key relations
 //! between them. For each table we implement and expose a generator that uses
 //! the iterator API to produce structs e.g [`Trip`] that represent a single
 //! row.
@@ -49,7 +49,7 @@
 //! on other Rust crates. It is focused entire on the core
 //! generation logic.
 //!
-//! If you want an easy way to generate the TPC-H dataset for usage with external
+//! If you want an easy way to generate the SpatialBench dataset for usage with external
 //! systems you can use CLI tool instead.
 pub mod csv;
 pub mod dates;

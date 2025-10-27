@@ -79,7 +79,7 @@ use std::time::Instant;
 #[derive(Parser)]
 #[command(name = "spatialbench")]
 #[command(version)]
-#[command(about = "TPC-H Data Generator", long_about = None)]
+#[command(about = "SpatialBench Data Generator", long_about = None)]
 struct Cli {
     /// Scale factor to create
     #[arg(short, long, default_value_t = 1.)]

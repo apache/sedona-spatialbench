@@ -56,7 +56,7 @@ impl Display for VehicleBrandName {
 /// The VEHICLE table
 ///
 /// The Display trait is implemented to format the line item data as a string
-/// in the default TPC-H 'tbl' format.
+/// in the default SpatialBench 'tbl' format.
 ///
 /// ```text
 /// 1|goldenrod lavender spring chocolate lace|Manufacturer#1|Brand#13|PROMO BURNISHED COPPER|7|JUMBO PKG|901.00|ly. slyly ironi|
@@ -316,7 +316,7 @@ impl Display for DriverName {
 /// Records for the Driver table.
 ///
 /// The Display trait is implemented to format the line item data as a string
-/// in the default TPC-H 'tbl' format.
+/// in the default SpatialBench 'tbl' format.
 ///
 /// ```text
 /// 1|Driver#000000001| N kD4on9OM Ipw3,gf0JBoQDd7tgrzrddZ|17|27-918-335-1736|5755.94|each slyly above the careful|
@@ -607,7 +607,7 @@ impl Display for CustomerName {
 /// The CUSTOMER table
 ///
 /// The Display trait is implemented to format the line item data as a string
-/// in the default TPC-H 'tbl' format.
+/// in the default SpatialBench 'tbl' format.
 ///
 /// ```text
 /// 1|Customer#000000001|IVhzIApeRb ot,c,E|15|25-989-741-2988|711.56|BUILDING|to the even, regular platelets. regular, ironic epitaphs nag e|
@@ -818,7 +818,7 @@ impl<'a> Iterator for CustomerGeneratorIterator<'a> {
 /// The TRIP table (fact table)
 ///
 /// The Display trait is implemented to format the trip data as a string
-/// in the default TPC-H 'tbl' format.
+/// in the default SpatialBench 'tbl' format.
 ///
 /// ```text
 /// 1|150|342|78|2023-04-12 08:30:15|2023-04-12 09:15:42|25.50|4.50|30.00|12.7|

@@ -2,7 +2,7 @@
 name = "spatialbench-cli"
 version = "1.1.1"
 authors = { workspace = true }
-description = "Blazing fast pure Rust TPC-H data generator command line tool."
+description = "Blazing fast pure Rust SpatialBench data generator command line tool."
 readme = "README.md"
 edition = { workspace = true }
 homepage = { workspace = true }

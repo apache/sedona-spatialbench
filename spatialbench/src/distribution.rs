@@ -4,10 +4,10 @@ use std::{
     sync::LazyLock,
 };
 
-/// TPC-H distributions seed file.
+/// SpatialBench distributions seed file.
 pub(crate) const DISTS_SEED: &str = include_str!("dists.dss");
 
-/// Distribution represents a weighted collection of string values from the TPC-H specification.
+/// Distribution represents a weighted collection of string values from the SpatialBench specification.
 /// It provides methods to access values by index or randomly based on their weights.
 #[derive(Debug, Clone, Default)]
 pub struct Distribution {
@@ -171,7 +171,7 @@ impl Distribution {
 static DEFAULT_DISTRIBUTIONS: LazyLock<Distributions> =
     LazyLock::new(|| Distributions::try_load_default().unwrap());
 
-/// Distributions wraps all TPC-H distributions and provides methods to access them.
+/// Distributions wraps all SpatialBench distributions and provides methods to access them.
 #[derive(Debug, Clone, Default)]
 pub struct Distributions {
     articles: Distribution,
@@ -245,7 +245,7 @@ impl Distributions {
 
     /// Loads distributions from a stream of lines.
     ///
-    /// The format is expected to follow the TPC-H specification format where:
+    /// The format is expected to follow the SpatialBench specification format where:
     /// - Lines starting with `"#"` are comments
     /// - Distributions start with `"BEGIN <name>"`
     /// - Distribution entries are formatted as `"value|weight"`

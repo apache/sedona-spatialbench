@@ -225,7 +225,7 @@ impl OutputSize {
     ) -> Self {
         let row_count = Self::row_count_for_table(table, scale_factor);
 
-        // The average row size in bytes for each table in the TPC-H schema
+        // The average row size in bytes for each table in the SpatialBench schema
         // this was determined by sampling the data
         let avg_row_size_bytes = match format {
             OutputFormat::Tbl | OutputFormat::Csv => match table {
@@ -337,7 +337,7 @@ impl OutputSize {
 mod tests {
     use super::*;
 
-    // Default layouts for generating TPC-H tables (tbl/csv format)
+    // Default layouts for generating SpatialBench tables (tbl/csv format)
     // These tests explain the default layouts for each table (e.g. row groups in parquet)
 
     mod default_layouts {
