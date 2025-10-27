@@ -1,6 +1,6 @@
 [package]
 name = "spatialbench"
-authors = ["clflushopt", "alamb"]
+authors = ["Apache Sedona <dev@sedona.apache.org>"]
 description = "Blazing fast pure Rust no dependency TPC-H data generation library."
 repository = "https://github.com/apache/sedona-spatialbench"
 readme = { workspace = true }

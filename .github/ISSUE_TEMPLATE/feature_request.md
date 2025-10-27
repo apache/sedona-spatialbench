@@ -3,7 +3,7 @@ name: Feature request
 about: 'Suggest a performance or feature improvement '
 title: "[FEATURE]"
 labels: enhancement
-assignees: clflushopt
+assignees: prantogg
 
 ---
 
