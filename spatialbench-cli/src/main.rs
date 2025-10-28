@@ -92,7 +92,7 @@ struct Cli {
     #[arg(long)]
     part: Option<i32>,
 
-    /// Maximum file size in MB. If specified, automatically determines the number of parts.
+    /// Output file size in MB. If specified, automatically determines the number of parts.
     /// Cannot be used with --parts or --part options.
     #[arg(long, conflicts_with_all = ["parts", "part"])]
     mb_per_file: Option<f32>,
