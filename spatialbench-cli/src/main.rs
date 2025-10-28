@@ -4,71 +4,31 @@
 //! API wise to the original dbgen tool, as in we use the same command line flags
 //! and arguments.
 //!
-//! ```
-//! USAGE:
-//!     spatialbench-cli [OPTIONS]
-//!
-//! OPTIONS:
-//!     -h, --help                    Prints help information
-//!     -V, --version                 Prints version information
-//!     -s, --scale-factor <FACTOR>  Scale factor for the data generation (default: 1)
-//!     -T, --tables <TABLES>        Comma-separated list of tables to generate (default: all)
-//!     -f, --format <FORMAT>        Output format: parquet, tbl or csv (default: parquet)
-//!     -o, --output-dir <DIR>       Output directory (default: current directory)
-//!     -p, --parts <N>              Number of parts to split generation into (default: 1)
-//!         --part <N>               Which part to generate (1-based, default: 1)
-//!     -n, --num-threads <N>        Number of threads to use (default: number of CPUs)
-//!     -c, --parquet-compression <C> Parquet compression codec, e.g., SNAPPY, ZSTD(1), UNCOMPRESSED (default: SNAPPY)
-//!         --parquet-row-group-size <N> Target size in bytes per row group in Parquet files (default: 134,217,728)
-//!     -v, --verbose                Verbose output
-//!         --stdout                 Write output to stdout instead of files
-//!```
-//!
-//! # Logging:
-//! Use the `-v` flag or `RUST_LOG` environment variable to control logging output.
-//!
-//! `-v` sets the log level to `info` and ignores the `RUST_LOG` environment variable.
-//!
-//! # Examples
-//! ```
-//! # see all info output
-//! spatialbench-cli -s 1 -v
-//!
-//! # same thing using RUST_LOG
-//! RUST_LOG=info spatialbench-cli -s 1
-//!
-//! # see all debug output
-//! RUST_LOG=debug spatialbench -s 1
-//! ```
+//! See the documentation on [`Cli`] for more information on the command line
 mod csv;
 mod generate;
+mod output_plan;
 mod parquet;
 mod plan;
+mod runner;
 mod spatial_config_file;
 mod statistics;
 mod tbl;
-mod zone_df;
+mod zone;
 
-use crate::csv::*;
-use crate::generate::{generate_in_chunks, Sink, Source};
+use crate::generate::Sink;
+use crate::output_plan::OutputPlanGenerator;
 use crate::parquet::*;
 use crate::plan::{GenerationPlan, DEFAULT_PARQUET_ROW_GROUP_BYTES};
 use crate::spatial_config_file::parse_yaml;
 use crate::statistics::WriteStatistics;
-use crate::tbl::*;
 use ::parquet::basic::Compression;
 use clap::builder::TypedValueParser;
 use clap::{Parser, ValueEnum};
 use log::{debug, info, LevelFilter};
 use spatialbench::distribution::Distributions;
-use spatialbench::generators::{
-    BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
-};
 use spatialbench::spatial::overrides::{set_overrides, SpatialOverrides};
 use spatialbench::text::TextPool;
-use spatialbench_arrow::{
-    BuildingArrow, CustomerArrow, DriverArrow, RecordBatchIterator, TripArrow, VehicleArrow,
-};
 use std::fmt::Display;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Stdout, Write};
@@ -97,13 +57,11 @@ struct Cli {
     #[arg(long = "config")]
     config: Option<PathBuf>,
 
-    /// Number of part(itions) to generate (manual parallel generation)
+    /// Number of part(itions) to generate. If not specified creates a single file per table
     #[arg(short, long)]
     parts: Option<i32>,
 
-    /// Which part(ition) to generate (1-based)
-    ///
-    /// If not specified, generates all parts
+    /// Which part(ition) to generate (1-based). If not specified, generates all parts
     #[arg(long)]
     part: Option<i32>,
 
@@ -132,6 +90,9 @@ struct Cli {
     parquet_compression: Compression,
 
     /// Verbose output
+    ///
+    /// When specified, sets the log level to `info` and ignores the `RUST_LOG`
+    /// environment variable. When not specified, uses `RUST_LOG`
     #[arg(short, long, default_value_t = false)]
     verbose: bool,
 
@@ -142,11 +103,11 @@ struct Cli {
     /// Target size in row group bytes in Parquet files
     ///
     /// Row groups are the typical unit of parallel processing and compression
-    /// in Parquet. With many query engines, smaller row groups enable better
+    /// with many query engines. Therefore, smaller row groups enable better
     /// parallelism and lower peak memory use but may reduce compression
     /// efficiency.
     ///
-    /// Note: parquet files are limited to 32k row groups, so at high scale
+    /// Note: Parquet files are limited to 32k row groups, so at high scale
     /// factors, the row group size may be increased to keep the number of row
     /// groups under this limit.
     ///
@@ -257,46 +218,6 @@ async fn main() -> io::Result<()> {
     cli.main().await
 }
 
-/// macro to create a Cli function for generating a table
-///
-/// Arguments:
-/// $FUN_NAME: name of the function to create
-/// $TABLE: The [`Table`] to generate
-/// $GENERATOR: The generator type to use
-/// $TBL_SOURCE: The [`Source`] type to use for TBL format
-/// $CSV_SOURCE: The [`Source`] type to use for CSV format
-/// $PARQUET_SOURCE: The [`RecordBatchIterator`] type to use for Parquet format
-macro_rules! define_generate {
-    ($FUN_NAME:ident,  $TABLE:expr, $GENERATOR:ident, $TBL_SOURCE:ty, $CSV_SOURCE:ty, $PARQUET_SOURCE:ty) => {
-        async fn $FUN_NAME(&self) -> io::Result<()> {
-            let filename = self.output_filename($TABLE);
-            let plan = GenerationPlan::try_new(
-                &$TABLE,
-                self.format,
-                self.scale_factor,
-                self.part,
-                self.parts,
-                self.parquet_row_group_bytes,
-            )
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-            let scale_factor = self.scale_factor;
-            info!("Writing table {} (SF={scale_factor}) to {filename}", $TABLE);
-            debug!("Plan: {plan}");
-            let gens = plan
-                .into_iter()
-                .map(move |(part, num_parts)| $GENERATOR::new(scale_factor, part, num_parts));
-            match self.format {
-                OutputFormat::Tbl => self.go(&filename, gens.map(<$TBL_SOURCE>::new)).await,
-                OutputFormat::Csv => self.go(&filename, gens.map(<$CSV_SOURCE>::new)).await,
-                OutputFormat::Parquet => {
-                    self.go_parquet(&filename, gens.map(<$PARQUET_SOURCE>::new))
-                        .await
-                }
-            }
-        }
-    };
-}
-
 impl Cli {
     /// Main function to run the generation
     async fn main(self) -> io::Result<()> {
@@ -368,15 +289,6 @@ impl Cli {
             ]
         };
 
-        // force the creation of the distributions and text pool to so it doesn't
-        // get charged to the first table
-        let start = Instant::now();
-        debug!("Creating distributions and text pool");
-        Distributions::static_default();
-        TextPool::get_or_init_default();
-        let elapsed = start.elapsed();
-        info!("Created static distributions and text pools in {elapsed:?}");
-
         // Warn if parquet specific options are set but not generating parquet
         if self.format != OutputFormat::Parquet {
             if self.parquet_compression != Compression::SNAPPY {
@@ -391,131 +303,58 @@ impl Cli {
             }
         }
 
-        // Generate each table
+        // Determine what files to generate
+        let mut output_plan_generator = OutputPlanGenerator::new(
+            self.format,
+            self.scale_factor,
+            self.parquet_compression,
+            self.parquet_row_group_bytes,
+            self.stdout,
+            self.output_dir.clone(),
+        );
+
         for table in tables {
-            match table {
-                Table::Vehicle => self.generate_vehicle().await?,
-                Table::Driver => self.generate_driver().await?,
-                Table::Customer => self.generate_customer().await?,
-                Table::Trip => self.generate_trip().await?,
-                Table::Building => self.generate_building().await?,
-                Table::Zone => self.generate_zone().await?,
+            if table == Table::Zone {
+                self.generate_zone().await?
+            } else {
+                output_plan_generator.generate_plans(table, self.part, self.parts)?;
             }
         }
+        let output_plans = output_plan_generator.build();
 
+        // force the creation of the distributions and text pool to so it doesn't
+        // get charged to the first table
+        let start = Instant::now();
+        debug!("Creating distributions and text pool");
+        Distributions::static_default();
+        TextPool::get_or_init_default();
+        let elapsed = start.elapsed();
+        info!("Created static distributions and text pools in {elapsed:?}");
+
+        // Run
+        let runner = runner::PlanRunner::new(output_plans, self.num_threads);
+        runner.run().await?;
         info!("Generation complete!");
         Ok(())
     }
 
     async fn generate_zone(&self) -> io::Result<()> {
-        match self.format {
-            OutputFormat::Parquet => {
-                let args = zone_df::ZoneDfArgs {
-                    scale_factor: 1.0f64.max(self.scale_factor),
-                    output_dir: self.output_dir.clone(),
-                    parts: self.parts.unwrap_or(1),
-                    part: self.part.unwrap_or(1),
-                    parquet_row_group_bytes: self.parquet_row_group_bytes,
-                    parquet_compression: self.parquet_compression,
-                };
-                zone_df::generate_zone_parquet(args)
-                    .await
-                    .map_err(io::Error::other)
-            }
-            _ => Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Zone table is only supported in --format=parquet (via DataFusion/S3).",
-            )),
-        }
-    }
-
-    define_generate!(
-        generate_vehicle,
-        Table::Vehicle,
-        VehicleGenerator,
-        VehicleTblSource,
-        VehicleCsvSource,
-        VehicleArrow
-    );
-    define_generate!(
-        generate_driver,
-        Table::Driver,
-        DriverGenerator,
-        DriverTblSource,
-        DriverCsvSource,
-        DriverArrow
-    );
-    define_generate!(
-        generate_customer,
-        Table::Customer,
-        CustomerGenerator,
-        CustomerTblSource,
-        CustomerCsvSource,
-        CustomerArrow
-    );
-    define_generate!(
-        generate_trip,
-        Table::Trip,
-        TripGenerator,
-        TripTblSource,
-        TripCsvSource,
-        TripArrow
-    );
-    define_generate!(
-        generate_building,
-        Table::Building,
-        BuildingGenerator,
-        BuildingTblSource,
-        BuildingCsvSource,
-        BuildingArrow
-    );
-
-    /// return the output filename for the given table
-    fn output_filename(&self, table: Table) -> String {
-        let extension = match self.format {
-            OutputFormat::Tbl => "tbl",
-            OutputFormat::Csv => "csv",
-            OutputFormat::Parquet => "parquet",
+        let format = match self.format {
+            OutputFormat::Parquet => zone::main::OutputFormat::Parquet,
+            OutputFormat::Csv => zone::main::OutputFormat::Csv,
+            OutputFormat::Tbl => zone::main::OutputFormat::Tbl,
         };
-        format!("{}.{extension}", table.name())
-    }
 
-    /// return a file for writing the given filename in the output directory
-    fn new_output_file(&self, filename: &str) -> io::Result<File> {
-        let path = self.output_dir.join(filename);
-        File::create(path)
-    }
-
-    /// Generates the output file from the sources
-    async fn go<I>(&self, filename: &str, sources: I) -> Result<(), io::Error>
-    where
-        I: Iterator<Item: Source> + 'static,
-    {
-        // Since generate_in_chunks already buffers, there is no need to buffer again
-        if self.stdout {
-            let sink = WriterSink::new(io::stdout());
-            generate_in_chunks(sink, sources, self.num_threads).await
-        } else {
-            let sink = WriterSink::new(self.new_output_file(filename)?);
-            generate_in_chunks(sink, sources, self.num_threads).await
-        }
-    }
-
-    /// Generates an output parquet file from the sources
-    async fn go_parquet<I>(&self, filename: &str, sources: I) -> Result<(), io::Error>
-    where
-        I: Iterator<Item: RecordBatchIterator> + 'static,
-    {
-        if self.stdout {
-            // write to stdout
-            let writer = BufWriter::with_capacity(32 * 1024 * 1024, io::stdout()); // 32MB buffer
-            generate_parquet(writer, sources, self.num_threads, self.parquet_compression).await
-        } else {
-            // write to a file
-            let file = self.new_output_file(filename)?;
-            let writer = BufWriter::with_capacity(32 * 1024 * 1024, file); // 32MB buffer
-            generate_parquet(writer, sources, self.num_threads, self.parquet_compression).await
-        }
+        zone::main::generate_zone(
+            format,
+            self.scale_factor,
+            self.output_dir.clone(),
+            self.parts,
+            self.part,
+            self.parquet_row_group_bytes,
+            self.parquet_compression,
+        )
+        .await
     }
 }
 
