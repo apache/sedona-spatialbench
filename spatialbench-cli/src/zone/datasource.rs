@@ -62,7 +62,7 @@ impl ZoneDataSource {
             .read_parquet(parquet_urls, ParquetReadOptions::default())
             .await?;
 
-        let stats = ZoneTableStats::new(scale_factor, 1);
+        let stats = ZoneTableStats::new(scale_factor, Some(1));
         let subtypes = stats.subtypes();
 
         info!("Selected subtypes for SF {}: {:?}", scale_factor, subtypes);

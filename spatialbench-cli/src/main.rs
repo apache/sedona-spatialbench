@@ -92,6 +92,11 @@ struct Cli {
     #[arg(long)]
     part: Option<i32>,
 
+    /// Maximum file size in MB. If specified, automatically determines the number of parts.
+    /// Cannot be used with --parts or --part options.
+    #[arg(long, conflicts_with_all = ["parts", "part"])]
+    mb_per_file: Option<f32>,
+
     /// Output format: tbl, csv, parquet
     #[arg(short, long, default_value = "parquet")]
     format: OutputFormat,
@@ -344,7 +349,12 @@ impl Cli {
             if table == Table::Zone {
                 self.generate_zone().await?
             } else {
-                output_plan_generator.generate_plans(table, self.part, self.parts)?;
+                output_plan_generator.generate_plans(
+                    table,
+                    self.part,
+                    self.parts,
+                    self.mb_per_file,
+                )?;
             }
         }
         let output_plans = output_plan_generator.build();
@@ -378,6 +388,7 @@ impl Cli {
             self.output_dir.clone(),
             self.parts,
             self.part,
+            self.mb_per_file,
             self.parquet_row_group_bytes,
             self.parquet_compression,
         )

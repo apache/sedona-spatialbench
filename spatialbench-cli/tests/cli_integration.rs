@@ -778,6 +778,120 @@ fn test_zone_generation_tbl_fails() {
         ));
 }
 
+#[tokio::test]
+async fn test_trip_output_file_size() {
+    let temp_dir = tempdir().expect("Failed to create temporary directory");
+
+    // Generate Trip table with max file size of 2MB
+    Command::cargo_bin("spatialbench-cli")
+        .expect("Binary not found")
+        .arg("--format")
+        .arg("parquet")
+        .arg("--scale-factor")
+        .arg("0.01")
+        .arg("--tables")
+        .arg("trip")
+        .arg("--output-dir")
+        .arg(temp_dir.path())
+        .arg("--mb-per-file")
+        .arg("2")
+        .assert()
+        .success();
+
+    let trip_dir = temp_dir.path().join("trip");
+    let output_file_size_mb = 2 * 1024 * 1024; // 2MB in bytes
+
+    // Verify all files are under the max size
+    for entry in fs::read_dir(&trip_dir).expect("Failed to read trip directory") {
+        let entry = entry.expect("Failed to read directory entry");
+        let metadata = entry.metadata().expect("Failed to get file metadata");
+        let file_size = metadata.len();
+
+        assert!(
+            file_size <= output_file_size_mb,
+            "File {} size ({} bytes) exceeds max size ({} bytes)",
+            entry.file_name().to_string_lossy(),
+            file_size,
+            output_file_size_mb
+        );
+    }
+
+    // Verify multiple files were created
+    let file_count = fs::read_dir(&trip_dir)
+        .expect("Failed to read trip directory")
+        .count();
+    assert!(file_count > 1, "Expected multiple files with 10MB limit");
+}
+
+#[tokio::test]
+async fn test_customer_output_file_size() {
+    let temp_dir = tempdir().expect("Failed to create temporary directory");
+
+    // Generate Customer table with approx file size of 1MB
+    Command::cargo_bin("spatialbench-cli")
+        .expect("Binary not found")
+        .arg("--format")
+        .arg("parquet")
+        .arg("--scale-factor")
+        .arg("1")
+        .arg("--tables")
+        .arg("customer")
+        .arg("--output-dir")
+        .arg(temp_dir.path())
+        .arg("--mb-per-file")
+        .arg("1")
+        .assert()
+        .success();
+
+    let customer_dir = temp_dir.path().join("customer");
+    let output_file_size_mb = 1 * 1024 * 1024; // 1MB in bytes
+
+    // Verify all files are under the max size
+    for entry in fs::read_dir(&customer_dir).expect("Failed to read customer directory") {
+        let entry = entry.expect("Failed to read directory entry");
+        let metadata = entry.metadata().expect("Failed to get file metadata");
+        let file_size = metadata.len();
+
+        assert!(
+            file_size <= output_file_size_mb,
+            "File {} size ({} bytes) exceeds max size ({} bytes)",
+            entry.file_name().to_string_lossy(),
+            file_size,
+            output_file_size_mb
+        );
+    }
+
+    // Verify multiple files were created
+    let file_count = fs::read_dir(&customer_dir)
+        .expect("Failed to read trip directory")
+        .count();
+    assert!(file_count > 1, "Expected multiple files with 10MB limit");
+}
+
+#[tokio::test]
+async fn test_zone_file_size_conflicts_with_parts() {
+    let temp_dir = tempdir().expect("Failed to create temporary directory");
+
+    // Should fail when both --mb-per-file and --parts are specified
+    Command::cargo_bin("spatialbench-cli")
+        .expect("Binary not found")
+        .arg("--format")
+        .arg("parquet")
+        .arg("--scale-factor")
+        .arg("1")
+        .arg("--tables")
+        .arg("zone")
+        .arg("--output-dir")
+        .arg(temp_dir.path())
+        .arg("--mb-per-file")
+        .arg("50")
+        .arg("--parts")
+        .arg("10")
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("cannot be used with"));
+}
+
 fn read_gzipped_file_to_string<P: AsRef<Path>>(path: P) -> Result<String, std::io::Error> {
     let file = File::open(path)?;
     let mut decoder = flate2::read::GzDecoder::new(file);

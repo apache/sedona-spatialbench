@@ -66,16 +66,24 @@ pub async fn generate_zone_parquet_multi(args: ZoneDfArgs) -> Result<()> {
     // Calculate total rows
     let total_rows: i64 = batches.iter().map(|b| b.num_rows() as i64).sum();
 
+    // Determine number of parts
+    let mut parts = args.parts.unwrap_or(1);
+    if let Some(max_size) = args.output_file_size_mb {
+        parts = PartitionStrategy::calculate_parts_from_max_size(args.scale_factor, max_size);
+    }
+
     // Write each part
-    for part in 1..=args.parts {
-        let partition = PartitionStrategy::calculate(total_rows, args.parts, part);
+    for part in 1..=parts {
+        let partition =
+            PartitionStrategy::calculate(total_rows, Option::from(parts), Option::from(part));
         let partitioned_batches = partition.apply_to_batches(&batches)?;
 
         let part_args = ZoneDfArgs::new(
             args.scale_factor,
             args.output_dir.clone(),
-            args.parts,
-            part,
+            Option::from(parts),
+            Option::from(part),
+            args.output_file_size_mb,
             args.parquet_row_group_bytes,
             args.parquet_compression,
         );

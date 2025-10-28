@@ -163,10 +163,18 @@ impl OutputPlanGenerator {
         table: Table,
         cli_part: Option<i32>,
         cli_part_count: Option<i32>,
+        output_file_size_mb: Option<f32>,
     ) -> io::Result<()> {
+        // Calculate part_count from output_file_size_mb if specified
+        let calculated_part_count = if let Some(max_size_mb) = output_file_size_mb {
+            Some(self.calculate_parts_from_file_size(table, max_size_mb))
+        } else {
+            cli_part_count
+        };
+
         // If the user specified only a part count, automatically create all
         // partitions for the table
-        if let (None, Some(part_count)) = (cli_part, cli_part_count) {
+        if let (None, Some(part_count)) = (cli_part, calculated_part_count) {
             if GenerationPlan::partitioned_table(table) {
                 debug!("Generating all partitions for table {table} with part count {part_count}");
                 for part in 1..=part_count {
@@ -178,9 +186,35 @@ impl OutputPlanGenerator {
                 self.generate_plan_inner(table, Some(1), Some(1))?;
             }
         } else {
-            self.generate_plan_inner(table, cli_part, cli_part_count)?;
+            self.generate_plan_inner(table, cli_part, calculated_part_count)?;
         }
         Ok(())
+    }
+
+    /// Calculate the number of parts needed to approximate output file size
+    fn calculate_parts_from_file_size(&self, table: Table, max_size_mb: f32) -> i32 {
+        use crate::plan::OutputSize;
+
+        let output_size = OutputSize::new(
+            table,
+            self.scale_factor,
+            self.format,
+            self.parquet_row_group_bytes,
+        );
+
+        let total_size_bytes = output_size.total_size_bytes();
+        let output_file_size_mb = max_size_mb * (1024 * 1024) as f32;
+
+        // Calculate parts needed
+        let parts = ((total_size_bytes as f64 / output_file_size_mb as f64).round() as i32).max(1);
+
+        debug!(
+            "Calculated {parts} parts for table {table} (total size: {}MB, max size: {}MB)",
+            total_size_bytes / (1024 * 1024),
+            max_size_mb
+        );
+
+        parts
     }
 
     fn generate_plan_inner(

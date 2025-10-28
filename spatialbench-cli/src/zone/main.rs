@@ -6,12 +6,14 @@ use std::path::PathBuf;
 use super::config::ZoneDfArgs;
 
 /// Generates zone table in the requested format
+#[allow(clippy::too_many_arguments)]
 pub async fn generate_zone(
     format: OutputFormat,
     scale_factor: f64,
     output_dir: PathBuf,
     parts: Option<i32>,
     part: Option<i32>,
+    max_file_size_mb: Option<f32>,
     parquet_row_group_bytes: i64,
     parquet_compression: ParquetCompression,
 ) -> io::Result<()> {
@@ -25,8 +27,9 @@ pub async fn generate_zone(
                 let args = ZoneDfArgs::new(
                     1.0f64.max(scale_factor),
                     output_dir,
-                    parts,
-                    part_num,
+                    Option::from(parts),
+                    Option::from(part_num),
+                    max_file_size_mb,
                     parquet_row_group_bytes,
                     parquet_compression,
                 );
@@ -39,8 +42,9 @@ pub async fn generate_zone(
                 let args = ZoneDfArgs::new(
                     1.0f64.max(scale_factor),
                     output_dir,
-                    parts,
-                    1, // dummy value, not used in multi mode
+                    Option::from(parts),
+                    None,
+                    max_file_size_mb,
                     parquet_row_group_bytes,
                     parquet_compression,
                 );

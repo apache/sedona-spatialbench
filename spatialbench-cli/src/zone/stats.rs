@@ -19,11 +19,11 @@ pub struct ZoneTableStats {
 }
 
 impl ZoneTableStats {
-    pub fn new(scale_factor: f64, parts: i32) -> Self {
+    pub fn new(scale_factor: f64, parts: Option<i32>) -> Self {
         let (mut size_gb, mut total_rows) = Self::base_stats(scale_factor);
 
-        if scale_factor <= 1.0 && parts > 1 {
-            (size_gb, total_rows) = Self::base_stats(scale_factor / parts as f64);
+        if scale_factor <= 1.0 && parts > Option::from(1) {
+            (size_gb, total_rows) = Self::base_stats(scale_factor / parts.unwrap() as f64);
         }
 
         debug!(
@@ -38,7 +38,7 @@ impl ZoneTableStats {
         }
     }
 
-    fn base_stats(sf: f64) -> (f64, i64) {
+    pub fn base_stats(sf: f64) -> (f64, i64) {
         if sf < 1.0 {
             (0.92 * sf, (156_095.0 * sf).ceil() as i64)
         } else if sf < 10.0 {
@@ -109,29 +109,29 @@ mod tests {
 
     #[test]
     fn test_subtypes_for_different_scale_factors() {
-        let sf_01_stats = ZoneTableStats::new(0.1, 1);
+        let sf_01_stats = ZoneTableStats::new(0.1, Some(1));
         assert_eq!(
             sf_01_stats.subtypes(),
             vec!["microhood", "macrohood", "county"]
         );
 
-        let sf_10_stats = ZoneTableStats::new(10.0, 1);
+        let sf_10_stats = ZoneTableStats::new(10.0, Some(1));
         assert_eq!(
             sf_10_stats.subtypes(),
             vec!["microhood", "macrohood", "county", "neighborhood"]
         );
 
-        let sf_100_stats = ZoneTableStats::new(100.0, 1);
+        let sf_100_stats = ZoneTableStats::new(100.0, Some(1));
         assert!(sf_100_stats.subtypes().contains(&"localadmin"));
         assert!(sf_100_stats.subtypes().contains(&"locality"));
 
-        let sf_1000_stats = ZoneTableStats::new(1000.0, 1);
+        let sf_1000_stats = ZoneTableStats::new(1000.0, Some(1));
         assert!(sf_1000_stats.subtypes().contains(&"country"));
     }
 
     #[test]
     fn test_rows_per_group_bounds() {
-        let stats = ZoneTableStats::new(1.0, 1);
+        let stats = ZoneTableStats::new(1.0, Some(1));
 
         let rows_per_group_tiny = stats.compute_rows_per_group(1_000_000, 128 * 1024 * 1024);
         assert!(rows_per_group_tiny >= 1000);
@@ -147,9 +147,9 @@ mod tests {
 
     #[test]
     fn test_estimated_rows_scaling_consistency() {
-        let base_stats = ZoneTableStats::new(1.0, 1);
-        let half_stats = ZoneTableStats::new(0.5, 1);
-        let quarter_stats = ZoneTableStats::new(0.25, 1);
+        let base_stats = ZoneTableStats::new(1.0, Some(1));
+        let half_stats = ZoneTableStats::new(0.5, Some(1));
+        let quarter_stats = ZoneTableStats::new(0.25, Some(1));
 
         let base_rows = base_stats.estimated_total_rows() as f64;
         let half_rows = half_stats.estimated_total_rows() as f64;

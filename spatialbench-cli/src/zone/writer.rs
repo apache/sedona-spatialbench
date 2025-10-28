@@ -81,7 +81,7 @@ impl ParquetWriter {
         let total_rows: usize = batches.iter().map(|b| b.num_rows()).sum();
 
         info!(
-            "Zone -> {} (part {}/{}). write={:?}, total_rows={}",
+            "Zone -> {} (part {:?}/{:?}). write={:?}, total_rows={}",
             self.output_path.display(),
             self.args.part,
             self.args.parts,

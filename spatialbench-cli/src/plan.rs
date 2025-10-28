@@ -217,7 +217,7 @@ impl Display for GenerationPlan {
 
 /// output size of a table
 #[derive(Debug)]
-struct OutputSize {
+pub struct OutputSize {
     /// Average row size in bytes
     avg_row_size_bytes: i64,
     /// Number of rows in the table
@@ -251,7 +251,7 @@ impl OutputSize {
             // Average row size in bytes for each table at scale factor 1.0
             // computed using datafusion-cli:
             // ```shell
-            // datafusion-cli -c "datafusion-cli -c "select row_group_id, count(*), min(row_group_bytes)::float/min(row_group_num_rows)::float as bytes_per_row from parquet_metadata('lineitem.parquet') GROUP BY 1 ORDER BY 1""
+            // datafusion-cli -c "datafusion-cli -c "select row_group_id, count(*), min(row_group_bytes)::float/min(row_group_num_rows)::float as bytes_per_row from parquet_metadata('zone.parquet') GROUP BY 1 ORDER BY 1""
             // ```
             OutputFormat::Parquet => match table {
                 Table::Vehicle => 54,
@@ -263,8 +263,9 @@ impl OutputSize {
                     // Scale based on zone subtype count for the scale factor
                     match scale_factor {
                         sf if sf < 10.0 => 1332,
-                        sf if sf < 100.0 => 2000,
-                        _ => 4258,
+                        sf if sf < 100.0 => 4445,
+                        sf if sf < 100.0 => 5220,
+                        _ => 5650,
                     }
                 }
             },
@@ -342,6 +343,11 @@ impl OutputSize {
             Table::Building => BuildingGenerator::calculate_row_count(scale_factor, 1, 1),
             Table::Zone => todo!(),
         }
+    }
+
+    /// Return the total estimated size in bytes
+    pub fn total_size_bytes(&self) -> i64 {
+        self.row_count * self.avg_row_size_bytes
     }
 }
 
