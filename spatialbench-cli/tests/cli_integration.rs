@@ -820,7 +820,7 @@ async fn test_trip_output_file_size() {
     let file_count = fs::read_dir(&trip_dir)
         .expect("Failed to read trip directory")
         .count();
-    assert!(file_count > 1, "Expected multiple files with 10MB limit");
+    assert!(file_count > 1, "Expected multiple files with 2MB limit");
 }
 
 #[tokio::test]
