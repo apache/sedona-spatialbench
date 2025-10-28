@@ -17,7 +17,7 @@ impl PartitionStrategy {
         let base = total_rows / parts as i64;
         let rem = total_rows % parts as i64;
 
-        let limit = base + if i < rem as i32 { 1 } else { 0 };
+        let limit = base + if (i as i64) < rem { 1 } else { 0 };
         let offset = i as i64 * base + std::cmp::min(i as i64, rem);
 
         info!(

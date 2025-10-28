@@ -264,7 +264,7 @@ impl OutputSize {
                     match scale_factor {
                         sf if sf < 10.0 => 1332,
                         sf if sf < 100.0 => 4445,
-                        sf if sf < 100.0 => 5220,
+                        sf if sf < 1000.0 => 5220,
                         _ => 5650,
                     }
                 }
