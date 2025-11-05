@@ -14,7 +14,7 @@ repository = "https://github.com/apache/sedona-spatialbench/"
 version = "1.1.1"
 
 [workspace.dependencies]
-geo = "0.30.0"
+geo = "0.31.0"
 geozero = { version = "0.14.0", features = ["with-wkb", "with-geo"]}
 
 [profile.release]

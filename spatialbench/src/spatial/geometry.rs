@@ -1,6 +1,7 @@
 use crate::spatial::utils::{apply_affine, round_coordinates};
 use crate::spatial::{GeomType, SpatialConfig};
-use geo::{coord, Geometry, LineString, Point, Polygon};
+use geo::orient::Direction;
+use geo::{coord, Geometry, LineString, Orient, Point, Polygon};
 use rand::rngs::StdRng;
 use rand::Rng;
 use std::f64::consts::PI;
@@ -51,7 +52,9 @@ pub fn generate_box_geom(
         .map(|(x, y)| coord! { x: x, y: y })
         .collect();
 
-    Geometry::Polygon(Polygon::new(LineString::from(coords), vec![]))
+    let mut polygon = Polygon::new(LineString::from(coords), vec![]);
+    polygon = polygon.orient(Direction::Default);
+    Geometry::Polygon(polygon)
 }
 
 pub fn generate_polygon_geom(
@@ -90,5 +93,7 @@ pub fn generate_polygon_geom(
         ring.push(first);
     }
 
-    Geometry::Polygon(Polygon::new(LineString::from(ring), vec![]))
+    let mut polygon = Polygon::new(LineString::from(ring), vec![]);
+    polygon = polygon.orient(Direction::Default);
+    Geometry::Polygon(polygon)
 }
