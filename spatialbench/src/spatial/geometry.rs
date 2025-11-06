@@ -82,9 +82,8 @@ pub fn generate_polygon_geom(
                 center.0 + config.polysize * ang.cos(),
                 center.1 + config.polysize * ang.sin(),
             );
-            let (x1, y1) = (x0.clamp(0.0, 1.0), y0.clamp(0.0, 1.0));
-            let (x2, y2) = apply_affine(x1, y1, m);
-            let (xr, yr) = round_coordinates(x2, y2, GEOMETRY_PRECISION);
+            let (x1, y1) = apply_affine(x0, y0, m);
+            let (xr, yr) = round_coordinates(x1, y1, GEOMETRY_PRECISION);
             coord! { x: xr, y: yr }
         })
         .collect::<Vec<_>>();
