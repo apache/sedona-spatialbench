@@ -11,7 +11,7 @@ use crate::random::{RandomAlphaNumeric, RandomAlphaNumericInstance};
 use crate::random::{RandomBoundedInt, RandomString, RandomStringSequence, RandomText};
 use crate::spatial::overrides as spatial_overrides;
 use crate::spatial::utils::continent::{build_continent_cdf, WeightedTarget};
-use crate::spatial::utils::{hash_to_unit_u64, spider_seed_for_index};
+use crate::spatial::utils::{hash_to_unit_u64, spider_seed_for_index, wrap_around_longitude};
 use crate::spatial::{ContinentAffines, SpatialDefaults, SpatialGenerator};
 use crate::text::TextPool;
 use geo::Point;
@@ -1132,6 +1132,8 @@ impl TripGeneratorIterator {
         let angle: f64 = angle_rng.gen::<f64>() * std::f64::consts::TAU;
 
         let mut dropoff_x = pickuploc.x() + distance_value * angle.cos();
+        dropoff_x = wrap_around_longitude(dropoff_x);
+
         let mut dropoff_y = pickuploc.y() + distance_value * angle.sin();
 
         // Hard code coordinate precision to 8 decimal places - milimeter level precision for WGS 84

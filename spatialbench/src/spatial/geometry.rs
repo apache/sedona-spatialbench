@@ -1,4 +1,4 @@
-use crate::spatial::utils::{apply_affine, round_coordinates};
+use crate::spatial::utils::{apply_affine, round_coordinates, wrap_around_longitude};
 use crate::spatial::{GeomType, SpatialConfig};
 use geo::orient::Direction;
 use geo::{coord, Geometry, LineString, Orient, Point, Polygon};
@@ -24,6 +24,7 @@ pub fn emit_geom(
 
 pub fn generate_point_geom(center: (f64, f64), m: &[f64; 6]) -> Geometry {
     let (x, y) = apply_affine(center.0, center.1, m);
+    let x = wrap_around_longitude(x);
     let (x, y) = round_coordinates(x, y, GEOMETRY_PRECISION);
     Geometry::Point(Point::new(x, y))
 }
