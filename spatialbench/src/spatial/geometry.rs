@@ -1,4 +1,7 @@
-use crate::spatial::utils::{apply_affine, round_coordinates, wrap_around_longitude};
+use crate::spatial::utils::{
+    apply_affine, clamp_polygon_to_dateline, crosses_dateline, round_coordinates,
+    wrap_around_longitude,
+};
 use crate::spatial::{GeomType, SpatialConfig};
 use geo::orient::Direction;
 use geo::{coord, Geometry, LineString, Orient, Point, Polygon};
@@ -6,7 +9,7 @@ use rand::rngs::StdRng;
 use rand::Rng;
 use std::f64::consts::PI;
 
-const GEOMETRY_PRECISION: f64 = 1_000_000_000.0;
+pub const GEOMETRY_PRECISION: f64 = 1_000_000_000.0;
 
 pub fn emit_geom(
     center01: (f64, f64),
@@ -54,6 +57,12 @@ pub fn generate_box_geom(
         .collect();
 
     let mut polygon = Polygon::new(LineString::from(coords), vec![]);
+
+    // Handle polygons crossing the dateline
+    if crosses_dateline(&polygon) {
+        polygon = clamp_polygon_to_dateline(&polygon);
+    }
+
     polygon = polygon.orient(Direction::Default);
     Geometry::Polygon(polygon)
 }
@@ -94,6 +103,12 @@ pub fn generate_polygon_geom(
     }
 
     let mut polygon = Polygon::new(LineString::from(ring), vec![]);
+
+    // Handle polygons crossing the dateline
+    if crosses_dateline(&polygon) {
+        polygon = clamp_polygon_to_dateline(&polygon);
+    }
+
     polygon = polygon.orient(Direction::Default);
     Geometry::Polygon(polygon)
 }
