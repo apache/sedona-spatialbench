@@ -95,13 +95,13 @@ mod geometry_tests {
         let trips: Vec<_> = generator.iter().collect();
 
         for trip in trips {
-            // Check 8 decimal place precision
+            // Check 9 decimal place precision
             let pickup_x_str = format!("{:.9}", trip.t_pickuploc.x());
             let pickup_y_str = format!("{:.9}", trip.t_pickuploc.y());
             let dropoff_x_str = format!("{:.9}", trip.t_dropoffloc.x());
             let dropoff_y_str = format!("{:.9}", trip.t_dropoffloc.y());
 
-            // Verify no extra precision beyond 8 decimals
+            // Verify no extra precision beyond 9 decimals
             let pickup_x_parsed: f64 = pickup_x_str.parse().unwrap();
             let pickup_y_parsed: f64 = pickup_y_str.parse().unwrap();
             let dropoff_x_parsed: f64 = dropoff_x_str.parse().unwrap();
