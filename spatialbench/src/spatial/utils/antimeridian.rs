@@ -1,10 +1,18 @@
 use geo::{Centroid, LineString, Polygon};
 
-/// Wraps a longitude value to ensure it stays within the valid range of [-180, 180] degrees.
+/// Normalizes longitude values to the valid range [-180, 180] by wrapping around the antimeridian.
 ///
-/// Longitude is a circular coordinate:
-/// - If longitude exceeds 180°, it wraps around from the eastern hemisphere back to the western hemisphere.
-/// - If longitude is below -180°, it wraps around from the western hemisphere back to the eastern hemisphere.
+/// This function is specifically designed for point geometries (e.g., trip pickup/dropoff locations)
+/// that may have longitude values slightly outside the standard range. Unlike polygon clamping,
+/// which handles geometries crossing the dateline, this function simply normalizes point coordinates.
+///
+/// # Examples
+/// - POINT(181, 20) becomes POINT(-179, 20) after wraparound
+/// - POINT(-181, 20) becomes POINT(179, 20) after wraparound
+///
+/// # Note
+/// This is different from `clamp_polygon_to_dateline()`, which handles polygons that cross
+/// the dateline by splitting them. This function is used before CCW orientation enforcement.
 pub fn wrap_around_longitude(mut lon: f64) -> f64 {
     while lon > 180.0 {
         lon -= 360.0;
@@ -35,19 +43,20 @@ pub fn crosses_dateline(polygon: &Polygon) -> bool {
     false
 }
 
-/// Clamps a polygon's longitude coordinates to one side of the antimeridian (±180°).
+/// Clamps a polygon's longitude coordinates to prevent it from crossing the antimeridian (±180°).
 ///
-/// When a polygon crosses the dateline, this function constrains its coordinates to remain
-/// on either the eastern (0° to 180°) or western (-180° to 0°) hemisphere based on where
-/// the polygon's centroid is located.
+/// This function is used to handle polygons that span across the dateline, which can cause
+/// rendering and spatial operation issues. It constrains the polygon to stay on one side of
+/// the dateline by clamping coordinates based on the polygon's centroid location.
 ///
 /// # Behavior
 /// - If the centroid is in the eastern hemisphere (≥ 0°), coordinates are clamped to [0°, 180°]
-///   or kept at their original values if already within [-180°, 0°]
 /// - If the centroid is in the western hemisphere (< 0°), coordinates are clamped to [-180°, 0°]
-///   or kept at their original values if already within [0°, 180°]
 /// - Latitude values (y-coordinates) remain unchanged
 ///
+/// # Note
+/// This is different from `wrap_around_longitude()`, which normalizes individual point coordinates
+/// that fall slightly outside [-180, 180]. This function handles entire polygons that cross the dateline.
 pub fn clamp_polygon_to_dateline(polygon: &Polygon) -> Polygon {
     let centroid = polygon.centroid().expect("Polygon should have centroid");
     let east_bound = centroid.x() >= 0.0;
