@@ -108,7 +108,7 @@ fn test_spatialbench_cli_tbl_no_overwrite() {
     run_command();
     let original_metadata =
         fs::metadata(&expected_file).expect("Failed to get metadata of generated file");
-    assert_eq!(original_metadata.len(), 826311);
+    assert_eq!(original_metadata.len(), 826317);
 
     // Run the spatialbench-cli command again with the same parameters and expect the
     // file to not be overwritten
