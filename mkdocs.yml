@@ -55,6 +55,7 @@ nav:
       - Datasets & Generators: datasets-generators.md
       - Data Distributions: spatialbench-distributions.md
       - Single Node Results: single-node-benchmarks.md
+      - Contributors Guide: contributors-guide.md
   - Blog: https://sedona.apache.org/latest/blog/
   - Community: https://sedona.apache.org/latest/setup/compile/
   - Apache Software Foundation: https://sedona.apache.org/latest/asf/asf/
