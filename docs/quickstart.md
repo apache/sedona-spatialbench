@@ -85,7 +85,7 @@ spatialbench-cli --scale-factor 1 --output-dir data/sf1
 SpatialBench uses a spatial data generator to generate synthetic points and polygons using realistic spatial distributions.
 
 To read more about the different spatial distributions offered by SpatialBench see [here](https://sedona.apache.org/spatialbench/spatialbench-distributions/).
-For more details about tuning the spatial distributions and the full YAML schema and examples, see [CONFIGURATION.md](./spatialbench-cli/CONFIGURATION.md).
+For more details about tuning the spatial distributions and the full YAML schema and examples, see [CONFIGURATION.md](https://github.com/apache/sedona-spatialbench/blob/main/spatialbench-cli/CONFIGURATION.md).
 
 You can override these defaults at runtime by passing a YAML file via the `--config` flag:
 
