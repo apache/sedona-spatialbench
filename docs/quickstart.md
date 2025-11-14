@@ -52,7 +52,7 @@ This creates six tables:
 
 Output is written to the current directory by default.
 
-## Customizing Output files
+## Customizing Output Files
 
 We'll go over a few common options to customize the output files. To see all available options, run `spatialbench-cli --help`.
 
@@ -93,4 +93,4 @@ You can override these defaults at runtime by passing a YAML file via the `--con
 spatialbench-cli --scale-factor 1 --config spatialbench-config.yml
 ```
 
-If --config is not provided, SpatialBench checks for ./spatialbench-config.yml. If absent, it falls back to built-in defaults.
+If `--config` is not provided, SpatialBench checks for ./spatialbench-config.yml. If absent, it falls back to built-in defaults.
