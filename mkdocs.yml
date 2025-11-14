@@ -50,6 +50,7 @@ nav:
   - SedonaDB: https://sedona.apache.org/sedonadb/
   - SpatialBench:
       - Home: index.md
+      - Quickstart: quickstart.md
       - Methodology: overview-methodology.md
       - Queries: queries.md
       - Datasets & Generators: datasets-generators.md
