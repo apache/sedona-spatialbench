@@ -17,6 +17,7 @@ to print all 12 queries in the dialect of your choice. Currently supported diale
 - Geopandas (distinct case)
 - SedonaDB
 - SedonaSpark
+- Spatial Polars
 
 
 We tried to vary the queries only as much as necessary to accommodate dialect differences.
