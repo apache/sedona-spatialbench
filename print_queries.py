@@ -424,7 +424,8 @@ def main():
         "Databricks": DatabricksSpatialBenchBenchmark,
         "DuckDB": DuckDBSpatialBenchBenchmark,
         "SedonaDB": SedonaDBSpatialBenchBenchmark,
-        "Geopandas": None  # Special case, we will catch this below
+        "Geopandas": None,  # Special case, we will catch this below,
+        "Spatial Polars": None,  # Special case, we will catch this below,
     }
 
     if len(sys.argv) < 2:
@@ -434,8 +435,9 @@ def main():
 
     dialect_arg = sys.argv[1]
 
-    if dialect_arg == "Geopandas":
-        print("Geopandas does not support SQL queries directly. Please use the provided Python script geopandas.py.")
+    if dialect_arg in ["Geopandas", "Spatial Polars"]:
+        dialect_script_name = dialect_arg.lower().replace(" ","_")
+        print(f"{dialect_arg} does not support SQL queries directly. Please use the provided Python script {dialect_script_name}.py.")
         sys.exit(0)
 
     if dialect_arg not in query_classes:
