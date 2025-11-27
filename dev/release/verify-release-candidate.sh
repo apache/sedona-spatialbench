@@ -139,11 +139,11 @@ fetch_archive() {
   import_gpg_keys
 
   local dist_name=$1
-  download_rc_file ${dist_name}.tar.gz
-  download_rc_file ${dist_name}.tar.gz.asc
-  download_rc_file ${dist_name}.tar.gz.sha512
-  gpg --verify ${dist_name}.tar.gz.asc ${dist_name}.tar.gz
-  ${sha512_verify} ${dist_name}.tar.gz.sha512
+  download_rc_file ${dist_name}-src.tar.gz
+  download_rc_file ${dist_name}-src.tar.gz.asc
+  download_rc_file ${dist_name}-src.tar.gz.sha512
+  gpg --verify ${dist_name}-src.tar.gz.asc ${dist_name}-src.tar.gz
+  ${sha512_verify} ${dist_name}-src.tar.gz.sha512
 }
 
 verify_dir_artifact_signatures() {
@@ -224,7 +224,7 @@ ensure_source_directory() {
     if [ ! -d "${SPATIALBENCH_SOURCE_DIR}" ]; then
       pushd $SPATIALBENCH_TMPDIR
       fetch_archive ${dist_name}
-      tar xf ${dist_name}.tar.gz
+      tar xf ${dist_name}-src.tar.gz
 
       popd
     fi
