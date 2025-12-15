@@ -119,7 +119,7 @@ See [the README](https://github.com/apache/sedona-spatialbench) for a full descr
 
 ## Data sizes
 
-Here are the uncompressed sizes of the tables for some different scale factors:
+Here are the uncompressed Parquet file sizes of the tables for some different scale factors:
 
 | Category | SF1        | SF10       | SF100      | SF1000      |
 |----------|------------|------------|------------|-------------|
