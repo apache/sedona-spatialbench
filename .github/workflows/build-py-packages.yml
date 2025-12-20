@@ -73,6 +73,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Set ARM architecture flags for Linux cross-compilation
+        if: (matrix.target == 'aarch64' || matrix.target == 'armv7') && (matrix.os == 'linux' || matrix.os == 'musllinux')
+        run: |
+          if [ "${{ matrix.target }}" = "aarch64" ]; then
+            echo "CFLAGS_aarch64_unknown_linux_gnu=-D__ARM_ARCH=8" >> $GITHUB_ENV
+            echo "CFLAGS_aarch64_unknown_linux_musl=-D__ARM_ARCH=8" >> $GITHUB_ENV
+          elif [ "${{ matrix.target }}" = "armv7" ]; then
+            echo "CFLAGS_armv7_unknown_linux_gnueabihf=-D__ARM_ARCH=7" >> $GITHUB_ENV
+            echo "CFLAGS_armv7_unknown_linux_musleabihf=-D__ARM_ARCH=7" >> $GITHUB_ENV
+          fi
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
