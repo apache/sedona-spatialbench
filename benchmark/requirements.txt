@@ -1,0 +1,18 @@
+# SpatialBench Benchmark Dependencies
+# Default versions (GitHub Actions workflow may override these)
+
+# For data generation
+spatialbench-cli
+
+# For DuckDB benchmarks
+duckdb==1.4.3
+pyarrow>=14.0.0
+pandas>=2.0.0
+
+# For GeoPandas benchmarks  
+geopandas==1.1.2
+shapely>=2.0.0
+numpy>=1.24.0
+
+# For SedonaDB benchmarks
+sedonadb==0.2.0
