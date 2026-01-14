@@ -35,8 +35,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-# Add parent directory to path to import query modules
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add spatialbench-queries directory to path to import query modules
+sys.path.insert(0, str(Path(__file__).parent.parent / "spatialbench-queries"))
 
 # Constants
 QUERY_COUNT = 12
@@ -58,7 +58,7 @@ class BenchmarkResult:
 class BenchmarkSuite:
     """Complete benchmark suite results."""
     engine: str
-    scale_factor: int
+    scale_factor: float
     results: list[BenchmarkResult] = field(default_factory=list)
     total_time: float = 0.0
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -84,17 +84,27 @@ class BenchmarkSuite:
         }
 
 
+class QueryTimeoutError(Exception):
+    """Raised when a query times out."""
+    pass
+
+
 @contextmanager
 def timeout_handler(seconds: int, query_name: str):
     """Context manager for handling query timeouts (Unix only)."""
     def _handler(signum, frame):
-        raise TimeoutError(f"Query {query_name} timed out after {seconds} seconds")
+        raise QueryTimeoutError(f"Query {query_name} timed out after {seconds} seconds")
     
     if hasattr(signal, 'SIGALRM'):
         old_handler = signal.signal(signal.SIGALRM, _handler)
         signal.alarm(seconds)
         try:
             yield
+        except Exception as e:
+            # Check if it's a timeout-related interruption (e.g., DuckDB "Query interrupted")
+            if "interrupt" in str(e).lower() or isinstance(e, QueryTimeoutError):
+                raise QueryTimeoutError(f"Query {query_name} timed out after {seconds} seconds")
+            raise
         finally:
             signal.alarm(0)
             signal.signal(signal.SIGALRM, old_handler)
@@ -104,17 +114,33 @@ def timeout_handler(seconds: int, query_name: str):
 
 
 def get_data_paths(data_dir: str) -> dict[str, str]:
-    """Get paths to all data tables."""
+    """Get paths to all data tables.
+    
+    Supports two data formats:
+    1. Directory format: table_name/*.parquet (e.g., building/building.1.parquet)
+    2. Single file format: table_name.parquet (e.g., building.parquet)
+    
+    Returns directory paths for directories containing parquet files.
+    Both DuckDB, pandas, and SedonaDB can read all parquet files from a directory.
+    """
     data_path = Path(data_dir)
     paths = {}
     
     for table in TABLES:
         table_path = data_path / table
+        # Check for directory format first (from HF: building/building.1.parquet)
         if table_path.is_dir():
             parquet_files = list(table_path.glob("*.parquet"))
-            paths[table] = str(table_path / "*.parquet") if parquet_files else str(table_path)
+            if parquet_files:
+                # Return directory path - DuckDB, pandas, and SedonaDB all support reading
+                # all parquet files from a directory
+                paths[table] = str(table_path)
+            else:
+                paths[table] = str(table_path)
+        # Then check for single file format (building.parquet)
         elif (data_path / f"{table}.parquet").exists():
             paths[table] = str(data_path / f"{table}.parquet")
+        # Finally check for any matching parquet files
         else:
             matches = list(data_path.glob(f"{table}*.parquet"))
             if matches:
@@ -159,16 +185,29 @@ class BaseBenchmark(ABC):
                     row_count=row_count,
                     status="success",
                 )
-        except TimeoutError as e:
+        except (TimeoutError, QueryTimeoutError) as e:
             return BenchmarkResult(
                 query=query_name,
                 engine=self.engine_name,
-                time_seconds=None,
+                time_seconds=timeout,
                 row_count=None,
                 status="timeout",
                 error_message=str(e),
             )
         except Exception as e:
+            elapsed = time.perf_counter() - start_time
+            # If elapsed time is close to or exceeds timeout, treat as timeout
+            # This handles cases where native code (Rust/C) throws a different exception
+            # when interrupted by SIGALRM
+            if elapsed >= timeout * 0.95:  # 95% of timeout to account for timing variance
+                return BenchmarkResult(
+                    query=query_name,
+                    engine=self.engine_name,
+                    time_seconds=timeout,
+                    row_count=None,
+                    status="timeout",
+                    error_message=f"Query timed out after {timeout}s (original error: {e})",
+                )
             return BenchmarkResult(
                 query=query_name,
                 engine=self.engine_name,
@@ -189,10 +228,14 @@ class DuckDBBenchmark(BaseBenchmark):
     def setup(self) -> None:
         import duckdb
         self._conn = duckdb.connect()
-        self._conn.execute("INSTALL spatial; LOAD spatial;")
+        self._conn.execute("LOAD spatial;")
         self._conn.execute("SET enable_external_file_cache = false;")
         for table, path in self.data_paths.items():
-            self._conn.execute(f"CREATE VIEW {table} AS SELECT * FROM read_parquet('{path}')")
+            # DuckDB needs glob pattern for directories, add /*.parquet if path is a directory
+            parquet_path = path
+            if Path(path).is_dir():
+                parquet_path = str(Path(path) / "*.parquet")
+            self._conn.execute(f"CREATE VIEW {table} AS SELECT * FROM read_parquet('{parquet_path}')")
     
     def teardown(self) -> None:
         if self._conn:
@@ -213,7 +256,7 @@ class GeoPandasBenchmark(BaseBenchmark):
     
     def setup(self) -> None:
         import importlib.util
-        geopandas_path = Path(__file__).parent.parent / "geopandas.py"
+        geopandas_path = Path(__file__).parent.parent / "spatialbench-queries" / "geopandas_queries.py"
         spec = importlib.util.spec_from_file_location("geopandas_queries", geopandas_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -237,18 +280,20 @@ class SedonaDBBenchmark(BaseBenchmark):
         self._sedona = None
     
     def setup(self) -> None:
-        import sedona.db
-        self._sedona = sedona.db.connect()
+        import sedonadb
+        self._sedona = sedonadb.connect()
         for table, path in self.data_paths.items():
-            self._sedona.read_parquet(path).create_temp_view(table)
+            # SedonaDB needs glob pattern for directories
+            parquet_path = path
+            if Path(path).is_dir():
+                parquet_path = str(Path(path) / "*.parquet")
+            self._sedona.read_parquet(parquet_path).to_view(table, overwrite=True)
     
     def teardown(self) -> None:
-        if self._sedona:
-            self._sedona.close()
-            self._sedona = None
+        self._sedona = None
     
     def execute_query(self, query_name: str, query: str | None) -> tuple[int, Any]:
-        result = self._sedona.sql(query).collect()
+        result = self._sedona.sql(query).to_pandas()
         return len(result), result
 
 
@@ -268,9 +313,11 @@ def run_benchmark(
     data_paths: dict[str, str],
     queries: list[str] | None,
     timeout: int,
-    scale_factor: int,
+    scale_factor: float,
 ) -> BenchmarkSuite:
     """Generic benchmark runner for any engine."""
+    
+    from importlib.metadata import version as pkg_version
     
     # Engine configurations
     configs = {
@@ -282,13 +329,13 @@ def run_benchmark(
         },
         "geopandas": {
             "class": GeoPandasBenchmark,
-            "version_getter": lambda: __import__("geopandas").__version__,
+            "version_getter": lambda: pkg_version("geopandas"),
             "queries_getter": lambda: {f"q{i}": None for i in range(1, QUERY_COUNT + 1)},
             "needs_sql": False,
         },
         "sedonadb": {
             "class": SedonaDBBenchmark,
-            "version_getter": lambda: getattr(__import__("sedonadb"), "__version__", "unknown"),
+            "version_getter": lambda: pkg_version("sedonadb"),
             "queries_getter": lambda: get_sql_queries("sedonadb"),
             "needs_sql": True,
         },
@@ -385,11 +432,11 @@ def main():
                         help="Comma-separated list of engines to benchmark")
     parser.add_argument("--queries", type=str, default=None,
                         help="Comma-separated list of queries to run (e.g., q1,q2,q3)")
-    parser.add_argument("--timeout", type=int, default=600,
-                        help="Query timeout in seconds (default: 600)")
+    parser.add_argument("--timeout", type=int, default=10,
+                        help="Query timeout in seconds (default: 10)")
     parser.add_argument("--output", type=str, default="benchmark_results.json",
                         help="Output file for results")
-    parser.add_argument("--scale-factor", type=int, default=1,
+    parser.add_argument("--scale-factor", type=float, default=1,
                         help="Scale factor of the data (for reporting only)")
     
     args = parser.parse_args()

@@ -36,7 +36,7 @@ We welcome contributions and civil discussions on how to improve the queries and
 
 You can print the queries in your dialect of choice using the following command:
 ```bash
-./print_queries.py <dialect>
+./spatialbench-queries/print_queries.py <dialect>
 ```
 
 ## Data Model

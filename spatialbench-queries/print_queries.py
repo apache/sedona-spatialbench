@@ -404,12 +404,11 @@ class SedonaDBSpatialBenchBenchmark(SpatialBenchBenchmark):
     @staticmethod
     def q5() -> str:
         return """
--- Q5 (SedonaDB): In SedonaDB ST_Collect is an aggregate function so no need to use ARRAY_AGG first.
--- ST_Collect does not accept an array as input so we cannot use the query with ARRAY_AGG.
+-- Q5 (SedonaDB): SedonaDB uses ST_Collect_Agg (with _Agg suffix) for aggregate functions.
 SELECT
     c.c_custkey, c.c_name AS customer_name,
     DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,
-    ST_Area(ST_ConvexHull(ST_Collect(ST_GeomFromWKB(t.t_dropoffloc)))) AS monthly_travel_hull_area,
+    ST_Area(ST_ConvexHull(ST_Collect_Agg(ST_GeomFromWKB(t.t_dropoffloc)))) AS monthly_travel_hull_area,
     COUNT(*) as dropoff_count
 FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
