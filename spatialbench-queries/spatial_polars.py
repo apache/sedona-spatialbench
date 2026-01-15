@@ -244,10 +244,10 @@ def q5(data_paths: dict[str, str]) -> DataFrame:
 
 
 def q6(data_paths: dict[str, str]) -> DataFrame:
-    """Q6 (Spatial Polars): Zone statistics for trips within 50km bounding box around Sedona.
+    """Q6 (Spatial Polars): Zone statistics for trips intersecting a bounding box.
 
     Mirrors original SQL intent:
-      * Filter zones fully contained in the provided bounding box polygon.
+      * Filter zones intersecting the provided bounding box polygon.
       * Count trips whose pickup point lies within each zone (inner semantics: zones with 0 pickups excluded).
       * Compute:
           total_pickups = COUNT(t_tripkey)
