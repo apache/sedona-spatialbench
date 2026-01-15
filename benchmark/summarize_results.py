@@ -63,7 +63,7 @@ def get_winner(query: str, data: dict, engines: list) -> str | None:
     return min(times, key=times.get)
 
 
-def generate_markdown_summary(results: dict, output_file: str, query_timeout: int | None = None) -> str:
+def generate_markdown_summary(results: dict, output_file: str, query_timeout: int | None = None, runs: int | None = None) -> str:
     """Generate a markdown summary of benchmark results for GitHub Actions."""
     engines = sorted(results.keys())
     
@@ -109,6 +109,7 @@ def generate_markdown_summary(results: dict, output_file: str, query_timeout: in
         "|-----------|-------|",
         f"| **Scale Factor** | {scale_factor} |",
         f"| **Query Timeout** | {query_timeout}s |",
+        f"| **Runs per Query** | {runs} |",
         f"| **Timestamp** | {timestamp} |",
         f"| **Queries** | {len(all_queries)} |",
         "",
@@ -281,6 +282,12 @@ def main():
         default=60,
         help="Query timeout in seconds (for reporting)",
     )
+    parser.add_argument(
+        "--runs",
+        type=int,
+        default=3,
+        help="Number of runs per query (for reporting)",
+    )
     
     args = parser.parse_args()
     
@@ -293,7 +300,7 @@ def main():
             f.write("# SpatialBench Benchmark Results\n\nNo results found.")
         return
     
-    markdown = generate_markdown_summary(results, args.output, args.timeout)
+    markdown = generate_markdown_summary(results, args.output, args.timeout, args.runs)
     print(f"Summary written to {args.output}")
     print("\nPreview:")
     print("-" * 60)

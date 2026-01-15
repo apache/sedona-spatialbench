@@ -393,6 +393,7 @@ def run_benchmark(
     queries: list[str] | None,
     timeout: int,
     scale_factor: float,
+    runs: int = 3,
 ) -> BenchmarkSuite:
     """Generic benchmark runner for any engine.
     
@@ -400,6 +401,9 @@ def run_benchmark(
     - Hard timeout enforcement (process can be killed)
     - Memory isolation (one query can't OOM the runner)
     - Crash isolation (one query crash doesn't affect others)
+    
+    If runs > 1 and the first run succeeds, additional runs are performed
+    and the average time is reported for fair comparison.
     """
     
     from importlib.metadata import version as pkg_version
@@ -430,6 +434,8 @@ def run_benchmark(
     print(f"Running {engine.title()} Benchmark")
     print(f"{'=' * 60}")
     print(f"{engine.title()} version: {version}")
+    if runs > 1:
+        print(f"Runs per query: {runs} (average will be reported)")
     
     suite = BenchmarkSuite(engine=engine, scale_factor=scale_factor, version=version)
     all_queries = config["queries_getter"]()
@@ -441,7 +447,7 @@ def run_benchmark(
         
         print(f"  Running {query_name}...", end=" ", flush=True)
         
-        # Run query in isolated subprocess
+        # First run
         result = run_query_isolated(
             engine_class=engine_class,
             engine_name=engine,
@@ -450,13 +456,45 @@ def run_benchmark(
             query_sql=query_sql,
             timeout=timeout,
         )
-        suite.results.append(result)
         
-        if result.status == "success":
+        # If first run succeeded and we want multiple runs, do additional runs
+        if result.status == "success" and runs > 1:
+            run_times = [result.time_seconds]
+            
+            for run_num in range(2, runs + 1):
+                additional_result = run_query_isolated(
+                    engine_class=engine_class,
+                    engine_name=engine,
+                    data_paths=data_paths,
+                    query_name=query_name,
+                    query_sql=query_sql,
+                    timeout=timeout,
+                )
+                if additional_result.status == "success":
+                    run_times.append(additional_result.time_seconds)
+                else:
+                    # If any subsequent run fails, just use successful runs
+                    break
+            
+            # Calculate average of all successful runs
+            avg_time = round(sum(run_times) / len(run_times), 2)
+            result = BenchmarkResult(
+                query=query_name,
+                engine=engine,
+                time_seconds=avg_time,
+                row_count=result.row_count,
+                status="success",
+                error_message=None,
+            )
+            print(f"{avg_time}s avg ({len(run_times)} runs, {result.row_count} rows)")
+        elif result.status == "success":
             print(f"{result.time_seconds}s ({result.row_count} rows)")
-            suite.total_time += result.time_seconds
         else:
             print(f"{result.status.upper()}: {result.error_message}")
+        
+        suite.results.append(result)
+        if result.status == "success":
+            suite.total_time += result.time_seconds
     
     return suite
 
@@ -520,6 +558,8 @@ def main():
                         help="Comma-separated list of queries to run (e.g., q1,q2,q3)")
     parser.add_argument("--timeout", type=int, default=10,
                         help="Query timeout in seconds (default: 10)")
+    parser.add_argument("--runs", type=int, default=3,
+                        help="Number of runs per query for averaging (default: 3)")
     parser.add_argument("--output", type=str, default="benchmark_results.json",
                         help="Output file for results")
     parser.add_argument("--scale-factor", type=float, default=1,
@@ -547,7 +587,7 @@ def main():
         print(f"  {table}: {path}")
     
     results = [
-        run_benchmark(engine, data_paths, queries, args.timeout, args.scale_factor)
+        run_benchmark(engine, data_paths, queries, args.timeout, args.scale_factor, args.runs)
         for engine in engines
     ]
     
