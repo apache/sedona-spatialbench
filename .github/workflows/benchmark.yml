@@ -35,24 +35,24 @@ on:
         default: 'duckdb,geopandas,sedonadb'
         type: string
       timeout:
-        description: 'Query timeout in seconds (default: 30, increase for full benchmark)'
+        description: 'Query timeout in seconds (default: 60, increase for full benchmark)'
         required: false
-        default: '30'
+        default: '60'
         type: string
       sedonadb_version:
-        description: 'SedonaDB version'
+        description: 'SedonaDB version (e.g., 1.0.0, leave empty for latest)'
         required: false
-        default: '0.2.0'
+        default: ''
         type: string
       duckdb_version:
-        description: 'DuckDB version'
+        description: 'DuckDB version (e.g., 1.0.0, leave empty for latest)'
         required: false
-        default: '1.4.3'
+        default: ''
         type: string
       geopandas_version:
-        description: 'GeoPandas version'
+        description: 'GeoPandas version (e.g., 1.0.0, leave empty for latest)'
         required: false
-        default: '1.1.2'
+        default: ''
         type: string
 
 concurrency:
@@ -63,11 +63,11 @@ env:
   CARGO_TERM_COLOR: always
   SCALE_FACTOR: ${{ github.event.inputs.scale_factor || '1' }}
   BENCHMARK_ENGINES: ${{ github.event.inputs.engines || 'duckdb,geopandas,sedonadb' }}
-  QUERY_TIMEOUT: ${{ github.event.inputs.timeout || '30' }}
-  # Package versions (can be overridden via workflow_dispatch)
-  SEDONADB_VERSION: ${{ github.event.inputs.sedonadb_version || '0.2.0' }}
-  DUCKDB_VERSION: ${{ github.event.inputs.duckdb_version || '1.4.3' }}
-  GEOPANDAS_VERSION: ${{ github.event.inputs.geopandas_version || '1.1.2' }}
+  QUERY_TIMEOUT: ${{ github.event.inputs.timeout || '60' }}
+  # Package versions (empty = latest, can be overridden via workflow_dispatch)
+  SEDONADB_VERSION: ${{ github.event.inputs.sedonadb_version }}
+  DUCKDB_VERSION: ${{ github.event.inputs.duckdb_version }}
+  GEOPANDAS_VERSION: ${{ github.event.inputs.geopandas_version }}
   # Hugging Face dataset for benchmark data
   HF_DATASET: apache-sedona/spatialbench
   HF_DATA_VERSION: v0.1.0
@@ -185,7 +185,11 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install "duckdb==${{ env.DUCKDB_VERSION }}" pyarrow pandas
+          if [ -n "${{ env.DUCKDB_VERSION }}" ]; then
+            pip install "duckdb==${{ env.DUCKDB_VERSION }}" pyarrow pandas
+          else
+            pip install duckdb pyarrow pandas
+          fi
           echo "Installed DuckDB version: $(python -c 'import duckdb; print(duckdb.__version__)')"
       
       - name: Pre-install DuckDB spatial extension
@@ -230,7 +234,11 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install "geopandas==${{ env.GEOPANDAS_VERSION }}" pandas pyarrow shapely
+          if [ -n "${{ env.GEOPANDAS_VERSION }}" ]; then
+            pip install "geopandas==${{ env.GEOPANDAS_VERSION }}" pandas pyarrow shapely
+          else
+            pip install geopandas pandas pyarrow shapely
+          fi
           echo "Installed GeoPandas version: $(python -c 'from importlib.metadata import version; print(version(\"geopandas\"))')"
       
       - name: Run GeoPandas benchmark
@@ -271,7 +279,11 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install "sedonadb[geopandas]==${{ env.SEDONADB_VERSION }}" pandas pyarrow pyproj
+          if [ -n "${{ env.SEDONADB_VERSION }}" ]; then
+            pip install "sedonadb[geopandas]==${{ env.SEDONADB_VERSION }}" pandas pyarrow pyproj
+          else
+            pip install "sedonadb[geopandas]" pandas pyarrow pyproj
+          fi
           echo "Installed SedonaDB version: $(python -c 'from importlib.metadata import version; print(version(\"sedonadb\"))')"
       
       - name: Run SedonaDB benchmark

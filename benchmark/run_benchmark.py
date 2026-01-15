@@ -25,6 +25,7 @@ on the SpatialBench queries at a specified scale factor.
 
 import argparse
 import json
+import multiprocessing
 import signal
 import sys
 import time
@@ -89,28 +90,40 @@ class QueryTimeoutError(Exception):
     pass
 
 
-@contextmanager
-def timeout_handler(seconds: int, query_name: str):
-    """Context manager for handling query timeouts (Unix only)."""
-    def _handler(signum, frame):
-        raise QueryTimeoutError(f"Query {query_name} timed out after {seconds} seconds")
+def _run_query_in_process(
+    result_queue: multiprocessing.Queue,
+    engine_class: type,
+    data_paths: dict[str, str],
+    query_name: str,
+    query_sql: str | None,
+):
+    """Worker function to run a query in a separate process.
     
-    if hasattr(signal, 'SIGALRM'):
-        old_handler = signal.signal(signal.SIGALRM, _handler)
-        signal.alarm(seconds)
+    This allows us to forcefully terminate queries that hang or consume
+    too much memory, which SIGALRM cannot do for native code.
+    """
+    try:
+        benchmark = engine_class(data_paths)
+        benchmark.setup()
         try:
-            yield
-        except Exception as e:
-            # Check if it's a timeout-related interruption (e.g., DuckDB "Query interrupted")
-            if "interrupt" in str(e).lower() or isinstance(e, QueryTimeoutError):
-                raise QueryTimeoutError(f"Query {query_name} timed out after {seconds} seconds")
-            raise
+            start_time = time.perf_counter()
+            row_count, _ = benchmark.execute_query(query_name, query_sql)
+            elapsed = time.perf_counter() - start_time
+            result_queue.put({
+                "status": "success",
+                "time_seconds": round(elapsed, 2),
+                "row_count": row_count,
+                "error_message": None,
+            })
         finally:
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, old_handler)
-    else:
-        # Windows: no timeout support
-        yield
+            benchmark.teardown()
+    except Exception as e:
+        result_queue.put({
+            "status": "error",
+            "time_seconds": None,
+            "row_count": None,
+            "error_message": str(e),
+        })
 
 
 def get_data_paths(data_dir: str) -> dict[str, str]:
@@ -308,6 +321,72 @@ def get_sql_queries(dialect: str) -> dict[str, str]:
     return dialects[dialect]().queries()
 
 
+def run_query_isolated(
+    engine_class: type,
+    engine_name: str,
+    data_paths: dict[str, str],
+    query_name: str,
+    query_sql: str | None,
+    timeout: int,
+) -> BenchmarkResult:
+    """Run a single query in an isolated subprocess with hard timeout.
+    
+    This is more robust than SIGALRM because:
+    1. Native code (C++/Rust) can be forcefully terminated
+    2. Memory-hungry queries don't affect the main process
+    3. Crashed queries don't invalidate the benchmark runner
+    """
+    result_queue = multiprocessing.Queue()
+    process = multiprocessing.Process(
+        target=_run_query_in_process,
+        args=(result_queue, engine_class, data_paths, query_name, query_sql),
+    )
+    
+    process.start()
+    process.join(timeout=timeout)
+    
+    if process.is_alive():
+        # Query exceeded timeout - forcefully terminate
+        process.terminate()
+        process.join(timeout=5)  # Give it 5 seconds to terminate gracefully
+        
+        if process.is_alive():
+            # Still alive - kill it
+            process.kill()
+            process.join(timeout=2)
+        
+        return BenchmarkResult(
+            query=query_name,
+            engine=engine_name,
+            time_seconds=timeout,
+            row_count=None,
+            status="timeout",
+            error_message=f"Query {query_name} timed out after {timeout} seconds (process killed)",
+        )
+    
+    # Process completed - get result from queue
+    try:
+        result_data = result_queue.get_nowait()
+        return BenchmarkResult(
+            query=query_name,
+            engine=engine_name,
+            time_seconds=result_data["time_seconds"],
+            row_count=result_data["row_count"],
+            status=result_data["status"],
+            error_message=result_data["error_message"],
+        )
+    except Exception:
+        # Process died without putting result in queue
+        return BenchmarkResult(
+            query=query_name,
+            engine=engine_name,
+            time_seconds=None,
+            row_count=None,
+            status="error",
+            error_message=f"Query {query_name} crashed (process exit code: {process.exitcode})",
+        )
+
+
 def run_benchmark(
     engine: str,
     data_paths: dict[str, str],
@@ -315,7 +394,13 @@ def run_benchmark(
     timeout: int,
     scale_factor: float,
 ) -> BenchmarkSuite:
-    """Generic benchmark runner for any engine."""
+    """Generic benchmark runner for any engine.
+    
+    Each query runs in an isolated subprocess to ensure:
+    - Hard timeout enforcement (process can be killed)
+    - Memory isolation (one query can't OOM the runner)
+    - Crash isolation (one query crash doesn't affect others)
+    """
     
     from importlib.metadata import version as pkg_version
     
@@ -325,19 +410,16 @@ def run_benchmark(
             "class": DuckDBBenchmark,
             "version_getter": lambda: __import__("duckdb").__version__,
             "queries_getter": lambda: get_sql_queries("duckdb"),
-            "needs_sql": True,
         },
         "geopandas": {
             "class": GeoPandasBenchmark,
             "version_getter": lambda: pkg_version("geopandas"),
             "queries_getter": lambda: {f"q{i}": None for i in range(1, QUERY_COUNT + 1)},
-            "needs_sql": False,
         },
         "sedonadb": {
             "class": SedonaDBBenchmark,
             "version_getter": lambda: pkg_version("sedonadb"),
             "queries_getter": lambda: get_sql_queries("sedonadb"),
-            "needs_sql": True,
         },
     }
     
@@ -349,28 +431,32 @@ def run_benchmark(
     print(f"{'=' * 60}")
     print(f"{engine.title()} version: {version}")
     
-    benchmark = config["class"](data_paths)
     suite = BenchmarkSuite(engine=engine, scale_factor=scale_factor, version=version)
+    all_queries = config["queries_getter"]()
+    engine_class = config["class"]
     
-    try:
-        benchmark.setup()
-        all_queries = config["queries_getter"]()
+    for query_name, query_sql in all_queries.items():
+        if queries and query_name not in queries:
+            continue
         
-        for query_name, query_sql in all_queries.items():
-            if queries and query_name not in queries:
-                continue
-            
-            print(f"  Running {query_name}...", end=" ", flush=True)
-            result = benchmark.run_query(query_name, query_sql, timeout)
-            suite.results.append(result)
-            
-            if result.status == "success":
-                print(f"{result.time_seconds}s ({result.row_count} rows)")
-                suite.total_time += result.time_seconds
-            else:
-                print(f"{result.status.upper()}: {result.error_message}")
-    finally:
-        benchmark.teardown()
+        print(f"  Running {query_name}...", end=" ", flush=True)
+        
+        # Run query in isolated subprocess
+        result = run_query_isolated(
+            engine_class=engine_class,
+            engine_name=engine,
+            data_paths=data_paths,
+            query_name=query_name,
+            query_sql=query_sql,
+            timeout=timeout,
+        )
+        suite.results.append(result)
+        
+        if result.status == "success":
+            print(f"{result.time_seconds}s ({result.row_count} rows)")
+            suite.total_time += result.time_seconds
+        else:
+            print(f"{result.status.upper()}: {result.error_message}")
     
     return suite
 
@@ -470,4 +556,12 @@ def main():
 
 
 if __name__ == "__main__":
+    # Use 'spawn' on macOS to avoid issues with forking and native code
+    # On Linux (GitHub Actions), 'fork' is default and usually works fine
+    import platform
+    if platform.system() == 'Darwin':
+        try:
+            multiprocessing.set_start_method('spawn', force=True)
+        except RuntimeError:
+            pass  # Already set
     main()
