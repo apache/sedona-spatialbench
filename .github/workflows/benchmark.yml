@@ -155,13 +155,6 @@ jobs:
           echo ""
           echo "Total size:"
           du -sh benchmark-data-sf${{ env.SCALE_FACTOR }}/
-      
-      - name: Upload data artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-data-sf${{ env.SCALE_FACTOR }}
-          path: benchmark-data-sf${{ env.SCALE_FACTOR }}
-          retention-days: 1
 
   benchmark-duckdb:
     name: Benchmark DuckDB (SF${{ github.event.inputs.scale_factor || '1' }})
@@ -171,17 +164,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Download benchmark data
-        uses: actions/download-artifact@v4
+      - name: Restore benchmark data from cache
+        uses: actions/cache/restore@v4
         with:
-          name: benchmark-data-sf${{ env.SCALE_FACTOR }}
           path: benchmark-data-sf${{ env.SCALE_FACTOR }}
+          key: benchmark-data-${{ env.HF_DATA_VERSION }}-sf${{ env.SCALE_FACTOR }}
+          fail-on-cache-miss: true
       
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
       
       - name: Install dependencies
         run: |
@@ -220,17 +213,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Download benchmark data
-        uses: actions/download-artifact@v4
+      - name: Restore benchmark data from cache
+        uses: actions/cache/restore@v4
         with:
-          name: benchmark-data-sf${{ env.SCALE_FACTOR }}
           path: benchmark-data-sf${{ env.SCALE_FACTOR }}
+          key: benchmark-data-${{ env.HF_DATA_VERSION }}-sf${{ env.SCALE_FACTOR }}
+          fail-on-cache-miss: true
       
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
       
       - name: Install dependencies
         run: |
@@ -265,17 +258,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Download benchmark data
-        uses: actions/download-artifact@v4
+      - name: Restore benchmark data from cache
+        uses: actions/cache/restore@v4
         with:
-          name: benchmark-data-sf${{ env.SCALE_FACTOR }}
           path: benchmark-data-sf${{ env.SCALE_FACTOR }}
+          key: benchmark-data-${{ env.HF_DATA_VERSION }}-sf${{ env.SCALE_FACTOR }}
+          fail-on-cache-miss: true
       
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
       
       - name: Install dependencies
         run: |
