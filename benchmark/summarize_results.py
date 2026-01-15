@@ -153,15 +153,6 @@ def generate_markdown_summary(results: dict, output_file: str, query_timeout: in
                 row += " — |"
         lines.append(row)
     
-    # Add totals row
-    totals_row = "| **TOTAL** |"
-    total_times = {engine: results[engine].get("total_time", 0) for engine in engines}
-    for engine in engines:
-        total = total_times[engine]
-        time_str = format_time(total)
-        totals_row += f" **{time_str}** |"
-    lines.append(totals_row)
-    
     # Win count summary
     win_counts = {engine: 0 for engine in engines}
     for query in all_queries:
@@ -173,15 +164,14 @@ def generate_markdown_summary(results: dict, output_file: str, query_timeout: in
         "",
         "## 🥇 Performance Summary",
         "",
-        "| Engine | Wins | Total Time |",
-        "|--------|:----:|:----------:|",
+        "| Engine | Wins |",
+        "|--------|:----:|",
     ])
     
     for engine in sorted(engines, key=lambda e: win_counts[e], reverse=True):
         icon_name = engine_icons.get(engine, engine.title())
         wins = win_counts[engine]
-        total = format_time(results[engine].get("total_time", 0))
-        lines.append(f"| {icon_name} | {wins} | {total} |")
+        lines.append(f"| {icon_name} | {wins} |")
     
     # Detailed results section (collapsible)
     lines.extend([
