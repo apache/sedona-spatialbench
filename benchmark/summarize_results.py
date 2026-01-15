@@ -63,7 +63,7 @@ def get_winner(query: str, data: dict, engines: list) -> str | None:
     return min(times, key=times.get)
 
 
-def generate_markdown_summary(results: dict, output_file: str) -> str:
+def generate_markdown_summary(results: dict, output_file: str, query_timeout: int | None = None) -> str:
     """Generate a markdown summary of benchmark results for GitHub Actions."""
     engines = sorted(results.keys())
     
@@ -108,6 +108,7 @@ def generate_markdown_summary(results: dict, output_file: str) -> str:
         "| Parameter | Value |",
         "|-----------|-------|",
         f"| **Scale Factor** | {scale_factor} |",
+        f"| **Query Timeout** | {query_timeout}s |",
         f"| **Timestamp** | {timestamp} |",
         f"| **Queries** | {len(all_queries)} |",
         "",
@@ -126,8 +127,6 @@ def generate_markdown_summary(results: dict, output_file: str) -> str:
         "",
         "## 🏁 Results Comparison",
         "",
-        "> 🏆 = Fastest for this query",
-        "",
         "| Query | " + " | ".join(engine_icons.get(e, e.title()) for e in engines) + " |",
         "|:------|" + "|".join(":---:" for _ in engines) + "|",
     ])
@@ -143,7 +142,7 @@ def generate_markdown_summary(results: dict, output_file: str) -> str:
                 time_val = result.get("time_seconds")
                 time_str = format_time(time_val)
                 if engine == winner:
-                    row += f" 🏆 **{time_str}** |"
+                    row += f" **{time_str}** |"
                 else:
                     row += f" {time_str} |"
             elif status == "timeout":
@@ -157,14 +156,10 @@ def generate_markdown_summary(results: dict, output_file: str) -> str:
     # Add totals row
     totals_row = "| **TOTAL** |"
     total_times = {engine: results[engine].get("total_time", 0) for engine in engines}
-    fastest_total = min(total_times.values()) if total_times else 0
     for engine in engines:
         total = total_times[engine]
         time_str = format_time(total)
-        if total == fastest_total and total > 0:
-            totals_row += f" 🏆 **{time_str}** |"
-        else:
-            totals_row += f" **{time_str}** |"
+        totals_row += f" **{time_str}** |"
     lines.append(totals_row)
     
     # Win count summary
@@ -186,8 +181,7 @@ def generate_markdown_summary(results: dict, output_file: str) -> str:
         icon_name = engine_icons.get(engine, engine.title())
         wins = win_counts[engine]
         total = format_time(results[engine].get("total_time", 0))
-        medal = "🥇" if wins == max(win_counts.values()) and wins > 0 else ""
-        lines.append(f"| {icon_name} | {wins} {medal} | {total} |")
+        lines.append(f"| {icon_name} | {wins} | {total} |")
     
     # Detailed results section (collapsible)
     lines.extend([
@@ -259,7 +253,7 @@ def generate_markdown_summary(results: dict, output_file: str) -> str:
         "",
         "| Legend | Meaning |",
         "|--------|---------|",
-        "| 🏆 | Fastest for this query |",
+        "| **bold** | Fastest for this query |",
         "| ⏱️ TIMEOUT | Query exceeded timeout |",
         "| ❌ ERROR | Query failed |",
         "",
@@ -291,6 +285,12 @@ def main():
         default="benchmark_summary.md",
         help="Output markdown file",
     )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=60,
+        help="Query timeout in seconds (for reporting)",
+    )
     
     args = parser.parse_args()
     
@@ -303,7 +303,7 @@ def main():
             f.write("# SpatialBench Benchmark Results\n\nNo results found.")
         return
     
-    markdown = generate_markdown_summary(results, args.output)
+    markdown = generate_markdown_summary(results, args.output, args.timeout)
     print(f"Summary written to {args.output}")
     print("\nPreview:")
     print("-" * 60)

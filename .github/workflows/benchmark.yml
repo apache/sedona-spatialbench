@@ -335,6 +335,7 @@ jobs:
         run: |
           python benchmark/summarize_results.py \
             --results-dir results \
+            --timeout ${{ env.QUERY_TIMEOUT }} \
             --output benchmark_summary.md
       
       - name: Display summary
