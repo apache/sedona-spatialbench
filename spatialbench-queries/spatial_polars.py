@@ -523,23 +523,22 @@ def q11(data_paths: dict[str, str]) -> DataFrame:
     )
 
     return (
-        trip_df.spatial.join(
-            zone_df,
-            left_on="t_pickuploc",
-            right_on="z_boundary",
-            predicate="intersects",
-        )
-        .spatial.join(
-            zone_df,
-            left_on="t_dropoffloc",
-            right_on="z_boundary",
-            predicate="intersects",
+        zone_df.spatial.join(
+            zone_df.spatial.join(
+                trip_df,
+                how="inner",
+                left_on="z_boundary",
+                right_on="t_pickuploc",
+                predicate="contains",
+            ),
+            how="inner",
+            left_on="z_boundary",
+            right_on="t_dropoffloc",
+            predicate="contains",
             suffix="_dropoff",
-        )
-        .filter(
+        ).filter(
             pl.col("z_zonekey") != pl.col("z_zonekey_dropoff"),
-        )
-        .select(
+        ).select(
             pl.len().alias("cross_zone_trip_count"),
         )
     )
