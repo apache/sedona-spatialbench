@@ -91,7 +91,7 @@ git push upstream sedona-spatialbench-0.1.0-rc1
 
 ### Signing Commands
 
-Now the assets need to be signed with signatures. 
+Now the assets need to be signed with signatures.
 
 **GPG Signing:**
 

@@ -21,7 +21,7 @@ from polars import DataFrame
 
 import spatial_polars  # NOQA:F401 needed to add spatial namespace to polars dataframes
 
-# for Q12 Spatial polars uses scipy's KDtree for KNN joins. 
+# for Q12 Spatial polars uses scipy's KDtree for KNN joins.
 # Scipy must be installed for this to work.
 # `pip install spatial-polars[knn]`
 # which is essentially the same as

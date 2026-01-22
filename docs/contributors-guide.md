@@ -67,7 +67,7 @@ Your first step is to create a personal copy of the repository and connect it to
     origin    https://github.com/YourUsername/sedona-spatialbench.git (push)
     upstream  https://github.com/apache/sedona-spatialbench.git (fetch)
     upstream  https://github.com/apache/sedona-spatialbench.git (push)
-    ``` 
+    ```
 
 ## Development Setup
 

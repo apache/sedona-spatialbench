@@ -29,7 +29,7 @@ writing "idiomatic" pandas code. We would be interested in hearing feedback on t
 hand-optimized" version of the queries.
 
 [Spatial Polars](https://atl2001.github.io/spatial_polars), like Geopandas, is not SQL-based.  It uses shapely to extend
-polars, enabling it to work with geospatial data similar to how Geopandas extends pandas.  It is much newer and nowhere 
+polars, enabling it to work with geospatial data similar to how Geopandas extends pandas.  It is much newer and nowhere
 near as popular/tested as Geopandas, but is capable of computing all of the spatial bench queries, and has been included.
 
 We welcome contributions and civil discussions on how to improve the queries and their implementations.

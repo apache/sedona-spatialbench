@@ -89,3 +89,7 @@ repos:
       - id: forbid-submodules
         name: run forbid-submodules
         description: forbids any submodules in the repository
+      - id: trailing-whitespace
+        name: run trailing-whitespace
+        description: trims trailing whitespace
+        args: [--markdown-linebreak-ext=md]
