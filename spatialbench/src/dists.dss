@@ -69,7 +69,7 @@
 #  nouns
 #  verbs
 #  adverbs
-#  auxillaries
+#  auxiliaries
 #  prepositions
 #  terminators
 #  grammar    sentence formation
@@ -725,9 +725,9 @@ with|1
 within|1
 END prepositions
 ###
-# auxillaries
+# auxiliaries
 ##
-BEGIN auxillaries
+BEGIN auxiliaries
 COUNT|18
 do|1
 may|1
@@ -747,7 +747,7 @@ should have to|1
 must have to|1
 need to|1
 try to|1
-END auxillaries
+END auxiliaries
 ###
 # terminators
 ##
