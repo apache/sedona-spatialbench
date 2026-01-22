@@ -88,7 +88,7 @@ impl RowRandomInt {
         self.usage = 0;
     }
 
-    /// Advance the specified number of rows which is required for partitionned datasets.
+    /// Advance the specified number of rows which is required for partitioned datasets.
     pub fn advance_rows(&mut self, row_count: i64) {
         // Signals the we consumed all the seeds for the current row.
         if self.usage != 0 {

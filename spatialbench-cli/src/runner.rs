@@ -311,7 +311,7 @@ macro_rules! define_run {
                     .map(<$PARQUET_SOURCE>::new)
             }
 
-            // Dispach to the appropriate output format
+            // Dispatch to the appropriate output format
             match plan.output_format() {
                 OutputFormat::Tbl => {
                     let gens = tbl_sources(plan.generation_plan(), scale_factor);

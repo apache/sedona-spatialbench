@@ -166,7 +166,7 @@ end p_names
 ###
 # nations
 # NOTE: this is a special case; the weights here are adjustments to
-#       map correctly into the regions table, and are *NOT* cummulative
+#       map correctly into the regions table, and are *NOT* cumulative
 #       values to mimic a distribution
 ###
 begin nations
@@ -798,7 +798,7 @@ END adjectives
 ###
 # grammar
 # first level grammar. N=noun phrase, V=verb phrase,
-# P=prepositional phrase, T=setence termination
+# P=prepositional phrase, T=sentence termination
 ##
 BEGIN grammar
 COUNT|5

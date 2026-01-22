@@ -1153,7 +1153,7 @@ impl TripGeneratorIterator {
 
         let mut dropoff_y = pickuploc.y() + distance_value * angle.sin();
 
-        // Hard code coordinate precision to 8 decimal places - milimeter level precision for WGS 84
+        // Hard code coordinate precision to 8 decimal places - millimeter level precision for WGS 84
         dropoff_x = (dropoff_x * 100_000_000.0).round() / 100_000_000.0;
         dropoff_y = (dropoff_y * 100_000_000.0).round() / 100_000_000.0;
 

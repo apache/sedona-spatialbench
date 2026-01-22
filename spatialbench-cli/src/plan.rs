@@ -522,7 +522,7 @@ mod tests {
                 .with_table(Table::Customer)
                 .with_format(OutputFormat::Tbl)
                 .with_scale_factor(1.0)
-                // Generate only part 1 of the trip table, but results in 10 partititions
+                // Generate only part 1 of the trip table, but results in 10 partitions
                 .with_cli_part(1)
                 .with_cli_part_count(10)
                 .assert(10, 1..=1)

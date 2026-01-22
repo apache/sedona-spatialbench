@@ -28,7 +28,7 @@ license = { workspace = true }
 keywords = ["spatial", "geospatial", "benchmark", "data-generation", "sql"]
 categories = ["science::geo", "database", "data-structures", "development-tools"]
 
-# Designed to have no depdencies to make it easy to embed in other projects
+# Designed to have no dependencies to make it easy to embed in other projects
 # See ../ARCHITECTURE.md for more details
 [dependencies]
 rand = { version = "0.8", features = ["small_rng"] }
