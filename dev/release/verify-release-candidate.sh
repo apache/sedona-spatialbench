@@ -279,4 +279,3 @@ TEST_SUCCESS=yes
 
 echo "Release candidate ${VERSION}-RC${RC_NUMBER} looks good!"
 exit 0
-

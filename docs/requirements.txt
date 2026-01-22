@@ -12,7 +12,3 @@ notebook
 nbconvert
 pyproj
 ruff
-
-
-
-
