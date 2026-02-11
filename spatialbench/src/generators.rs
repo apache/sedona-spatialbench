@@ -1,3 +1,20 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 //! Generators for each Spatial Bench Tables
 use crate::dates;
 use crate::dates::{GenerateUtils, TPCHDate};
@@ -1136,7 +1153,7 @@ impl TripGeneratorIterator {
 
         let mut dropoff_y = pickuploc.y() + distance_value * angle.sin();
 
-        // Hard code coordinate precision to 8 decimal places - milimeter level precision for WGS 84
+        // Hard code coordinate precision to 8 decimal places - millimeter level precision for WGS 84
         dropoff_x = (dropoff_x * 100_000_000.0).round() / 100_000_000.0;
         dropoff_y = (dropoff_y * 100_000_000.0).round() / 100_000_000.0;
 

@@ -135,13 +135,13 @@ ORDER BY dropoff_count DESC, c.c_custkey ASC
     @staticmethod
     def q6() -> str:
         return """
--- Q6: Zone statistics for trips within 50km radius of Sedona city center
+-- Q6: Zone statistics for trips intersecting a bounding box
 SELECT
    z.z_zonekey, z.z_name,
    COUNT(t.t_tripkey) AS total_pickups, AVG(t.t_totalamount) AS avg_distance,
    AVG(t.t_dropofftime - t.t_pickuptime) AS avg_duration
 FROM trip t, zone z
-WHERE ST_Contains(ST_GeomFromText('POLYGON((-112.2110 34.4197, -111.3110 34.4197, -111.3110 35.3197, -112.2110 35.3197, -112.2110 34.4197))'), ST_GeomFromWKB(z.z_boundary)) -- 50km bounding box around Sedona
+WHERE ST_Intersects(ST_GeomFromText('POLYGON((-112.2110 34.4197, -111.3110 34.4197, -111.3110 35.3197, -112.2110 35.3197, -112.2110 34.4197))'), ST_GeomFromWKB(z.z_boundary))
  AND ST_Within(ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(z.z_boundary))
 GROUP BY z.z_zonekey, z.z_name
 ORDER BY total_pickups DESC, z.z_zonekey ASC
@@ -404,12 +404,11 @@ class SedonaDBSpatialBenchBenchmark(SpatialBenchBenchmark):
     @staticmethod
     def q5() -> str:
         return """
--- Q5 (SedonaDB): In SedonaDB ST_Collect is an aggregate function so no need to use ARRAY_AGG first.
--- ST_Collect does not accept an array as input so we cannot use the query with ARRAY_AGG.
+-- Q5 (SedonaDB): SedonaDB uses ST_Collect_Agg (with _Agg suffix) for aggregate functions.
 SELECT
     c.c_custkey, c.c_name AS customer_name,
     DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,
-    ST_Area(ST_ConvexHull(ST_Collect(ST_GeomFromWKB(t.t_dropoffloc)))) AS monthly_travel_hull_area,
+    ST_Area(ST_ConvexHull(ST_Collect_Agg(ST_GeomFromWKB(t.t_dropoffloc)))) AS monthly_travel_hull_area,
     COUNT(*) as dropoff_count
 FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month

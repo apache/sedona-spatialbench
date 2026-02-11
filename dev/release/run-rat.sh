@@ -18,19 +18,21 @@
 # under the License.
 
 RAT_VERSION=0.13
+RELEASE_DIR=$(cd "$(dirname "$BASH_SOURCE")"; pwd)
+RAT_JAR="${RELEASE_DIR}/apache-rat-${RAT_VERSION}.jar"
 
 # download apache rat
-if [ ! -f apache-rat-${RAT_VERSION}.jar ]; then
-  curl -s https://repo1.maven.org/maven2/org/apache/rat/apache-rat/${RAT_VERSION}/apache-rat-${RAT_VERSION}.jar > apache-rat-${RAT_VERSION}.jar
+if [ ! -f "${RAT_JAR}" ]; then
+  curl -s https://repo1.maven.org/maven2/org/apache/rat/apache-rat/${RAT_VERSION}/apache-rat-${RAT_VERSION}.jar > "${RAT_JAR}"
 fi
 
-RAT="java -jar apache-rat-${RAT_VERSION}.jar -x "
-
-RELEASE_DIR=$(cd "$(dirname "$BASH_SOURCE")"; pwd)
+RAT="java -jar ${RAT_JAR} -x "
 
 # generate the rat report
-$RAT $1 > rat.txt
-python $RELEASE_DIR/check-rat-report.py $RELEASE_DIR/rat_exclude_files.txt rat.txt > filtered_rat.txt
+# Run RAT from inside the target directory so it produces relative paths
+cd "$1"
+$RAT . > rat.txt
+python3 $RELEASE_DIR/check-rat-report.py $RELEASE_DIR/rat_exclude_files.txt rat.txt > filtered_rat.txt
 cat filtered_rat.txt
 UNAPPROVED=`cat filtered_rat.txt  | grep "NOT APPROVED" | wc -l`
 
@@ -40,4 +42,3 @@ else
   echo "${UNAPPROVED} unapproved licences. Check rat report: rat.txt"
   exit 1
 fi
-

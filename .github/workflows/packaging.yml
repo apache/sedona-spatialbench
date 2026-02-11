@@ -37,9 +37,9 @@ jobs:
     name: Build Documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
@@ -57,7 +57,7 @@ jobs:
           tar -czf docs.tgz documentation-site
 
       - name: Upload docs artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: docs
           retention-days: 2
@@ -72,12 +72,12 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: docs
 
       - name: Clone asf-site branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: asf-site
           path: pages-clone

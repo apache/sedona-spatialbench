@@ -97,7 +97,41 @@ SedonaDB completes KNN joins at both SF 1 and SF 10, thanks to its native operat
 
 SedonaDB demonstrates balanced performance across all query types and scales effectively to SF 10. DuckDB excels at spatial filters and some geometric operations but faces challenges with complex joins and KNN queries. GeoPandas, while popular in the Python ecosystem, requires manual optimization and parallelization to handle larger datasets effectively.
 
-## Benchmark code
+## Automated Benchmarks (GitHub Actions)
+
+We run automated benchmarks on every pull request and periodically via GitHub Actions to verify that all SpatialBench queries are fully runnable across supported engines.
+
+!!! note "Not for Performance Comparison"
+    The GitHub Actions benchmark is designed to validate correctness and runnability, **not** for serious performance comparisons. GitHub Actions runners have variable performance characteristics and limited resources. For meaningful performance benchmarks, please run SpatialBench on dedicated hardware with appropriate scale factors as described in the sections above.
+
+### View Latest Results
+
+Visit the [GitHub Actions Benchmark Page](https://github.com/apache/sedona-spatialbench/actions/workflows/benchmark.yml) to see the latest results. Click on any successful workflow run and scroll to the **Summary** section to view:
+
+- Query execution status for each engine
+- Comparison across all 12 queries
+- Error and timeout information
+
+### Supported Engines
+
+The automated tests cover:
+
+- 🦆 **DuckDB** - In-process analytical database with spatial extension
+- 🐼 **GeoPandas** - Python geospatial data analysis library
+- 🌵 **SedonaDB** - High-performance spatial analytics engine
+- 🐻‍❄️ **Spatial Polars** - Geospatial extension for Polars dataframes
+
+### Run Your Own Benchmark
+
+You can trigger the automated tests manually from the [Actions tab](https://github.com/apache/sedona-spatialbench/actions/workflows/benchmark.yml) with configurable options:
+
+- **Scale Factor**: 0.1, 1, or 10
+- **Engines**: Select which engines to test
+- **Query Timeout**: Adjust timeout for longer queries (default: 60s)
+- **Runs per Query**: 1, 3, or 5 runs for averaging (default: 3)
+- **Package Versions**: Pin specific versions or use latest
+
+## Benchmark Code
 
 You can access and run the benchmark code in the [sedona-spatialbench GitHub](https://github.com/apache/sedona-spatialbench) repository.
 

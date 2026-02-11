@@ -1,3 +1,20 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 use crate::random::RowRandomInt;
 use std::{
     io::{self},
@@ -209,7 +226,7 @@ impl Distributions {
                 "adjectives" => new_self.adjectives = distribution,
                 "adverbs" => new_self.adverbs = distribution,
                 // P.S: The correct spelling is `auxiliaries` which is what we use.
-                "auxillaries" => new_self.auxiliaries = distribution,
+                "auxiliaries" => new_self.auxiliaries = distribution,
                 "grammar" => new_self.grammar = distribution,
                 "category" => new_self.category = distribution,
                 "msegmnt" => new_self.market_segments = distribution,
@@ -310,7 +327,7 @@ impl Distributions {
         &self.articles
     }
 
-    /// Returns the `auxillaries` distribution.
+    /// Returns the `auxiliaries` distribution.
     ///
     /// P.S: The correct spelling is `auxiliaries` which is what we use.
     pub fn auxiliaries(&self) -> &Distribution {
@@ -523,7 +540,7 @@ mod tests {
             "verbs",
             "adjectives",
             "adverbs",
-            "auxillaries",
+            "auxiliaries",
             "prepositions",
             "terminators",
             "grammar",

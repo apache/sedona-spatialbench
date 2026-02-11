@@ -86,6 +86,17 @@ ORDER BY nearby_pickup_count DESC;
 
 This query performs a distance join, followed by an aggregation. It's a great example of a query that's useful for performance benchmarking a spatial engine that can process vector geometries.
 
+## Automated Testing
+
+SpatialBench includes an automated benchmark that runs on GitHub Actions to verify that all queries are fully runnable across supported engines (DuckDB, GeoPandas, SedonaDB, and Spatial Polars).
+
+**[View the latest test results →](https://github.com/apache/sedona-spatialbench/actions/workflows/benchmark.yml)**
+
+Click on any successful workflow run and scroll to the **Summary** section to see the results.
+
+!!! note
+    The GitHub Actions benchmark is designed to validate correctness and runnability, not for serious performance comparisons. For meaningful performance benchmarks, see the [Single Node Benchmarks](single-node-benchmarks.md) page.
+
 ## Join the community
 
 Feel free to start a [GitHub Discussion](https://github.com/apache/sedona/discussions) or join the [Discord community](https://discord.gg/9A3k5dEBsY) to ask the developers any questions you may have.

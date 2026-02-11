@@ -21,7 +21,7 @@ from polars import DataFrame
 
 import spatial_polars  # NOQA:F401 needed to add spatial namespace to polars dataframes
 
-# for Q12 Spatial polars uses scipy's KDtree for KNN joins. 
+# for Q12 Spatial polars uses scipy's KDtree for KNN joins.
 # Scipy must be installed for this to work.
 # `pip install spatial-polars[knn]`
 # which is essentially the same as
@@ -244,10 +244,10 @@ def q5(data_paths: dict[str, str]) -> DataFrame:
 
 
 def q6(data_paths: dict[str, str]) -> DataFrame:
-    """Q6 (Spatial Polars): Zone statistics for trips within 50km bounding box around Sedona.
+    """Q6 (Spatial Polars): Zone statistics for trips intersecting a bounding box.
 
     Mirrors original SQL intent:
-      * Filter zones fully contained in the provided bounding box polygon.
+      * Filter zones intersecting the provided bounding box polygon.
       * Count trips whose pickup point lies within each zone (inner semantics: zones with 0 pickups excluded).
       * Compute:
           total_pickups = COUNT(t_tripkey)
@@ -523,23 +523,22 @@ def q11(data_paths: dict[str, str]) -> DataFrame:
     )
 
     return (
-        trip_df.spatial.join(
-            zone_df,
-            left_on="t_pickuploc",
-            right_on="z_boundary",
-            predicate="intersects",
-        )
-        .spatial.join(
-            zone_df,
-            left_on="t_dropoffloc",
-            right_on="z_boundary",
-            predicate="intersects",
+        zone_df.spatial.join(
+            zone_df.spatial.join(
+                trip_df,
+                how="inner",
+                left_on="z_boundary",
+                right_on="t_pickuploc",
+                predicate="contains",
+            ),
+            how="inner",
+            left_on="z_boundary",
+            right_on="t_dropoffloc",
+            predicate="contains",
             suffix="_dropoff",
-        )
-        .filter(
+        ).filter(
             pl.col("z_zonekey") != pl.col("z_zonekey_dropoff"),
-        )
-        .select(
+        ).select(
             pl.len().alias("cross_zone_trip_count"),
         )
     )

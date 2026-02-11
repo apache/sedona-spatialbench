@@ -29,15 +29,47 @@ writing "idiomatic" pandas code. We would be interested in hearing feedback on t
 hand-optimized" version of the queries.
 
 [Spatial Polars](https://atl2001.github.io/spatial_polars), like Geopandas, is not SQL-based.  It uses shapely to extend
-polars, enabling it to work with geospatial data similar to how Geopandas extends pandas.  It is much newer and nowhere 
+polars, enabling it to work with geospatial data similar to how Geopandas extends pandas.  It is much newer and nowhere
 near as popular/tested as Geopandas, but is capable of computing all of the spatial bench queries, and has been included.
 
 We welcome contributions and civil discussions on how to improve the queries and their implementations.
 
 You can print the queries in your dialect of choice using the following command:
 ```bash
-./print_queries.py <dialect>
+./spatialbench-queries/print_queries.py <dialect>
 ```
+
+## Automated Benchmarks
+
+SpatialBench includes an automated benchmark framework that runs on GitHub Actions to verify that all queries are fully runnable across supported engines.
+
+> **Note:** The GitHub Actions benchmark is designed to validate correctness and runnability, not for serious performance comparisons. For meaningful performance benchmarks, please run SpatialBench on dedicated hardware with appropriate scale factors. See the [Single Node Benchmarks](https://sedona.apache.org/spatialbench/single-node-benchmarks/) page for detailed performance results.
+
+The automated tests cover:
+
+- 🦆 **DuckDB** - In-process analytical database with spatial extension
+- 🐼 **GeoPandas** - Python geospatial data analysis library
+- 🌵 **SedonaDB** - High-performance spatial analytics engine
+- 🐻‍❄️ **Spatial Polars** - Geospatial extension for Polars dataframes
+
+### View Latest Results
+
+You can view the latest results on the [GitHub Actions page](../../actions/workflows/benchmark.yml). Click on any successful workflow run to see the summary with:
+
+- Query execution times for each engine
+- Performance comparison across all 12 queries
+- Winner highlighting for each query
+
+### Run Benchmarks Manually
+
+You can trigger a benchmark run manually from the [Actions tab](../../actions/workflows/benchmark.yml) with configurable options:
+
+- **Scale Factor**: 0.1, 1, or 10
+- **Engines**: Select which engines to benchmark
+- **Query Timeout**: Adjust timeout for longer queries
+- **Runs per Query**: 1, 3, or 5 runs for averaging
+
+The benchmark data is automatically downloaded from [Hugging Face](https://huggingface.co/datasets/apache-sedona/spatialbench) and cached for subsequent runs.
 
 ## Data Model
 

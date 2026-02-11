@@ -116,3 +116,17 @@ Here are the contents of the `sf1-parquet` directory:
 * `zone.parquet`
 
 See [the README](https://github.com/apache/sedona-spatialbench) for a full description of how to use the SpatialBench data generators.
+
+## Data sizes
+
+Here are the uncompressed Parquet file sizes of the tables for some different scale factors:
+
+| Category | SF1        | SF10       | SF100      | SF1000      |
+|----------|------------|------------|------------|-------------|
+| Zone     | 1.3 GB  | 2.0 GB  | 5.4 GB  | 5.7 GB   |
+| Trip     | 471.1 MB| 5.0 GB  | 50.4 GB | 512.7 GB |
+| Building | 2.4 MB  | 10.2 MB | 18.0 MB | 0.03 GB   |
+| Customer | 2.5 MB  | 23.1 MB | 227.1 MB| 2.2 GB   |
+| Driver   | 0.04 MB  | 0.4 MB  | 4.0 MB  | 0.03 GB   |
+| Vehicle  | 0.01 MB  | 0.03 MB  | 0.3 MB  | 0.003 GB   |
+| **Total**| **1.8 GB** | **7.0 GB** | **56.0 GB** | **520.6 GB** |

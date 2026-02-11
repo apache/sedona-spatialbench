@@ -1,0 +1,461 @@
+name: SpatialBench Benchmark
+
+on:
+  # Run every other week on Monday at 6:00 UTC
+  schedule:
+    - cron: '0 6 1-7,15-21 * 1'
+  # Run on PRs that modify benchmark code
+  pull_request:
+    paths:
+      - 'benchmark/**'
+      - 'spatialbench-queries/**'
+      - '.github/workflows/benchmark.yml'
+  # Run on pushes to main that modify benchmark code
+  push:
+    branches: ["main"]
+    paths:
+      - 'benchmark/**'
+      - 'spatialbench-queries/**'
+      - '.github/workflows/benchmark.yml'
+  # Allow manual triggering with extended options
+  workflow_dispatch:
+    inputs:
+      scale_factor:
+        description: 'Scale factor for benchmark'
+        required: false
+        default: '1'
+        type: choice
+        options:
+          - '0.1'
+          - '1'
+          - '10'
+      engines:
+        description: 'Engines to benchmark (comma-separated)'
+        required: false
+        default: 'duckdb,geopandas,sedonadb,spatial_polars'
+        type: string
+      timeout:
+        description: 'Query timeout in seconds (default: 60, increase for full benchmark)'
+        required: false
+        default: '60'
+        type: string
+      sedonadb_version:
+        description: 'SedonaDB version (e.g., 1.0.0, leave empty for latest)'
+        required: false
+        default: ''
+        type: string
+      duckdb_version:
+        description: 'DuckDB version (e.g., 1.0.0, leave empty for latest)'
+        required: false
+        default: ''
+        type: string
+      geopandas_version:
+        description: 'GeoPandas version (e.g., 1.0.0, leave empty for latest)'
+        required: false
+        default: ''
+        type: string
+      spatial_polars_version:
+        description: 'Spatial Polars version (e.g., 1.0.0, leave empty for latest)'
+        required: false
+        default: ''
+        type: string
+      runs:
+        description: 'Number of runs per query (average taken for fair comparison)'
+        required: false
+        default: '3'
+        type: choice
+        options:
+          - '1'
+          - '3'
+          - '5'
+      sedonadb_nightly:
+        description: 'Use SedonaDB nightly build from Gemfury (ignores version if true)'
+        required: false
+        default: true
+        type: boolean
+      duckdb_nightly:
+        description: 'Use DuckDB pre-release/nightly build (ignores version if true)'
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.ref }}-benchmark
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  SCALE_FACTOR: ${{ github.event.inputs.scale_factor || '1' }}
+  BENCHMARK_ENGINES: ${{ github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars' }}
+  QUERY_TIMEOUT: ${{ github.event.inputs.timeout || '60' }}
+  BENCHMARK_RUNS: ${{ github.event.inputs.runs || '3' }}
+  # Package versions (empty = latest, can be overridden via workflow_dispatch)
+  SEDONADB_VERSION: ${{ github.event.inputs.sedonadb_version }}
+  DUCKDB_VERSION: ${{ github.event.inputs.duckdb_version }}
+  GEOPANDAS_VERSION: ${{ github.event.inputs.geopandas_version }}
+  SPATIAL_POLARS_VERSION: ${{ github.event.inputs.spatial_polars_version }}
+  # Nightly build options (default: true)
+  SEDONADB_NIGHTLY: ${{ github.event.inputs.sedonadb_nightly || 'true' }}
+  DUCKDB_NIGHTLY: ${{ github.event.inputs.duckdb_nightly || 'true' }}
+  # Hugging Face dataset for benchmark data
+  HF_DATASET: apache-sedona/spatialbench
+  HF_DATA_VERSION: v0.1.0
+
+jobs:
+  # Download benchmark data from Hugging Face
+  download-data:
+    name: Download Data (SF${{ github.event.inputs.scale_factor || '1' }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cache benchmark data
+        id: cache-data
+        uses: actions/cache@v4
+        with:
+          path: benchmark-data-sf${{ env.SCALE_FACTOR }}
+          key: benchmark-data-${{ env.HF_DATA_VERSION }}-sf${{ env.SCALE_FACTOR }}
+
+      - name: Setup Python
+        if: steps.cache-data.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install huggingface-hub
+        if: steps.cache-data.outputs.cache-hit != 'true'
+        run: pip install huggingface-hub
+
+      - name: Download benchmark data from Hugging Face
+        if: steps.cache-data.outputs.cache-hit != 'true'
+        run: |
+          # Map scale factor to HF folder name
+          SF="${{ env.SCALE_FACTOR }}"
+          if [ "$SF" = "0.1" ]; then
+            HF_SF="sf0.1"
+          else
+            HF_SF="sf${SF}"
+          fi
+
+          echo "Downloading data from HF: ${{ env.HF_DATASET }}/${{ env.HF_DATA_VERSION }}/${HF_SF}"
+
+          python -c "
+          from huggingface_hub import snapshot_download
+          import os
+
+          sf = os.environ['SCALE_FACTOR']
+          hf_sf = 'sf0.1' if sf == '0.1' else f'sf{sf}'
+
+          snapshot_download(
+              repo_id='${{ env.HF_DATASET }}',
+              repo_type='dataset',
+              local_dir='hf-data',
+              allow_patterns=[f'${{ env.HF_DATA_VERSION }}/{hf_sf}/**'],
+          )
+          "
+
+          # Move data to expected location
+          mkdir -p benchmark-data-sf${{ env.SCALE_FACTOR }}
+
+          SF="${{ env.SCALE_FACTOR }}"
+          if [ "$SF" = "0.1" ]; then
+            HF_SF="sf0.1"
+          else
+            HF_SF="sf${SF}"
+          fi
+
+          cp -r hf-data/${{ env.HF_DATA_VERSION }}/${HF_SF}/* benchmark-data-sf${{ env.SCALE_FACTOR }}/
+
+          echo "Downloaded data structure:"
+          find benchmark-data-sf${{ env.SCALE_FACTOR }} -type f -name "*.parquet" | head -20
+          echo ""
+          echo "Directory contents:"
+          ls -la benchmark-data-sf${{ env.SCALE_FACTOR }}/
+          echo ""
+          echo "Total size:"
+          du -sh benchmark-data-sf${{ env.SCALE_FACTOR }}/
+
+      - name: Show cached data info
+        if: steps.cache-data.outputs.cache-hit == 'true'
+        run: |
+          echo "Using cached benchmark data"
+          echo "Directory contents:"
+          ls -la benchmark-data-sf${{ env.SCALE_FACTOR }}/
+          echo ""
+          echo "Total size:"
+          du -sh benchmark-data-sf${{ env.SCALE_FACTOR }}/
+
+  benchmark-duckdb:
+    name: Benchmark DuckDB (SF${{ github.event.inputs.scale_factor || '1' }})
+    needs: download-data
+    runs-on: ubuntu-latest
+    if: contains(github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars', 'duckdb')
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Restore benchmark data from cache
+        uses: actions/cache/restore@v4
+        with:
+          path: benchmark-data-sf${{ env.SCALE_FACTOR }}
+          key: benchmark-data-${{ env.HF_DATA_VERSION }}-sf${{ env.SCALE_FACTOR }}
+          fail-on-cache-miss: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          echo "=== DuckDB Installation Parameters ==="
+          echo "DUCKDB_NIGHTLY: ${{ env.DUCKDB_NIGHTLY }}"
+          echo "DUCKDB_VERSION: ${{ env.DUCKDB_VERSION }}"
+          echo "======================================"
+          if [ "${{ env.DUCKDB_NIGHTLY }}" = "true" ]; then
+            # Use --pre to install pre-release dev builds (e.g., 1.4.4.dev48)
+            # Constraint <1.5.0 ensures we get 1.4.x branch dev builds
+            pip install "duckdb<1.5.0" --pre pyarrow pandas
+          elif [ -n "${{ env.DUCKDB_VERSION }}" ]; then
+            pip install "duckdb==${{ env.DUCKDB_VERSION }}" pyarrow pandas
+          else
+            pip install duckdb pyarrow pandas
+          fi
+          echo "Installed DuckDB version: $(python -c 'import duckdb; print(duckdb.__version__)')"
+
+      - name: Pre-install DuckDB spatial extension
+        run: |
+          # Dev builds don't have spatial extension in core_nightly, so always use default repo
+          python -c "import duckdb; con = duckdb.connect(); con.execute('INSTALL spatial'); print('DuckDB spatial extension installed')"
+
+      - name: Run DuckDB benchmark
+        run: |
+          python benchmark/run_benchmark.py \
+            --data-dir benchmark-data-sf${{ env.SCALE_FACTOR }} \
+            --engines duckdb \
+            --timeout ${{ env.QUERY_TIMEOUT }} \
+            --runs ${{ env.BENCHMARK_RUNS }} \
+            --scale-factor ${{ env.SCALE_FACTOR }} \
+            --output duckdb_results.json
+
+      - name: Upload results
+        uses: actions/upload-artifact@v6
+        with:
+          name: duckdb-results-sf${{ env.SCALE_FACTOR }}
+          path: duckdb_results.json
+          retention-days: 30
+
+  benchmark-geopandas:
+    name: Benchmark GeoPandas (SF${{ github.event.inputs.scale_factor || '1' }})
+    needs: download-data
+    runs-on: ubuntu-latest
+    if: contains(github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars', 'geopandas')
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Restore benchmark data from cache
+        uses: actions/cache/restore@v4
+        with:
+          path: benchmark-data-sf${{ env.SCALE_FACTOR }}
+          key: benchmark-data-${{ env.HF_DATA_VERSION }}-sf${{ env.SCALE_FACTOR }}
+          fail-on-cache-miss: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          if [ -n "${{ env.GEOPANDAS_VERSION }}" ]; then
+            pip install "geopandas==${{ env.GEOPANDAS_VERSION }}" pandas pyarrow shapely
+          else
+            pip install geopandas pandas pyarrow shapely
+          fi
+          echo "Installed GeoPandas version: $(python -c 'from importlib.metadata import version; print(version("geopandas"))')"
+
+      - name: Run GeoPandas benchmark
+        run: |
+          python benchmark/run_benchmark.py \
+            --data-dir benchmark-data-sf${{ env.SCALE_FACTOR }} \
+            --engines geopandas \
+            --timeout ${{ env.QUERY_TIMEOUT }} \
+            --runs ${{ env.BENCHMARK_RUNS }} \
+            --scale-factor ${{ env.SCALE_FACTOR }} \
+            --output geopandas_results.json
+
+      - name: Upload results
+        uses: actions/upload-artifact@v6
+        with:
+          name: geopandas-results-sf${{ env.SCALE_FACTOR }}
+          path: geopandas_results.json
+          retention-days: 30
+
+  benchmark-sedonadb:
+    name: Benchmark SedonaDB (SF${{ github.event.inputs.scale_factor || '1' }})
+    needs: download-data
+    runs-on: ubuntu-latest
+    if: contains(github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars', 'sedonadb')
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Restore benchmark data from cache
+        uses: actions/cache/restore@v4
+        with:
+          path: benchmark-data-sf${{ env.SCALE_FACTOR }}
+          key: benchmark-data-${{ env.HF_DATA_VERSION }}-sf${{ env.SCALE_FACTOR }}
+          fail-on-cache-miss: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          echo "=== SedonaDB Installation Parameters ==="
+          echo "SEDONADB_NIGHTLY: ${{ env.SEDONADB_NIGHTLY }}"
+          echo "SEDONADB_VERSION: ${{ env.SEDONADB_VERSION }}"
+          echo "========================================"
+          if [ "${{ env.SEDONADB_NIGHTLY }}" = "true" ]; then
+            # Use Gemfury as primary index and --pre to install nightly alpha builds (e.g., 0.3.0a69)
+            pip install "sedonadb[geopandas]" pandas pyarrow pyproj \
+              --pre \
+              --index-url https://repo.fury.io/sedona-nightlies/ \
+              --extra-index-url https://pypi.org/simple/
+          elif [ -n "${{ env.SEDONADB_VERSION }}" ]; then
+            pip install "sedonadb[geopandas]==${{ env.SEDONADB_VERSION }}" pandas pyarrow pyproj
+          else
+            pip install "sedonadb[geopandas]" pandas pyarrow pyproj
+          fi
+          echo "Installed SedonaDB version: $(python -c 'from importlib.metadata import version; print(version("sedonadb"))')"
+
+      - name: Run SedonaDB benchmark
+        run: |
+          python benchmark/run_benchmark.py \
+            --data-dir benchmark-data-sf${{ env.SCALE_FACTOR }} \
+            --engines sedonadb \
+            --timeout ${{ env.QUERY_TIMEOUT }} \
+            --runs ${{ env.BENCHMARK_RUNS }} \
+            --scale-factor ${{ env.SCALE_FACTOR }} \
+            --output sedonadb_results.json
+
+      - name: Upload results
+        uses: actions/upload-artifact@v6
+        with:
+          name: sedonadb-results-sf${{ env.SCALE_FACTOR }}
+          path: sedonadb_results.json
+          retention-days: 30
+
+  benchmark-spatial-polars:
+    name: Benchmark Spatial Polars (SF${{ github.event.inputs.scale_factor || '1' }})
+    needs: download-data
+    runs-on: ubuntu-latest
+    if: contains(github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars', 'spatial_polars')
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Restore benchmark data from cache
+        uses: actions/cache/restore@v4
+        with:
+          path: benchmark-data-sf${{ env.SCALE_FACTOR }}
+          key: benchmark-data-${{ env.HF_DATA_VERSION }}-sf${{ env.SCALE_FACTOR }}
+          fail-on-cache-miss: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          if [ -n "${{ env.SPATIAL_POLARS_VERSION }}" ]; then
+            pip install "spatial-polars[knn]==${{ env.SPATIAL_POLARS_VERSION }}" pyarrow
+          else
+            pip install "spatial-polars[knn]" pyarrow
+          fi
+          echo "Installed Spatial Polars version: $(python -c 'from importlib.metadata import version; print(version("spatial-polars"))')"
+
+      - name: Run Spatial Polars benchmark
+        run: |
+          python benchmark/run_benchmark.py \
+            --data-dir benchmark-data-sf${{ env.SCALE_FACTOR }} \
+            --engines spatial_polars \
+            --timeout ${{ env.QUERY_TIMEOUT }} \
+            --runs ${{ env.BENCHMARK_RUNS }} \
+            --scale-factor ${{ env.SCALE_FACTOR }} \
+            --output spatial_polars_results.json
+
+      - name: Upload results
+        uses: actions/upload-artifact@v6
+        with:
+          name: spatial_polars-results-sf${{ env.SCALE_FACTOR }}
+          path: spatial_polars_results.json
+          retention-days: 30
+
+  summarize-results:
+    name: Summarize Results (SF${{ github.event.inputs.scale_factor || '1' }})
+    needs: [benchmark-duckdb, benchmark-geopandas, benchmark-sedonadb, benchmark-spatial-polars]
+    if: always() && (needs.benchmark-duckdb.result == 'success' || needs.benchmark-geopandas.result == 'success' || needs.benchmark-sedonadb.result == 'success' || needs.benchmark-spatial-polars.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download DuckDB results
+        if: needs.benchmark-duckdb.result == 'success'
+        uses: actions/download-artifact@v7
+        with:
+          name: duckdb-results-sf${{ env.SCALE_FACTOR }}
+          path: results
+        continue-on-error: true
+
+      - name: Download GeoPandas results
+        if: needs.benchmark-geopandas.result == 'success'
+        uses: actions/download-artifact@v7
+        with:
+          name: geopandas-results-sf${{ env.SCALE_FACTOR }}
+          path: results
+        continue-on-error: true
+
+      - name: Download SedonaDB results
+        if: needs.benchmark-sedonadb.result == 'success'
+        uses: actions/download-artifact@v7
+        with:
+          name: sedonadb-results-sf${{ env.SCALE_FACTOR }}
+          path: results
+        continue-on-error: true
+
+      - name: Download Spatial Polars results
+        if: needs.benchmark-spatial-polars.result == 'success'
+        uses: actions/download-artifact@v7
+        with:
+          name: spatial_polars-results-sf${{ env.SCALE_FACTOR }}
+          path: results
+        continue-on-error: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Generate summary
+        run: |
+          python benchmark/summarize_results.py \
+            --results-dir results \
+            --timeout ${{ env.QUERY_TIMEOUT }} \
+            --runs ${{ env.BENCHMARK_RUNS }} \
+            --output benchmark_summary.md
+
+      - name: Display summary
+        run: cat benchmark_summary.md
+
+      - name: Add summary to job output
+        run: cat benchmark_summary.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload combined results
+        uses: actions/upload-artifact@v6
+        with:
+          name: benchmark-summary-sf${{ env.SCALE_FACTOR }}
+          path: |
+            results/
+            benchmark_summary.md
+          retention-days: 90

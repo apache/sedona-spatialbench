@@ -8,6 +8,26 @@ on:
         required: false
         default: false
         type: boolean
+  push:
+    branches: ["main"]
+    paths:
+      - 'spatialbench-cli/**'
+      - '.github/workflows/build-py-packages.yml'
+  pull_request:
+    paths:
+      - 'spatialbench-cli/**'
+      - '.github/workflows/build-py-packages.yml'
+  workflow_dispatch:
+    inputs:
+      upload-artifacts:
+        description: "Whether to upload built distributions as artifacts"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
 
 jobs:
   wheels:
@@ -64,7 +84,7 @@ jobs:
             os: windows
 
           # macOS
-          - runner: macos-13
+          - runner: macos-14
             target: x86_64
             os: macos
           - runner: macos-14
@@ -72,7 +92,17 @@ jobs:
             os: macos
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+      - name: Set ARM architecture flags for Linux cross-compilation
+        if: (matrix.target == 'aarch64' || matrix.target == 'armv7') && (matrix.os == 'linux' || matrix.os == 'musllinux')
+        run: |
+          if [ "${{ matrix.target }}" = "aarch64" ]; then
+            echo "CFLAGS_aarch64_unknown_linux_gnu=-D__ARM_ARCH=8" >> $GITHUB_ENV
+            echo "CFLAGS_aarch64_unknown_linux_musl=-D__ARM_ARCH=8" >> $GITHUB_ENV
+          elif [ "${{ matrix.target }}" = "armv7" ]; then
+            echo "CFLAGS_armv7_unknown_linux_gnueabihf=-D__ARM_ARCH=7" >> $GITHUB_ENV
+            echo "CFLAGS_armv7_unknown_linux_musleabihf=-D__ARM_ARCH=7" >> $GITHUB_ENV
+          fi
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -81,8 +111,8 @@ jobs:
           working-directory: spatialbench-cli
           manylinux: ${{ matrix.manylinux || '' }}
       - name: Upload wheels
-        if: ${{ inputs.upload-artifacts }}
-        uses: actions/upload-artifact@v4
+        if: ${{ inputs.upload-artifacts || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+        uses: actions/upload-artifact@v6
         with:
           name: wheels-${{ matrix.os }}-${{ matrix.target }}
           path: spatialbench-cli/dist
@@ -90,7 +120,7 @@ jobs:
   sdist:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:
@@ -98,8 +128,8 @@ jobs:
           args: --out dist
           working-directory: spatialbench-cli
       - name: Upload sdist
-        if: ${{ inputs.upload-artifacts }}
-        uses: actions/upload-artifact@v4
+        if: ${{ inputs.upload-artifacts || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+        uses: actions/upload-artifact@v6
         with:
           name: wheels-sdist
           path: spatialbench-cli/dist

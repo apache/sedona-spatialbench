@@ -28,7 +28,7 @@ fi
 check_dependencies() {
   local missing_deps=0
 
-  local required_deps=("curl" "git" "gpg" "cargo")
+  local required_deps=("curl" "git" "gpg" "cargo" "java" "python")
   for dep in "${required_deps[@]}"; do
     if ! command -v $dep &> /dev/null; then
       echo "Error: $dep is not installed or not in PATH"
@@ -102,12 +102,19 @@ show_info() {
 SPATIALBENCH_DIST_URL='https://dist.apache.org/repos/dist/dev/sedona'
 
 download_dist_file() {
-  curl \
+  local url="${SPATIALBENCH_DIST_URL}/$1"
+  if ! curl \
     --silent \
     --show-error \
     --fail \
     --location \
-    --remote-name $SPATIALBENCH_DIST_URL/$1
+    --remote-name "$url"; then
+    echo "Error: Failed to download $url"
+    echo "This usually means the release candidate has not been uploaded yet."
+    echo "To test locally, run: $0"
+    echo "Or to test a local tarball: $0 /path/to/tarball.tar.gz"
+    exit 1
+  fi
 }
 
 download_rc_file() {
@@ -196,6 +203,14 @@ test_rust() {
   popd
 }
 
+test_rat() {
+  show_header "Running Apache RAT license check"
+
+  # Use SOURCE_DIR which was computed at script startup (before any directory changes)
+  # Run RAT check using the run-rat.sh script from the repo
+  bash "${SOURCE_DIR}/run-rat.sh" "${SPATIALBENCH_SOURCE_DIR}"
+}
+
 ensure_source_directory() {
   show_header "Ensuring source directory"
 
@@ -234,6 +249,10 @@ ensure_source_directory() {
 test_source_distribution() {
   pushd $SPATIALBENCH_SOURCE_DIR
 
+  if [ ${TEST_RAT} -gt 0 ]; then
+    test_rat
+  fi
+
   if [ ${TEST_RUST} -gt 0 ]; then
     test_rust
   fi
@@ -247,6 +266,7 @@ test_source_distribution() {
 : ${TEST_DEFAULT:=1}
 
 : ${TEST_SOURCE:=${TEST_DEFAULT}}
+: ${TEST_RAT:=${TEST_SOURCE}}
 : ${TEST_RUST:=${TEST_SOURCE}}
 
 TEST_SUCCESS=no
@@ -259,4 +279,3 @@ TEST_SUCCESS=yes
 
 echo "Release candidate ${VERSION}-RC${RC_NUMBER} looks good!"
 exit 0
-

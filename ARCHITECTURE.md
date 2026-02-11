@@ -21,7 +21,7 @@ has many more dependencies.
 
 ## Performance
 
-Speed is a very important aspect of this project, and care has been taken to keep 
+Speed is a very important aspect of this project, and care has been taken to keep
 the code as fast as possible, using some of the following techniques:
 1. Avoiding heap allocations during data generation
 2. Integer arithmetic and display instead of floating point arithmetic and display
