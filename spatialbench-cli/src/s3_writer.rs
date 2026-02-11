@@ -15,7 +15,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//! S3 writer support for writing generated data directly to S3
+//! S3 writer that streams multipart uploads instead of buffering in memory.
+//!
+//! Data is buffered in 32 MB chunks (matching [`PARQUET_BUFFER_SIZE`]). When a
+//! chunk is full it is sent through an [`mpsc`] channel to a background tokio
+//! task that uploads it immediately via [`MultipartUpload::put_part`]. This
+//! keeps peak memory usage roughly constant regardless of total file size.
+//!
+//! [`mpsc`]: tokio::sync::mpsc
 
 use crate::plan::PARQUET_BUFFER_SIZE;
 use bytes::Bytes;
@@ -25,10 +32,9 @@ use object_store::path::Path as ObjectPath;
 use object_store::ObjectStore;
 use std::io::{self, Write};
 use std::sync::Arc;
+use tokio::sync::mpsc;
+use tokio::sync::oneshot;
 use url::Url;
-
-/// Minimum part size enforced by AWS S3 for multipart uploads (except last part)
-const S3_MIN_PART_SIZE: usize = 5 * 1024 * 1024; // 5MB
 
 /// Parse an S3 URI into its (bucket, path) components.
 ///
@@ -73,22 +79,53 @@ pub fn build_s3_client(bucket: &str) -> Result<Arc<dyn ObjectStore>, io::Error> 
     Ok(Arc::new(client))
 }
 
-/// A writer that buffers data parts in memory and uploads to S3 when finished
+/// Message sent from the writer thread to the background upload task.
+enum UploadMessage {
+    /// A completed part ready for upload.
+    Part(Bytes),
+    /// All parts have been sent; the upload should be completed.
+    Finish,
+}
+
+/// A writer that streams data to S3 via multipart upload.
 ///
-/// This implementation avoids nested runtime issues by deferring all async
-/// operations to the finish() method. Parts are accumulated in memory during
-/// write() calls and uploaded in a batch during finish().
+/// Internally, a background tokio task is spawned that starts the multipart
+/// upload eagerly and uploads each part as it arrives through a channel.
+/// The [`Write`] implementation buffers data in 32 MB chunks and sends
+/// completed chunks to the background task via [`mpsc::Sender::blocking_send`]
+/// (safe because all callers run inside [`tokio::task::spawn_blocking`]).
+///
+/// On [`finish`](S3Writer::finish), any remaining buffered data is sent as the
+/// final part, the channel is closed, and we wait for the background task to
+/// call `complete()` on the multipart upload. If any part upload fails, the
+/// multipart upload is aborted to avoid orphaned uploads accruing S3 storage
+/// costs.
+///
+/// For small files (< 5 MB total) a simple PUT is used instead of multipart.
 pub struct S3Writer {
-    /// The S3 client
+    /// The S3 client (kept for the small-file PUT fallback)
     client: Arc<dyn ObjectStore>,
-    /// The path in S3 to write to
+    /// The object path in S3
     path: ObjectPath,
-    /// Current buffer for accumulating data
+    /// Current buffer for accumulating data before sending as a part
     buffer: Vec<u8>,
-    /// Completed parts ready for upload (each is at least MIN_PART_SIZE)
-    parts: Vec<Bytes>,
-    /// Total bytes written
+    /// Total bytes written through [`Write::write`]
     total_bytes: usize,
+    /// Channel to send parts to the background upload task.
+    ///
+    /// Set to `None` after the first part is sent (at which point the
+    /// background task is spawned and this is replaced by `upload_tx`).
+    /// Before any parts are sent this is `None` and parts accumulate in
+    /// `pending_parts` for the small-file optimization.
+    upload_tx: Option<mpsc::Sender<UploadMessage>>,
+    /// Receives the final result (total bytes) from the background upload task.
+    result_rx: Option<oneshot::Receiver<Result<(), io::Error>>>,
+    /// Parts accumulated before we decide whether to use simple PUT or
+    /// multipart upload. Once we exceed [`S3_MIN_PART_SIZE`] total, we switch
+    /// to the streaming multipart path.
+    pending_parts: Vec<Bytes>,
+    /// Whether the streaming multipart upload has been started.
+    multipart_started: bool,
 }
 
 impl S3Writer {
@@ -116,66 +153,115 @@ impl S3Writer {
             client,
             path: ObjectPath::from(path),
             buffer: Vec::with_capacity(PARQUET_BUFFER_SIZE),
-            parts: Vec::new(),
             total_bytes: 0,
+            upload_tx: None,
+            result_rx: None,
+            pending_parts: Vec::new(),
+            multipart_started: false,
         }
     }
 
-    /// Complete the upload by sending all buffered data to S3
+    /// Start the background multipart upload task, draining any pending parts.
     ///
-    /// This method performs all async operations, uploading parts and completing
-    /// the multipart upload. It must be called from an async context.
-    pub async fn finish(mut self) -> Result<usize, io::Error> {
-        debug!("Completing S3 upload: {} bytes total", self.total_bytes);
+    /// This is called lazily when we accumulate enough data to exceed the
+    /// simple-PUT threshold. From this point on, every completed buffer is
+    /// sent directly to the background task for immediate upload.
+    fn start_multipart_upload(&mut self) {
+        debug_assert!(!self.multipart_started, "multipart upload already started");
+        self.multipart_started = true;
 
-        // Add any remaining buffer data as the final part
+        // Channel capacity of 2: one part being uploaded, one buffered and ready.
+        // This keeps memory bounded while allowing overlap between buffering and
+        // uploading.
+        let (tx, rx) = mpsc::channel::<UploadMessage>(2);
+        let (result_tx, result_rx) = oneshot::channel();
+
+        let client = Arc::clone(&self.client);
+        let path = self.path.clone();
+        let pending = std::mem::take(&mut self.pending_parts);
+
+        tokio::spawn(async move {
+            let result = run_multipart_upload(client, path, pending, rx).await;
+            // Ignore send error — the receiver may have been dropped if the
+            // writer was abandoned.
+            let _ = result_tx.send(result);
+        });
+
+        self.upload_tx = Some(tx);
+        self.result_rx = Some(result_rx);
+    }
+
+    /// Send a completed buffer chunk to the background upload task.
+    fn send_part(&mut self, part: Bytes) -> io::Result<()> {
+        if let Some(tx) = &self.upload_tx {
+            tx.blocking_send(UploadMessage::Part(part))
+                .map_err(|_| io::Error::other("Background upload task terminated unexpectedly"))?;
+        }
+        Ok(())
+    }
+
+    /// Complete the upload by sending any remaining data and waiting for the
+    /// background task to finish.
+    ///
+    /// For small files (total data < [`S3_MIN_PART_SIZE`] and fits in a single
+    /// part), a simple PUT is used instead of multipart upload.
+    ///
+    /// This method must be called from an async context (it is typically called
+    /// via [`block_on`](tokio::runtime::Handle::block_on) from inside
+    /// [`spawn_blocking`](tokio::task::spawn_blocking)).
+    pub async fn finish(mut self) -> Result<usize, io::Error> {
+        let total = self.total_bytes;
+        debug!("Completing S3 upload: {} bytes total", total);
+
+        // Flush any remaining buffer data
         if !self.buffer.is_empty() {
-            self.parts
-                .push(Bytes::from(std::mem::take(&mut self.buffer)));
+            let remaining = Bytes::from(std::mem::take(&mut self.buffer));
+
+            if self.multipart_started {
+                // Send as the last part
+                if let Some(tx) = &self.upload_tx {
+                    tx.send(UploadMessage::Part(remaining)).await.map_err(|_| {
+                        io::Error::other("Background upload task terminated unexpectedly")
+                    })?;
+                }
+            } else {
+                self.pending_parts.push(remaining);
+            }
         }
 
-        // Handle small files with simple PUT
-        if self.parts.len() == 1 && self.parts[0].len() < S3_MIN_PART_SIZE {
-            debug!(
-                "Using simple PUT for small file: {} bytes",
-                self.total_bytes
-            );
-            let data = self.parts.into_iter().next().unwrap();
+        if self.multipart_started {
+            // Signal the background task that we are done
+            if let Some(tx) = self.upload_tx.take() {
+                let _ = tx.send(UploadMessage::Finish).await;
+            }
+            // Wait for the background task result
+            if let Some(rx) = self.result_rx.take() {
+                rx.await.map_err(|_| {
+                    io::Error::other("Upload task dropped without sending result")
+                })??;
+            }
+        } else {
+            // Small file path — use a simple PUT
+            let data: Vec<u8> = self
+                .pending_parts
+                .into_iter()
+                .flat_map(|b| b.to_vec())
+                .collect();
+
+            if data.is_empty() {
+                debug!("No data to upload");
+                return Ok(0);
+            }
+
+            debug!("Using simple PUT for small file: {} bytes", data.len());
             self.client
-                .put(&self.path, data.into())
+                .put(&self.path, Bytes::from(data).into())
                 .await
                 .map_err(|e| io::Error::other(format!("Failed to upload to S3: {}", e)))?;
-            info!("Successfully uploaded {} bytes to S3", self.total_bytes);
-            return Ok(self.total_bytes);
         }
 
-        // Use multipart upload for larger files
-        debug!("Starting multipart upload for {} parts", self.parts.len());
-        let mut upload =
-            self.client.put_multipart(&self.path).await.map_err(|e| {
-                io::Error::other(format!("Failed to start multipart upload: {}", e))
-            })?;
-
-        // Upload all parts
-        for (i, part_data) in self.parts.into_iter().enumerate() {
-            debug!("Uploading part {} ({} bytes)", i + 1, part_data.len());
-            upload
-                .put_part(part_data.into())
-                .await
-                .map_err(|e| io::Error::other(format!("Failed to upload part {}: {}", i + 1, e)))?;
-        }
-
-        // Complete the multipart upload
-        upload
-            .complete()
-            .await
-            .map_err(|e| io::Error::other(format!("Failed to complete multipart upload: {}", e)))?;
-
-        info!(
-            "Successfully uploaded {} bytes to S3 using multipart upload",
-            self.total_bytes
-        );
-        Ok(self.total_bytes)
+        info!("Successfully uploaded {} bytes to S3", total);
+        Ok(total)
     }
 
     /// Get the total bytes written so far
@@ -191,17 +277,107 @@ impl S3Writer {
     }
 }
 
+/// Background task that runs the multipart upload.
+///
+/// Starts the upload, drains any pre-accumulated pending parts, then
+/// continuously receives new parts from the channel and uploads them. On
+/// any upload error the multipart upload is aborted to avoid orphaned
+/// uploads accruing S3 storage costs.
+async fn run_multipart_upload(
+    client: Arc<dyn ObjectStore>,
+    path: ObjectPath,
+    pending_parts: Vec<Bytes>,
+    mut rx: mpsc::Receiver<UploadMessage>,
+) -> Result<(), io::Error> {
+    debug!("Starting multipart upload for {:?}", path);
+    let mut upload = client
+        .put_multipart(&path)
+        .await
+        .map_err(|e| io::Error::other(format!("Failed to start multipart upload: {}", e)))?;
+
+    let mut part_number: usize = 0;
+
+    // Upload any parts that were accumulated before the task started
+    for part_data in pending_parts {
+        part_number += 1;
+        debug!(
+            "Uploading pending part {} ({} bytes)",
+            part_number,
+            part_data.len()
+        );
+        if let Err(e) = upload.put_part(part_data.into()).await {
+            debug!("Part upload failed, aborting multipart upload");
+            let _ = upload.abort().await;
+            return Err(io::Error::other(format!(
+                "Failed to upload part {}: {}",
+                part_number, e
+            )));
+        }
+    }
+
+    // Receive and upload parts from the channel
+    while let Some(msg) = rx.recv().await {
+        match msg {
+            UploadMessage::Part(part_data) => {
+                part_number += 1;
+                debug!("Uploading part {} ({} bytes)", part_number, part_data.len());
+                if let Err(e) = upload.put_part(part_data.into()).await {
+                    debug!("Part upload failed, aborting multipart upload");
+                    let _ = upload.abort().await;
+                    return Err(io::Error::other(format!(
+                        "Failed to upload part {}: {}",
+                        part_number, e
+                    )));
+                }
+            }
+            UploadMessage::Finish => {
+                break;
+            }
+        }
+    }
+
+    // Complete the multipart upload
+    debug!("Completing multipart upload ({} parts)", part_number);
+    if let Err(e) = upload.complete().await {
+        debug!("Multipart complete failed, aborting");
+        // complete() consumes the upload, so we can't abort here — the upload
+        // will be cleaned up by S3's lifecycle rules for incomplete uploads.
+        return Err(io::Error::other(format!(
+            "Failed to complete multipart upload: {}",
+            e
+        )));
+    }
+
+    debug!(
+        "Multipart upload completed successfully ({} parts)",
+        part_number
+    );
+    Ok(())
+}
+
 impl Write for S3Writer {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.total_bytes += buf.len();
         self.buffer.extend_from_slice(buf);
 
-        // When buffer reaches our target part size (32MB), save it as a completed part
-        // No async operations here - we just move data to the parts vec
+        // When buffer reaches our target part size (32MB), send it as a part
         if self.buffer.len() >= PARQUET_BUFFER_SIZE {
-            let part_data =
-                std::mem::replace(&mut self.buffer, Vec::with_capacity(PARQUET_BUFFER_SIZE));
-            self.parts.push(Bytes::from(part_data));
+            let part_data = Bytes::from(std::mem::replace(
+                &mut self.buffer,
+                Vec::with_capacity(PARQUET_BUFFER_SIZE),
+            ));
+
+            if self.multipart_started {
+                // Stream directly to the background upload task
+                self.send_part(part_data)?;
+            } else {
+                // Accumulate until we know whether this will be a small file
+                self.pending_parts.push(part_data);
+
+                // We now have at least 32MB, which exceeds the 5MB simple PUT
+                // threshold — switch to streaming multipart upload
+                self.start_multipart_upload();
+            }
         }
 
         Ok(buf.len())
