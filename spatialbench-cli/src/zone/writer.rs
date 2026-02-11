@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+use crate::s3_writer::S3Writer;
 use anyhow::Result;
 use arrow_array::RecordBatch;
 use arrow_schema::SchemaRef;
@@ -52,7 +53,16 @@ impl ParquetWriter {
         }
     }
 
-    pub fn write(&self, batches: &[RecordBatch]) -> Result<()> {
+    pub async fn write(&self, batches: &[RecordBatch]) -> Result<()> {
+        if self.args.is_s3() {
+            self.write_s3(batches).await
+        } else {
+            self.write_local(batches)
+        }
+    }
+
+    /// Write batches to a local file using a temp-file + rename pattern.
+    fn write_local(&self, batches: &[RecordBatch]) -> Result<()> {
         // Create parent directory of output file (handles both zone/ subdirectory and base dir)
         let parent_dir = self
             .output_path
@@ -104,6 +114,40 @@ impl ParquetWriter {
             self.args.parts,
             duration,
             total_rows
+        );
+
+        Ok(())
+    }
+
+    /// Write batches to S3 using [`S3Writer`].
+    ///
+    /// S3 writes are atomic (via multipart upload `complete()`), so no
+    /// temp-file or rename is needed.
+    async fn write_s3(&self, batches: &[RecordBatch]) -> Result<()> {
+        let uri = self.args.output_s3_uri();
+        info!("Writing zone parquet to S3: {}", uri);
+
+        let t0 = Instant::now();
+        let s3_writer = S3Writer::new(&uri)?;
+        let mut writer = ArrowWriter::try_new(
+            s3_writer,
+            Arc::clone(&self.schema),
+            Some(self.props.clone()),
+        )?;
+
+        for batch in batches {
+            writer.write(batch)?;
+        }
+
+        let s3_writer = writer.into_inner()?;
+        let size = s3_writer.finish().await?;
+
+        let duration = t0.elapsed();
+        let total_rows: usize = batches.iter().map(|b| b.num_rows()).sum();
+
+        info!(
+            "Zone -> {} (part {:?}/{:?}). write={:?}, total_rows={}, bytes={}",
+            uri, self.args.part, self.args.parts, duration, total_rows, size
         );
 
         Ok(())

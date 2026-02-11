@@ -136,7 +136,6 @@ impl S3Writer {
     ///
     /// Authentication is handled through standard AWS environment variables
     /// via [`AmazonS3Builder::from_env`].
-    #[allow(dead_code)] // used by zone module in a later commit
     pub fn new(uri: &str) -> Result<Self, io::Error> {
         let (bucket, path) = parse_s3_uri(uri)?;
         let client = build_s3_client(&bucket)?;

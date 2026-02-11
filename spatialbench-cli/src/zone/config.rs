@@ -77,4 +77,22 @@ impl ZoneDfArgs {
             self.output_dir.join("zone.parquet")
         }
     }
+
+    /// Whether the output directory is an S3 URI (starts with `s3://`)
+    pub fn is_s3(&self) -> bool {
+        self.output_dir.to_string_lossy().starts_with("s3://")
+    }
+
+    /// Compute the S3 object key for this zone output.
+    ///
+    /// Returns the full S3 URI (e.g. `s3://bucket/prefix/zone.parquet`).
+    pub fn output_s3_uri(&self) -> String {
+        let base = self.output_dir.to_string_lossy();
+        let base = base.trim_end_matches('/');
+        if self.parts.unwrap_or(1) > 1 {
+            format!("{}/zone/zone.{}.parquet", base, self.part.unwrap_or(1))
+        } else {
+            format!("{}/zone.parquet", base)
+        }
+    }
 }

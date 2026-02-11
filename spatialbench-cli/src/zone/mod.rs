@@ -59,7 +59,7 @@ pub async fn generate_zone_parquet_single(args: ZoneDfArgs) -> Result<()> {
     let batches = df.collect().await?;
 
     let writer = ParquetWriter::new(&args, &stats, schema);
-    writer.write(&batches)?;
+    writer.write(&batches).await?;
 
     Ok(())
 }
@@ -106,7 +106,7 @@ pub async fn generate_zone_parquet_multi(args: ZoneDfArgs) -> Result<()> {
         );
 
         let writer = ParquetWriter::new(&part_args, &stats, schema.clone());
-        writer.write(&partitioned_batches)?;
+        writer.write(&partitioned_batches).await?;
     }
 
     Ok(())
