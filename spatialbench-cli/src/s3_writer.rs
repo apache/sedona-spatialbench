@@ -30,6 +30,51 @@ use url::Url;
 /// Minimum part size enforced by AWS S3 for multipart uploads (except last part)
 const S3_MIN_PART_SIZE: usize = 5 * 1024 * 1024; // 5MB
 
+/// Parse an S3 URI into its (bucket, path) components.
+///
+/// The URI should be in the format: `s3://bucket/path/to/object`
+pub fn parse_s3_uri(uri: &str) -> Result<(String, String), io::Error> {
+    let url = Url::parse(uri).map_err(|e| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("Invalid S3 URI: {}", e),
+        )
+    })?;
+
+    if url.scheme() != "s3" {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("Expected s3:// URI, got: {}", url.scheme()),
+        ));
+    }
+
+    let bucket = url
+        .host_str()
+        .ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidInput, "S3 URI missing bucket name")
+        })?
+        .to_string();
+
+    let path = url.path().trim_start_matches('/').to_string();
+
+    Ok((bucket, path))
+}
+
+/// Build an S3 [`ObjectStore`] client for the given bucket using environment variables.
+///
+/// Uses [`AmazonS3Builder::from_env`] which reads all standard AWS environment
+/// variables including `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+/// `AWS_DEFAULT_REGION`, `AWS_REGION`, `AWS_SESSION_TOKEN`, `AWS_ENDPOINT`, etc.
+pub fn build_s3_client(bucket: &str) -> Result<Arc<dyn ObjectStore>, io::Error> {
+    debug!("Building S3 client for bucket: {}", bucket);
+    let client = AmazonS3Builder::from_env()
+        .with_bucket_name(bucket)
+        .build()
+        .map_err(|e| io::Error::other(format!("Failed to create S3 client: {}", e)))?;
+    info!("S3 client created successfully for bucket: {}", bucket);
+    Ok(Arc::new(client))
+}
+
 /// A writer that buffers data parts in memory and uploads to S3 when finished
 ///
 /// This implementation avoids nested runtime issues by deferring all async
@@ -49,82 +94,32 @@ pub struct S3Writer {
 }
 
 impl S3Writer {
-    /// Create a new S3 writer for the given S3 URI
+    /// Create a new S3 writer for the given S3 URI, building a fresh client.
     ///
-    /// The URI should be in the format: s3://bucket/path/to/object
+    /// Prefer [`S3Writer::with_client`] when writing multiple files to reuse
+    /// the same client.
     ///
-    /// Authentication is handled through AWS environment variables:
-    /// - AWS_ACCESS_KEY_ID
-    /// - AWS_SECRET_ACCESS_KEY
-    /// - AWS_REGION (optional, defaults to us-east-1)
-    /// - AWS_SESSION_TOKEN (optional, for temporary credentials)
-    /// - AWS_ENDPOINT (optional, for S3-compatible services)
+    /// Authentication is handled through standard AWS environment variables
+    /// via [`AmazonS3Builder::from_env`].
     pub fn new(uri: &str) -> Result<Self, io::Error> {
-        let url = Url::parse(uri).map_err(|e| {
-            io::Error::new(
-                io::ErrorKind::InvalidInput,
-                format!("Invalid S3 URI: {}", e),
-            )
-        })?;
+        let (bucket, path) = parse_s3_uri(uri)?;
+        let client = build_s3_client(&bucket)?;
+        Ok(Self::with_client(client, &path))
+    }
 
-        if url.scheme() != "s3" {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                format!("Expected s3:// URI, got: {}", url.scheme()),
-            ));
-        }
-
-        let bucket = url.host_str().ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidInput, "S3 URI missing bucket name")
-        })?;
-
-        let path = url.path().trim_start_matches('/');
-
-        debug!(
-            "Creating S3 streaming writer for bucket: {}, path: {}",
-            bucket, path
-        );
-
-        // Build the S3 client using environment variables
-        let mut builder = AmazonS3Builder::new().with_bucket_name(bucket);
-
-        // Try to get credentials from environment variables
-        if let Ok(access_key) = std::env::var("AWS_ACCESS_KEY_ID") {
-            builder = builder.with_access_key_id(access_key);
-        }
-
-        if let Ok(secret_key) = std::env::var("AWS_SECRET_ACCESS_KEY") {
-            builder = builder.with_secret_access_key(secret_key);
-        }
-
-        if let Ok(region) = std::env::var("AWS_REGION") {
-            builder = builder.with_region(region);
-        }
-
-        if let Ok(session_token) = std::env::var("AWS_SESSION_TOKEN") {
-            builder = builder.with_token(session_token);
-        }
-
-        if let Ok(endpoint) = std::env::var("AWS_ENDPOINT") {
-            builder = builder.with_endpoint(endpoint);
-        }
-
-        let client = builder
-            .build()
-            .map_err(|e| io::Error::other(format!("Failed to create S3 client: {}", e)))?;
-
-        info!(
-            "S3 streaming writer created successfully for bucket: {}",
-            bucket
-        );
-
-        Ok(Self {
-            client: Arc::new(client),
+    /// Create a new S3 writer using an existing [`ObjectStore`] client.
+    ///
+    /// This avoids creating a new client per file, which is important when
+    /// generating many partitioned files.
+    pub fn with_client(client: Arc<dyn ObjectStore>, path: &str) -> Self {
+        debug!("Creating S3 writer for path: {}", path);
+        Self {
+            client,
             path: ObjectPath::from(path),
-            buffer: Vec::with_capacity(S3_MIN_PART_SIZE),
+            buffer: Vec::with_capacity(PARQUET_BUFFER_SIZE),
             parts: Vec::new(),
             total_bytes: 0,
-        })
+        }
     }
 
     /// Complete the upload by sending all buffered data to S3

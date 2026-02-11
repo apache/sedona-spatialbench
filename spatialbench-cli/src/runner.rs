@@ -33,6 +33,7 @@ use spatialbench_arrow::{
 };
 use std::io;
 use std::io::BufWriter;
+use std::sync::Arc;
 use tokio::task::{JoinError, JoinSet};
 
 /// Runs multiple [`OutputPlan`]s in parallel, managing the number of threads
@@ -219,9 +220,9 @@ where
             })?;
             Ok(())
         }
-        OutputLocation::S3(uri) => {
+        OutputLocation::S3 { uri, path, client } => {
             info!("Writing to S3: {}", uri);
-            let s3_writer = S3Writer::new(uri)?;
+            let s3_writer = S3Writer::with_client(Arc::clone(client), path);
             let sink = AsyncWriterSink::new(s3_writer);
             generate_in_chunks_async(sink, sources, num_threads).await
         }
@@ -259,9 +260,9 @@ where
             })?;
             Ok(())
         }
-        OutputLocation::S3(uri) => {
+        OutputLocation::S3 { uri, path, client } => {
             info!("Writing parquet to S3: {}", uri);
-            let s3_writer = S3Writer::new(uri)?;
+            let s3_writer = S3Writer::with_client(Arc::clone(client), path);
             generate_parquet_s3(s3_writer, sources, num_threads, plan.parquet_compression()).await
         }
     }

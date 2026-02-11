@@ -20,23 +20,33 @@
 //! * [`OutputPlanGenerator`]: plans the output files to be generated
 
 use crate::plan::GenerationPlan;
+use crate::s3_writer::{build_s3_client, parse_s3_uri};
 use crate::{OutputFormat, Table};
 use log::debug;
+use object_store::ObjectStore;
 use parquet::basic::Compression;
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 /// Where a partition will be output
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum OutputLocation {
     /// Output to a file
     File(PathBuf),
     /// Output to stdout
     Stdout,
-    /// Output to S3
-    S3(String),
+    /// Output to S3 with a shared client
+    S3 {
+        /// The full S3 URI for this object (e.g. `s3://bucket/path/to/file.parquet`)
+        uri: String,
+        /// The object path within the bucket (e.g. `path/to/file.parquet`)
+        path: String,
+        /// Shared S3 client for the bucket
+        client: Arc<dyn ObjectStore>,
+    },
 }
 
 impl Display for OutputLocation {
@@ -50,16 +60,13 @@ impl Display for OutputLocation {
                 write!(f, "{}", file.to_string_lossy())
             }
             OutputLocation::Stdout => write!(f, "Stdout"),
-            OutputLocation::S3(uri) => {
-                // Display the S3 URI
-                write!(f, "{}", uri)
-            }
+            OutputLocation::S3 { uri, .. } => write!(f, "{}", uri),
         }
     }
 }
 
 /// Describes an output partition (file) that will be generated
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct OutputPlan {
     /// The table
     table: Table,
@@ -157,6 +164,8 @@ pub struct OutputPlanGenerator {
     /// Output directories that have been created so far
     /// (used to avoid creating the same directory multiple times)
     created_directories: HashSet<PathBuf>,
+    /// Shared S3 client, lazily created on first S3 output location
+    s3_client: Option<Arc<dyn ObjectStore>>,
 }
 
 impl OutputPlanGenerator {
@@ -177,6 +186,7 @@ impl OutputPlanGenerator {
             output_dir,
             output_plans: Vec::new(),
             created_directories: HashSet::new(),
+            s3_client: None,
         }
     }
 
@@ -298,7 +308,24 @@ impl OutputPlanGenerator {
                 } else {
                     format!("{base_uri}/{table}.{extension}")
                 };
-                Ok(OutputLocation::S3(s3_uri))
+
+                // Lazily build the S3 client on first use, then reuse it
+                let client = if let Some(ref client) = self.s3_client {
+                    Arc::clone(client)
+                } else {
+                    let (bucket, _) = parse_s3_uri(&s3_uri)?;
+                    let client = build_s3_client(&bucket)?;
+                    self.s3_client = Some(Arc::clone(&client));
+                    client
+                };
+
+                let (_, path) = parse_s3_uri(&s3_uri)?;
+
+                Ok(OutputLocation::S3 {
+                    uri: s3_uri,
+                    path,
+                    client,
+                })
             } else {
                 // Handle local filesystem path
                 let mut output_path = self.output_dir.clone();
