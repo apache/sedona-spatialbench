@@ -217,7 +217,7 @@ impl GenerationPlan {
         })
     }
 
-    /// Return the number of part(ititions) this plan will generate
+    /// Return the number of part(ition)s this plan will generate
     pub fn chunk_count(&self) -> usize {
         self.part_list.clone().count()
     }
