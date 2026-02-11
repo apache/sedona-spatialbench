@@ -17,7 +17,6 @@
 
 //! Parquet output format
 
-use crate::s3_writer::S3Writer;
 use crate::statistics::WriteStatistics;
 use arrow::datatypes::SchemaRef;
 use futures::StreamExt;
@@ -138,97 +137,6 @@ where
 
     // Wait for the writer task to finish
     writer_task.await??;
-
-    Ok(())
-}
-
-/// Converts a set of RecordBatchIterators into a Parquet file for S3Writer
-///
-/// This is a specialized version that handles S3Writer's async finalization
-pub async fn generate_parquet_s3<I>(
-    writer: S3Writer,
-    iter_iter: I,
-    num_threads: usize,
-    parquet_compression: Compression,
-) -> Result<(), io::Error>
-where
-    I: Iterator<Item: RecordBatchIterator> + 'static,
-{
-    debug!(
-        "Generating Parquet for S3 with {num_threads} threads, using {parquet_compression} compression"
-    );
-    let mut iter_iter = iter_iter.peekable();
-
-    // get schema from the first iterator
-    let Some(first_iter) = iter_iter.peek() else {
-        return Ok(());
-    };
-    let schema = Arc::clone(first_iter.schema());
-
-    // Compute the parquet schema
-    let writer_properties = WriterProperties::builder()
-        .set_compression(parquet_compression)
-        .build();
-    let writer_properties = Arc::new(writer_properties);
-    let parquet_schema = Arc::new(
-        ArrowSchemaConverter::new()
-            .with_coerce_types(writer_properties.coerce_types())
-            .convert(&schema)
-            .unwrap(),
-    );
-
-    // create a stream that computes the data for each row group
-    let mut row_group_stream = futures::stream::iter(iter_iter)
-        .map(async |iter| {
-            let parquet_schema = Arc::clone(&parquet_schema);
-            let writer_properties = Arc::clone(&writer_properties);
-            let schema = Arc::clone(&schema);
-            tokio::task::spawn(async move {
-                encode_row_group(parquet_schema, writer_properties, schema, iter)
-            })
-            .await
-            .expect("Inner task panicked")
-        })
-        .buffered(num_threads);
-
-    let root_schema = parquet_schema.root_schema_ptr();
-    let writer_properties_captured = Arc::clone(&writer_properties);
-    let (tx, mut rx): (
-        Sender<Vec<ArrowColumnChunk>>,
-        Receiver<Vec<ArrowColumnChunk>>,
-    ) = tokio::sync::mpsc::channel(num_threads);
-
-    let writer_task = tokio::task::spawn_blocking(move || {
-        let mut statistics = WriteStatistics::new("row groups");
-        let mut writer =
-            SerializedFileWriter::new(writer, root_schema, writer_properties_captured).unwrap();
-
-        while let Some(chunks) = rx.blocking_recv() {
-            let mut row_group_writer = writer.next_row_group().unwrap();
-            for chunk in chunks {
-                chunk.append_to_row_group(&mut row_group_writer).unwrap();
-            }
-            row_group_writer.close().unwrap();
-            statistics.increment_chunks(1);
-        }
-        // Return the S3Writer for async upload
-        let s3_writer = writer.into_inner()?;
-        Ok((s3_writer, statistics)) as Result<(S3Writer, WriteStatistics), io::Error>
-    });
-
-    // Drive the input stream
-    while let Some(chunks) = row_group_stream.next().await {
-        if let Err(e) = tx.send(chunks).await {
-            debug!("Error sending chunks to writer: {e}");
-            break;
-        }
-    }
-    drop(tx);
-
-    // Wait for writer task and upload to S3
-    let (s3_writer, mut statistics) = writer_task.await??;
-    let size = s3_writer.finish().await?;
-    statistics.increment_bytes(size);
 
     Ok(())
 }

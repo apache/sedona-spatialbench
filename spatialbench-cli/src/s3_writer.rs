@@ -50,9 +50,7 @@ pub fn parse_s3_uri(uri: &str) -> Result<(String, String), io::Error> {
 
     let bucket = url
         .host_str()
-        .ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidInput, "S3 URI missing bucket name")
-        })?
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "S3 URI missing bucket name"))?
         .to_string();
 
     let path = url.path().trim_start_matches('/').to_string();
@@ -101,6 +99,7 @@ impl S3Writer {
     ///
     /// Authentication is handled through standard AWS environment variables
     /// via [`AmazonS3Builder::from_env`].
+    #[allow(dead_code)] // used by zone module in a later commit
     pub fn new(uri: &str) -> Result<Self, io::Error> {
         let (bucket, path) = parse_s3_uri(uri)?;
         let client = build_s3_client(&bucket)?;
@@ -180,11 +179,13 @@ impl S3Writer {
     }
 
     /// Get the total bytes written so far
+    #[allow(dead_code)] // used by zone module in a later commit
     pub fn total_bytes(&self) -> usize {
         self.total_bytes
     }
 
     /// Get the buffer size (for compatibility)
+    #[allow(dead_code)] // used by zone module in a later commit
     pub fn buffer_size(&self) -> usize {
         self.total_bytes
     }

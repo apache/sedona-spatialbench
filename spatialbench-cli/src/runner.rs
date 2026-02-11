@@ -18,12 +18,12 @@
 //! [`PlanRunner`] for running [`OutputPlan`]s.
 
 use crate::csv::*;
-use crate::generate::{generate_in_chunks, generate_in_chunks_async, Source};
+use crate::generate::{generate_in_chunks, Source};
 use crate::output_plan::{OutputLocation, OutputPlan};
-use crate::parquet::{generate_parquet, generate_parquet_s3};
+use crate::parquet::generate_parquet;
 use crate::s3_writer::S3Writer;
 use crate::tbl::*;
-use crate::{AsyncWriterSink, OutputFormat, Table, WriterSink};
+use crate::{OutputFormat, Table, WriterSink};
 use log::{debug, info};
 use spatialbench::generators::{
     BuildingGenerator, CustomerGenerator, DriverGenerator, TripGenerator, VehicleGenerator,
@@ -223,8 +223,8 @@ where
         OutputLocation::S3 { uri, path, client } => {
             info!("Writing to S3: {}", uri);
             let s3_writer = S3Writer::with_client(Arc::clone(client), path);
-            let sink = AsyncWriterSink::new(s3_writer);
-            generate_in_chunks_async(sink, sources, num_threads).await
+            let sink = WriterSink::new(s3_writer);
+            generate_in_chunks(sink, sources, num_threads).await
         }
     }
 }
@@ -263,7 +263,7 @@ where
         OutputLocation::S3 { uri, path, client } => {
             info!("Writing parquet to S3: {}", uri);
             let s3_writer = S3Writer::with_client(Arc::clone(client), path);
-            generate_parquet_s3(s3_writer, sources, num_threads, plan.parquet_compression()).await
+            generate_parquet(s3_writer, sources, num_threads, plan.parquet_compression()).await
         }
     }
 }

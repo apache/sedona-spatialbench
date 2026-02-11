@@ -53,15 +53,6 @@ pub trait Sink: Send {
     fn flush(self) -> Result<(), io::Error>;
 }
 
-/// Async version of Sink for writers that need async finalization (like S3Writer)
-pub trait AsyncSink: Send {
-    /// Write all data from the buffer to the sink
-    fn sink(&mut self, buffer: &[u8]) -> Result<(), io::Error>;
-
-    /// Complete and flush any remaining data from the sink (async)
-    fn async_flush(self) -> impl std::future::Future<Output = Result<(), io::Error>> + Send;
-}
-
 /// Generates data in parallel from a series of [`Source`] and writes to a [`Sink`]
 ///
 /// Each [`Source`] is a data generator that generates data directly into an in
@@ -157,80 +148,6 @@ where
     drop(tx); // drop last tx reference to tell the writer it is done.
 
     // wait for writer to finish
-    debug!("waiting for writer task to complete");
-    writer_task.await.expect("writer task panicked")
-}
-
-/// Generates data in parallel from a series of [`Source`] and writes to an [`AsyncSink`]
-///
-/// This is similar to generate_in_chunks but handles async finalization for S3Writer
-pub async fn generate_in_chunks_async<G, I, S>(
-    mut sink: S,
-    sources: I,
-    num_threads: usize,
-) -> Result<(), io::Error>
-where
-    G: Source + 'static,
-    I: Iterator<Item = G>,
-    S: AsyncSink + 'static,
-{
-    let recycler = BufferRecycler::new();
-    let mut sources = sources.peekable();
-
-    debug!("Using {num_threads} threads (async sink)");
-
-    let (tx, mut rx) = tokio::sync::mpsc::channel(num_threads);
-
-    // write the header
-    let Some(first) = sources.peek() else {
-        return Ok(()); // no sources
-    };
-    let header = first.header(Vec::new());
-    tx.send(header)
-        .await
-        .expect("tx just created, it should not be closed");
-
-    let sources_and_recyclers = sources.map(|generator| (generator, recycler.clone()));
-
-    let mut stream = futures::stream::iter(sources_and_recyclers)
-        .map(async |(source, recycler)| {
-            let buffer = recycler.new_buffer(1024 * 1024 * 8);
-            let mut join_set = JoinSet::new();
-            join_set.spawn(async move { source.create(buffer) });
-            join_set
-                .join_next()
-                .await
-                .expect("had one item")
-                .expect("join_next join is infallible unless task panics")
-        })
-        .buffered(num_threads)
-        .map(async |buffer| {
-            if let Err(e) = tx.send(buffer).await {
-                debug!("Error sending buffer to writer: {e}");
-            }
-        });
-
-    let captured_recycler = recycler.clone();
-    let writer_task = tokio::task::spawn(async move {
-        while let Some(buffer) = rx.recv().await {
-            sink.sink(&buffer)?;
-            captured_recycler.return_buffer(buffer);
-        }
-        // No more input, flush the sink asynchronously
-        sink.async_flush().await
-    });
-
-    // drive the stream to completion
-    while let Some(write_task) = stream.next().await {
-        if writer_task.is_finished() {
-            debug!("writer task is done early, stopping writer");
-            break;
-        }
-        write_task.await;
-    }
-    drop(stream);
-    drop(tx);
-
     debug!("waiting for writer task to complete");
     writer_task.await.expect("writer task panicked")
 }
