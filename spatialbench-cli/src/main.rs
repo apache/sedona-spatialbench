@@ -253,8 +253,9 @@ impl Cli {
             debug!("Logging configured from environment variables");
         }
 
-        // Create output directory if it doesn't exist and we are not writing to stdout.
-        if !self.stdout {
+        // Create output directory if it doesn't exist and we are not writing to stdout
+        // or to S3 (where local directories are meaningless).
+        if !self.stdout && !self.output_dir.to_string_lossy().starts_with("s3://") {
             fs::create_dir_all(&self.output_dir)?;
         }
 
