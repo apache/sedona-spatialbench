@@ -421,6 +421,11 @@ impl<W: Write> WriterSink<W> {
             statistics: WriteStatistics::new("buffers"),
         }
     }
+
+    /// Consume the sink and return the inner writer for further finalization.
+    fn into_inner(self) -> W {
+        self.inner
+    }
 }
 
 impl<W: Write + Send> Sink for WriterSink<W> {
@@ -430,7 +435,8 @@ impl<W: Write + Send> Sink for WriterSink<W> {
         self.inner.write_all(buffer)
     }
 
-    fn flush(mut self) -> Result<(), io::Error> {
-        self.inner.flush()
+    fn flush(mut self) -> Result<Self, io::Error> {
+        self.inner.flush()?;
+        Ok(self)
     }
 }

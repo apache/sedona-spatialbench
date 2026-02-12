@@ -45,12 +45,13 @@ pub trait Source: Send {
 /// Something that can write the contents of a buffer somewhere
 ///
 /// For example, this is implemented for a file writer.
-pub trait Sink: Send {
+pub trait Sink: Send + Sized {
     /// Write all data from the buffer to the sink
     fn sink(&mut self, buffer: &[u8]) -> Result<(), io::Error>;
 
-    /// Complete and flush any remaining data from the sink
-    fn flush(self) -> Result<(), io::Error>;
+    /// Complete and flush any remaining data from the sink, returning it
+    /// so the caller can perform additional finalization (e.g. async S3 upload).
+    fn flush(self) -> Result<Self, io::Error>;
 }
 
 /// Generates data in parallel from a series of [`Source`] and writes to a [`Sink`]
@@ -69,7 +70,7 @@ pub async fn generate_in_chunks<G, I, S>(
     mut sink: S,
     sources: I,
     num_threads: usize,
-) -> Result<(), io::Error>
+) -> Result<S, io::Error>
 where
     G: Source + 'static,
     I: Iterator<Item = G>,
@@ -86,7 +87,7 @@ where
 
     // write the header
     let Some(first) = sources.peek() else {
-        return Ok(()); // no sources
+        return Ok(sink); // no sources
     };
     let header = first.header(Vec::new());
     tx.send(header)
@@ -131,7 +132,8 @@ where
             sink.sink(&buffer)?;
             captured_recycler.return_buffer(buffer);
         }
-        // No more input, flush the sink and return
+        // No more input, flush the sink and return it so the caller can
+        // perform additional finalization (e.g. async S3 upload).
         sink.flush()
     });
 

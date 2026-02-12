@@ -533,4 +533,36 @@ mod tests {
         writer.write_all(&[4, 5]).unwrap();
         assert_eq!(writer.total_bytes(), 5);
     }
+
+    /// Verify that `std::io::Write::flush()` does NOT upload data to S3.
+    /// Data is only uploaded when `finish()` is called. This test guards
+    /// against the bug where CSV/TBL writes were silently lost because
+    /// the `WriterSink` called `flush()` (a no-op) but never `finish()`.
+    #[tokio::test]
+    async fn flush_does_not_upload_without_finish() {
+        let store = Arc::new(InMemory::new());
+        let mut writer = S3Writer::with_client(store.clone(), "output/flush_test.csv");
+
+        let data = b"col1,col2\nfoo,bar\n";
+        writer.write_all(data).unwrap();
+        writer.flush().unwrap();
+
+        // Data should NOT be in the store yet — flush is a no-op
+        let result = store.get(&ObjectPath::from("output/flush_test.csv")).await;
+        assert!(
+            result.is_err(),
+            "data should not be uploaded before finish()"
+        );
+
+        // Now call finish — data should appear
+        let total = writer.finish().await.unwrap();
+        assert_eq!(total, data.len());
+
+        let result = store
+            .get(&ObjectPath::from("output/flush_test.csv"))
+            .await
+            .unwrap();
+        let stored = result.bytes().await.unwrap();
+        assert_eq!(stored.as_ref(), data);
+    }
 }

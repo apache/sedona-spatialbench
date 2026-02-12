@@ -197,7 +197,8 @@ where
     match plan.output_location() {
         OutputLocation::Stdout => {
             let sink = WriterSink::new(io::stdout());
-            generate_in_chunks(sink, sources, num_threads).await
+            generate_in_chunks(sink, sources, num_threads).await?;
+            Ok(())
         }
         OutputLocation::File(path) => {
             // if the output already exists, skip running
@@ -224,7 +225,9 @@ where
             info!("Writing to S3: {}", uri);
             let s3_writer = S3Writer::with_client(Arc::clone(client), path);
             let sink = WriterSink::new(s3_writer);
-            generate_in_chunks(sink, sources, num_threads).await
+            let sink = generate_in_chunks(sink, sources, num_threads).await?;
+            sink.into_inner().finish().await?;
+            Ok(())
         }
     }
 }
