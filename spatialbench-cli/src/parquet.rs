@@ -113,21 +113,23 @@ where
     ) = tokio::sync::mpsc::channel(num_threads);
     let writer_task = tokio::task::spawn_blocking(move || {
         // Create parquet writer
-        let mut writer =
-            SerializedFileWriter::new(writer, root_schema, writer_properties_captured).unwrap();
+        let mut writer = SerializedFileWriter::new(writer, root_schema, writer_properties_captured)
+            .map_err(io::Error::from)?;
 
         while let Some(chunks) = rx.blocking_recv() {
             // Start row group
-            let mut row_group_writer = writer.next_row_group().unwrap();
+            let mut row_group_writer = writer.next_row_group().map_err(io::Error::from)?;
 
             // Slap the chunks into the row group
             for chunk in chunks {
-                chunk.append_to_row_group(&mut row_group_writer).unwrap();
+                chunk
+                    .append_to_row_group(&mut row_group_writer)
+                    .map_err(io::Error::from)?;
             }
-            row_group_writer.close().unwrap();
+            row_group_writer.close().map_err(io::Error::from)?;
             statistics.increment_chunks(1);
         }
-        let inner = writer.into_inner()?;
+        let inner = writer.into_inner().map_err(io::Error::from)?;
         Ok((inner, statistics)) as Result<(W, WriteStatistics), io::Error>
     });
 

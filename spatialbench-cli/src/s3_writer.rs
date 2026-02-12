@@ -191,10 +191,25 @@ impl S3Writer {
     }
 
     /// Send a completed buffer chunk to the background upload task.
+    ///
+    /// If the channel is closed (because the background task failed), this
+    /// attempts to retrieve the real error from `result_rx` so the caller
+    /// sees the underlying S3 error rather than a generic "channel closed"
+    /// message.
     fn send_part(&mut self, part: Bytes) -> io::Result<()> {
         if let Some(tx) = &self.upload_tx {
-            tx.blocking_send(UploadMessage::Part(part))
-                .map_err(|_| io::Error::other("Background upload task terminated unexpectedly"))?;
+            if tx.blocking_send(UploadMessage::Part(part)).is_err() {
+                // The background task has terminated — try to retrieve the
+                // real error it reported before falling back to a generic msg.
+                if let Some(rx) = &mut self.result_rx {
+                    if let Ok(Err(e)) = rx.try_recv() {
+                        return Err(io::Error::other(format!("S3 upload failed: {e}")));
+                    }
+                }
+                return Err(io::Error::other(
+                    "Background upload task terminated unexpectedly",
+                ));
+            }
         }
         Ok(())
     }
