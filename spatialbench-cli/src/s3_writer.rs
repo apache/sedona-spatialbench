@@ -387,3 +387,150 @@ impl Write for S3Writer {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use object_store::memory::InMemory;
+
+    // ---- parse_s3_uri tests ----
+
+    #[test]
+    fn parse_s3_uri_valid() {
+        let (bucket, path) = parse_s3_uri("s3://my-bucket/path/to/file.parquet").unwrap();
+        assert_eq!(bucket, "my-bucket");
+        assert_eq!(path, "path/to/file.parquet");
+    }
+
+    #[test]
+    fn parse_s3_uri_nested_path() {
+        let (bucket, path) = parse_s3_uri("s3://bucket/a/b/c/d/file.parquet").unwrap();
+        assert_eq!(bucket, "bucket");
+        assert_eq!(path, "a/b/c/d/file.parquet");
+    }
+
+    #[test]
+    fn parse_s3_uri_no_path() {
+        let (bucket, path) = parse_s3_uri("s3://bucket").unwrap();
+        assert_eq!(bucket, "bucket");
+        assert_eq!(path, "");
+    }
+
+    #[test]
+    fn parse_s3_uri_trailing_slash() {
+        let (bucket, path) = parse_s3_uri("s3://bucket/prefix/").unwrap();
+        assert_eq!(bucket, "bucket");
+        assert_eq!(path, "prefix/");
+    }
+
+    #[test]
+    fn parse_s3_uri_wrong_scheme() {
+        let err = parse_s3_uri("https://bucket/path").unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+        assert!(err.to_string().contains("Expected s3://"));
+    }
+
+    #[test]
+    fn parse_s3_uri_invalid_uri() {
+        let err = parse_s3_uri("not a uri at all").unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+        assert!(err.to_string().contains("Invalid S3 URI"));
+    }
+
+    // ---- S3Writer tests using InMemory object store ----
+
+    #[tokio::test]
+    async fn write_small_file() {
+        let store = Arc::new(InMemory::new());
+        let mut writer = S3Writer::with_client(store.clone(), "output/test.parquet");
+
+        let data = b"hello world";
+        writer.write_all(data).unwrap();
+
+        let total = writer.finish().await.unwrap();
+        assert_eq!(total, data.len());
+
+        // Verify the data arrived in the store
+        let result = store
+            .get(&ObjectPath::from("output/test.parquet"))
+            .await
+            .unwrap();
+        let stored = result.bytes().await.unwrap();
+        assert_eq!(stored.as_ref(), data);
+    }
+
+    #[tokio::test]
+    async fn write_empty_file() {
+        let store = Arc::new(InMemory::new());
+        let writer = S3Writer::with_client(store.clone(), "output/empty.parquet");
+
+        let total = writer.finish().await.unwrap();
+        assert_eq!(total, 0);
+
+        // Nothing should be written to the store
+        let result = store.get(&ObjectPath::from("output/empty.parquet")).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn write_large_file_triggers_multipart() {
+        let store = Arc::new(InMemory::new());
+        let mut writer = S3Writer::with_client(store.clone(), "output/large.parquet");
+
+        // Write more than PARQUET_BUFFER_SIZE (32MB) to trigger multipart
+        let chunk = vec![0xABu8; 1024 * 1024]; // 1MB chunks
+        let num_chunks = 34; // 34MB total > 32MB threshold
+        for _ in 0..num_chunks {
+            writer.write_all(&chunk).unwrap();
+        }
+
+        let total = writer.finish().await.unwrap();
+        assert_eq!(total, num_chunks * chunk.len());
+
+        // Verify the data arrived in the store and is correct size
+        let result = store
+            .get(&ObjectPath::from("output/large.parquet"))
+            .await
+            .unwrap();
+        let stored = result.bytes().await.unwrap();
+        assert_eq!(stored.len(), num_chunks * chunk.len());
+        // Verify all bytes are correct
+        assert!(stored.iter().all(|&b| b == 0xAB));
+    }
+
+    #[tokio::test]
+    async fn write_multiple_small_writes() {
+        let store = Arc::new(InMemory::new());
+        let mut writer = S3Writer::with_client(store.clone(), "output/multi.parquet");
+
+        // Simulate many small writes (like a Parquet encoder would produce)
+        for i in 0u8..100 {
+            writer.write_all(&[i]).unwrap();
+        }
+
+        let total = writer.finish().await.unwrap();
+        assert_eq!(total, 100);
+
+        let result = store
+            .get(&ObjectPath::from("output/multi.parquet"))
+            .await
+            .unwrap();
+        let stored = result.bytes().await.unwrap();
+        let expected: Vec<u8> = (0u8..100).collect();
+        assert_eq!(stored.as_ref(), expected.as_slice());
+    }
+
+    #[tokio::test]
+    async fn total_bytes_tracks_writes() {
+        let store = Arc::new(InMemory::new());
+        let mut writer = S3Writer::with_client(store, "output/track.parquet");
+
+        assert_eq!(writer.total_bytes(), 0);
+
+        writer.write_all(&[1, 2, 3]).unwrap();
+        assert_eq!(writer.total_bytes(), 3);
+
+        writer.write_all(&[4, 5]).unwrap();
+        assert_eq!(writer.total_bytes(), 5);
+    }
+}
