@@ -107,3 +107,69 @@ jobs:
         env:
           RUSTDOCFLAGS: "-D warnings"
         run: cargo doc --no-deps --workspace
+
+  # S3 integration tests using MinIO (only when S3-related files change)
+  test-s3-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check for S3-related changes
+        id: changes
+        run: |
+          BASE_SHA=${{ github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
+          if git diff --name-only "$BASE_SHA" HEAD | grep -qE \
+            '^spatialbench-cli/src/(s3_writer|runner|output_plan|main)\.rs$|^spatialbench-cli/tests/s3_integration\.rs$|^\.github/workflows/rust\.yml$'; then
+            echo "s3=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "s3=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Start MinIO
+        if: steps.changes.outputs.s3 == 'true'
+        run: |
+          docker run -d --name minio \
+            -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:latest server /data
+          # Wait for MinIO to be ready
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:9000/minio/health/live; then
+              echo "MinIO is ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "MinIO failed to start"
+          docker logs minio
+          exit 1
+
+      - name: Create MinIO test bucket
+        if: steps.changes.outputs.s3 == 'true'
+        run: |
+          curl -sL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+          chmod +x /usr/local/bin/mc
+          mc alias set local http://localhost:9000 minioadmin minioadmin
+          mc mb local/spatialbench-test
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.changes.outputs.s3 == 'true'
+
+      - uses: Swatinem/rust-cache@v2
+        if: steps.changes.outputs.s3 == 'true'
+        with:
+          prefix-key: "rust-test-s3-v1"
+
+      - name: Run S3 integration tests
+        if: steps.changes.outputs.s3 == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minioadmin
+          AWS_ENDPOINT: http://localhost:9000
+          AWS_REGION: us-east-1
+          AWS_ALLOW_HTTP: "true"
+          S3_TEST_BUCKET: spatialbench-test
+        run: cargo test -p spatialbench-cli --test s3_integration -- --ignored
