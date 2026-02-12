@@ -84,6 +84,26 @@ spatialbench-cli --scale-factor 10 --mb-per-file 512
 spatialbench-cli --scale-factor 1 --output-dir data/sf1
 ```
 
+### Generate Data Directly to S3
+
+You can generate data directly to Amazon S3 or S3-compatible storage by providing an S3 URI as the output directory:
+
+```shell
+# Set AWS credentials
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_ACCESS_KEY="your-secret-key"
+export AWS_REGION="us-west-2"  # Must match your bucket's region
+
+# Generate to S3
+spatialbench-cli --scale-factor 10 --mb-per-file 256 --output-dir s3://my-bucket/spatialbench/sf10
+
+# For S3-compatible services (MinIO, etc.)
+export AWS_ENDPOINT="http://localhost:9000"
+spatialbench-cli --scale-factor 1 --output-dir s3://my-bucket/data
+```
+
+The S3 writer uses streaming multipart upload, buffering data in 32 MB chunks before uploading parts. All standard AWS environment variables are supported, including `AWS_SESSION_TOKEN` for temporary credentials.
+
 ## Configuring Spatial Distributions
 
 SpatialBench uses a spatial data generator to generate synthetic points and polygons using realistic spatial distributions.

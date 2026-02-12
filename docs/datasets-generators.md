@@ -106,6 +106,14 @@ You can generate the tables for Scale Factor 1 with the following command:
 spatialbench-cli -s 1 --format=parquet --output-dir sf1-parquet
 ```
 
+You can also generate data directly to Amazon S3 by providing an S3 URI:
+
+```
+spatialbench-cli -s 1 --format=parquet --output-dir s3://my-bucket/sf1-parquet
+```
+
+See the [Quickstart](quickstart.md#generate-data-directly-to-s3) for details on configuring AWS credentials.
+
 Here are the contents of the `sf1-parquet` directory:
 
 * `building.parquet`
