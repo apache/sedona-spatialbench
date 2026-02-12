@@ -580,4 +580,76 @@ mod tests {
         let stored = result.bytes().await.unwrap();
         assert_eq!(stored.as_ref(), data);
     }
+
+    /// Simulate the `--mb-per-file 256` scenario: a large file with multiple
+    /// multipart parts streamed through the channel after the initial pending
+    /// parts are drained. This exercises the `send_part` → channel → background
+    /// task path with several parts (like 6 × 32 MB for a ~185 MB file).
+    ///
+    /// Writes are done from `spawn_blocking` to match the real Parquet write
+    /// path — `blocking_send` requires a non-async context.
+    #[tokio::test]
+    async fn write_many_parts_triggers_streaming_multipart() {
+        let store = Arc::new(InMemory::new());
+        let writer = S3Writer::with_client(store.clone(), "output/many_parts.parquet");
+
+        // Write 192 MB from a blocking task. The first 32 MB goes to
+        // pending_parts, then start_multipart_upload is called, and the
+        // remaining 5 parts are streamed through the channel.
+        let writer = tokio::task::spawn_blocking(move || {
+            let mut writer = writer;
+            let chunk = vec![0xCDu8; 1024 * 1024]; // 1 MB
+            let total_mb = 192;
+            for _ in 0..total_mb {
+                writer.write_all(&chunk).unwrap();
+            }
+            writer
+        })
+        .await
+        .unwrap();
+
+        let total_mb = 192;
+        let total = writer.finish().await.unwrap();
+        assert_eq!(total, total_mb * 1024 * 1024);
+
+        let result = store
+            .get(&ObjectPath::from("output/many_parts.parquet"))
+            .await
+            .unwrap();
+        let stored = result.bytes().await.unwrap();
+        assert_eq!(stored.len(), total_mb * 1024 * 1024);
+        assert!(stored.iter().all(|&b| b == 0xCD));
+    }
+
+    /// Write from inside `spawn_blocking` to match the real Parquet write
+    /// path, where `S3Writer::write()` is called from a blocking thread and
+    /// `finish()` is awaited after the blocking task returns.
+    #[tokio::test]
+    async fn write_from_spawn_blocking() {
+        let store = Arc::new(InMemory::new());
+        let writer = S3Writer::with_client(store.clone(), "output/blocking.parquet");
+
+        // Write 96 MB (3 × 32 MB parts) from a blocking task
+        let writer = tokio::task::spawn_blocking(move || {
+            let mut writer = writer;
+            let chunk = vec![0xEFu8; 1024 * 1024]; // 1 MB
+            for _ in 0..96 {
+                writer.write_all(&chunk).unwrap();
+            }
+            writer
+        })
+        .await
+        .unwrap();
+
+        let total = writer.finish().await.unwrap();
+        assert_eq!(total, 96 * 1024 * 1024);
+
+        let result = store
+            .get(&ObjectPath::from("output/blocking.parquet"))
+            .await
+            .unwrap();
+        let stored = result.bytes().await.unwrap();
+        assert_eq!(stored.len(), 96 * 1024 * 1024);
+        assert!(stored.iter().all(|&b| b == 0xEF));
+    }
 }
