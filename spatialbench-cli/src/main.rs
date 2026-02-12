@@ -388,27 +388,23 @@ impl Cli {
     }
 }
 
-impl IntoSize for BufWriter<Stdout> {
-    fn into_size(self) -> Result<usize, io::Error> {
-        // we can't get the size of stdout, so just return 0
+impl AsyncFinalize for BufWriter<Stdout> {
+    async fn finalize(self) -> Result<usize, io::Error> {
         Ok(0)
     }
 }
 
-impl IntoSize for BufWriter<File> {
-    fn into_size(self) -> Result<usize, io::Error> {
+impl AsyncFinalize for BufWriter<File> {
+    async fn finalize(self) -> Result<usize, io::Error> {
         let file = self.into_inner()?;
         let metadata = file.metadata()?;
         Ok(metadata.len() as usize)
     }
 }
 
-impl IntoSize for s3_writer::S3Writer {
-    fn into_size(self) -> Result<usize, io::Error> {
-        // Complete the S3 upload. This runs inside spawn_blocking, so we can
-        // use the tokio runtime handle to drive the async finish().
-        let handle = tokio::runtime::Handle::current();
-        handle.block_on(self.finish())
+impl AsyncFinalize for s3_writer::S3Writer {
+    async fn finalize(self) -> Result<usize, io::Error> {
+        self.finish().await
     }
 }
 
