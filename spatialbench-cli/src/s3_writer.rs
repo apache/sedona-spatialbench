@@ -19,7 +19,7 @@
 //!
 //! Data is buffered in 32 MB chunks (matching [`PARQUET_BUFFER_SIZE`]). When a
 //! chunk is full it is sent through an [`mpsc`] channel to a background tokio
-//! task that uploads it immediately via [`MultipartUpload::put_part`]. This
+//! task that uploads it immediately via `MultipartUpload::put_part`. This
 //! keeps peak memory usage roughly constant regardless of total file size.
 //!
 //! [`mpsc`]: tokio::sync::mpsc
@@ -121,7 +121,7 @@ pub struct S3Writer {
     /// Receives the final result (total bytes) from the background upload task.
     result_rx: Option<oneshot::Receiver<Result<(), io::Error>>>,
     /// Parts accumulated before we decide whether to use simple PUT or
-    /// multipart upload. Once we exceed [`S3_MIN_PART_SIZE`] total, we switch
+    /// multipart upload. Once we exceed [`PARQUET_BUFFER_SIZE`] total, we switch
     /// to the streaming multipart path.
     pending_parts: Vec<Bytes>,
     /// Whether the streaming multipart upload has been started.
@@ -202,7 +202,7 @@ impl S3Writer {
     /// Complete the upload by sending any remaining data and waiting for the
     /// background task to finish.
     ///
-    /// For small files (total data < [`S3_MIN_PART_SIZE`] and fits in a single
+    /// For small files (total data < [`PARQUET_BUFFER_SIZE`] and fits in a single
     /// part), a simple PUT is used instead of multipart upload.
     ///
     /// This method must be called from an async context (it is typically called
