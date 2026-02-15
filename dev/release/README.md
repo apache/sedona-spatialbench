@@ -39,7 +39,7 @@ This will run all verification tests on your local checkout without requiring an
 To create a local tarball for testing:
 
 ```shell
-VERSION="0.1.0" && git archive HEAD --prefix=apache-sedona-spatialbench-${VERSION}/ | gzip > apache-sedona-spatialbench-${VERSION}-src.tar.gz
+VERSION="0.2.0" && git archive HEAD --prefix=apache-sedona-spatialbench-${VERSION}/ | gzip > apache-sedona-spatialbench-${VERSION}-src.tar.gz
 dev/release/verify-release-candidate.sh apache-sedona-spatialbench-${VERSION}-src.tar.gz
 ```
 
@@ -48,7 +48,7 @@ dev/release/verify-release-candidate.sh apache-sedona-spatialbench-${VERSION}-sr
 Once a release candidate has been uploaded to Apache dist, verify it using:
 
 ```shell
-dev/release/verify-release-candidate.sh 0.1.0 1
+dev/release/verify-release-candidate.sh 0.2.0 1
 ```
 
 This will download the release candidate from `https://dist.apache.org/repos/dist/dev/sedona/` and verify it.
@@ -77,16 +77,16 @@ a committer.
 
 ```shell
 git pull upstream main
-git branch -b branch-0.1.0
-git push upstream -u branch-0.1.0:branch-0.1.0
+git branch -b branch-0.2.0
+git push upstream -u branch-0.2.0:branch-0.2.0
 ```
 
 When the state of the `branch-x.x.x` branch is clean and checks are complete,
 the release candidate tag can be created:
 
 ```shell
-git tag -a sedona-spatialbench-0.1.0-rc1 -m "Tag Apache Sedona SpatialBench 0.1.0-rc1"
-git push upstream sedona-spatialbench-0.1.0-rc1
+git tag -a sedona-spatialbench-0.2.0-rc1 -m "Tag Apache Sedona SpatialBench 0.2.0-rc1"
+git push upstream sedona-spatialbench-0.2.0-rc1
 ```
 
 ### Signing Commands
@@ -120,7 +120,7 @@ dev/sedona directory of the Apache distribution SVN:
 
 ```shell
 # Set version and RC number variables
-SEDONA_VERSION="0.1.0"
+SEDONA_VERSION="0.2.0"
 RC_NUMBER="1"
 
 # Create the directory in SVN
@@ -154,7 +154,7 @@ are currently all derived from `Cargo.toml`, which can be updated to:
 
 ```
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 ```
 
 ## Publishing to crates.io
