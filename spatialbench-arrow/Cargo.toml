@@ -17,7 +17,7 @@
 
 [package]
 name = "spatialbench-arrow"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["Apache Sedona <dev@sedona.apache.org>"]
 description = "SpatialBench data generator into Apache Arrow format"
@@ -30,7 +30,7 @@ categories = ["science::geo", "database", "data-structures"]
 
 [dependencies]
 arrow = { version = "56", default-features = false, features = ["prettyprint"] }
-spatialbench = { path = "../spatialbench", version = "0.2.0" }
+spatialbench = { path = "../spatialbench", version = "0.3.0" }
 geo = { workspace = true }
 geozero = { workspace = true }
 

@@ -17,7 +17,7 @@
 
 [package]
 name = "spatialbench-cli"
-version = "0.2.0"
+version = "0.3.0"
 authors = { workspace = true }
 description = "Blazing fast pure Rust SpatialBench data generator command line tool."
 readme = "README.md"
@@ -32,8 +32,8 @@ categories = ["science::geo", "database", "command-line-utilities", "development
 arrow = "56"
 parquet = "56"
 clap = { version = "4.5.32", features = ["derive"] }
-spatialbench = { path = "../spatialbench", version = "0.2.0"}
-spatialbench-arrow = { path = "../spatialbench-arrow", version = "0.2.0" }
+spatialbench = { path = "../spatialbench", version = "0.3.0"}
+spatialbench-arrow = { path = "../spatialbench-arrow", version = "0.3.0" }
 tokio = { version = "1.44.1", features = ["full"]}
 futures = "0.3.31"
 num_cpus = "1.0"
