@@ -26,8 +26,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-def load_results(results_dir: str) -> dict:
-    """Load all JSON result files from a directory."""
+def load_results(results_dir: str, expected_engines: list[str] | None = None) -> dict:
+    """Load all JSON result files from a directory.
+
+    Supports two layouts:
+    1. One file per engine (e.g., duckdb_results.json with all queries)
+    2. One file per query (e.g., duckdb_q1_results.json with a single query)
+
+    Per-query files are merged into a single suite per engine. If multiple files
+    contain results for the same engine, their query results are combined.
+
+    If expected_engines is provided, engines that were expected to run but have
+    no results file will be included with all queries marked as 'not_started'.
+    This handles the case where a runner was OOM-killed before uploading results.
+    """
     results = {}
     results_path = Path(results_dir)
 
@@ -36,7 +48,55 @@ def load_results(results_dir: str) -> dict:
             data = json.load(f)
             for suite in data.get("results", []):
                 engine = suite["engine"]
-                results[engine] = suite
+                if engine not in results:
+                    results[engine] = suite
+                else:
+                    # Merge query results from multiple files for the same engine
+                    existing_queries = {r["query"] for r in results[engine].get("results", [])}
+                    for r in suite.get("results", []):
+                        if r["query"] not in existing_queries:
+                            results[engine]["results"].append(r)
+                            existing_queries.add(r["query"])
+                        elif r.get("status") != "not_started":
+                            # Replace not_started placeholder with actual result
+                            results[engine]["results"] = [
+                                r if existing["query"] == r["query"] else existing
+                                for existing in results[engine]["results"]
+                            ]
+
+    # For expected engines with no results, create placeholder entries
+    if expected_engines:
+        # Determine the full query list from engines that did report results
+        all_queries = set()
+        scale_factor = None
+        for engine_data in results.values():
+            if scale_factor is None:
+                scale_factor = engine_data.get("scale_factor", 1)
+            for r in engine_data.get("results", []):
+                all_queries.add(r["query"])
+
+        # Default to q1-q12 if no engine reported any results
+        if not all_queries:
+            all_queries = {f"q{i}" for i in range(1, 13)}
+
+        for engine in expected_engines:
+            if engine not in results:
+                results[engine] = {
+                    "engine": engine,
+                    "version": "unknown",
+                    "scale_factor": scale_factor or 1,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "results": [
+                        {
+                            "query": q,
+                            "status": "not_started",
+                            "time_seconds": None,
+                            "row_count": None,
+                            "error_message": "Runner was killed before completing this query (likely OOM)",
+                        }
+                        for q in sorted(all_queries, key=lambda x: int(x[1:]))
+                    ],
+                }
 
     return results
 
@@ -151,6 +211,8 @@ def generate_markdown_summary(results: dict, output_file: str, query_timeout: in
                 row += " ⏱️ TIMEOUT |"
             elif status == "error":
                 row += " ❌ ERROR |"
+            elif status == "not_started":
+                row += " 💀 OOM |"
             else:
                 row += " — |"
         lines.append(row)
@@ -203,6 +265,7 @@ def generate_markdown_summary(results: dict, output_file: str, query_timeout: in
                 "success": "✅",
                 "error": "❌",
                 "timeout": "⏱️",
+                "not_started": "💀",
             }.get(status, "❓")
 
             lines.append(f"| {query.upper()} | {time_str} | {status_emoji} | {row_str} |")
@@ -219,14 +282,24 @@ def generate_markdown_summary(results: dict, output_file: str, query_timeout: in
 
     for engine in engines:
         engine_errors = []
+        not_started_queries = []
         for query in all_queries:
             result = data.get(engine, {}).get(query, {})
-            if result.get("status") in ("error", "timeout"):
+            status = result.get("status")
+            if status in ("error", "timeout"):
                 error_msg = result.get("error_message", "No details available")
                 # Truncate long error messages
                 if len(error_msg) > 200:
                     error_msg = error_msg[:200] + "..."
                 engine_errors.append(f"- **{query.upper()}**: `{error_msg}`")
+            elif status == "not_started":
+                not_started_queries.append(query.upper())
+
+        if not_started_queries:
+            engine_errors.append(
+                f"- **{', '.join(not_started_queries)}**: "
+                f"`Could not complete these queries, likely due to OOM (runner was killed)`"
+            )
 
         if engine_errors:
             has_errors = True
@@ -248,6 +321,7 @@ def generate_markdown_summary(results: dict, output_file: str, query_timeout: in
         "| **bold** | Fastest for this query |",
         "| ⏱️ TIMEOUT | Query exceeded timeout |",
         "| ❌ ERROR | Query failed |",
+        "| 💀 OOM | Could not run, likely due to out-of-memory (runner killed) |",
         "",
         f"*Generated by [SpatialBench](https://github.com/apache/sedona-spatialbench) on {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}*",
     ])
@@ -289,10 +363,18 @@ def main():
         default=3,
         help="Number of runs per query (for reporting)",
     )
+    parser.add_argument(
+        "--engines",
+        type=str,
+        default=None,
+        help="Comma-separated list of expected engines (e.g., 'duckdb,geopandas,sedonadb,spatial_polars'). "
+        "Engines that were expected but have no results will be shown as OOM/runner-killed.",
+    )
 
     args = parser.parse_args()
 
-    results = load_results(args.results_dir)
+    expected_engines = [e.strip() for e in args.engines.split(",")] if args.engines else None
+    results = load_results(args.results_dir, expected_engines=expected_engines)
 
     if not results:
         print(f"No results found in {args.results_dir}")

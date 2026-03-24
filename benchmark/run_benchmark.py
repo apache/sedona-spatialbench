@@ -428,6 +428,7 @@ def run_benchmark(
     timeout: int,
     scale_factor: float,
     runs: int = 3,
+    output_file: str | None = None,
 ) -> BenchmarkSuite:
     """Generic benchmark runner for any engine.
 
@@ -438,6 +439,9 @@ def run_benchmark(
 
     If runs > 1 and the first run succeeds, additional runs are performed
     and the average time is reported for fair comparison.
+
+    If output_file is provided, results are saved incrementally after each
+    query so that partial results survive if the runner crashes mid-way.
     """
 
     from importlib.metadata import version as pkg_version
@@ -483,60 +487,94 @@ def run_benchmark(
     all_queries = config["queries_getter"]()
     engine_class = config["class"]
 
-    for query_name, query_sql in all_queries.items():
-        if queries and query_name not in queries:
-            continue
+    # Determine which queries will be run
+    query_items = [
+        (qname, qsql) for qname, qsql in all_queries.items()
+        if not queries or qname in queries
+    ]
 
-        print(f"  Running {query_name}...", end=" ", flush=True)
+    # Pre-populate all queries as "not_started" so even a total crash
+    # (e.g. OOM killing the runner) leaves a file showing what was attempted
+    for query_name, _ in query_items:
+        suite.results.append(BenchmarkResult(
+            query=query_name,
+            engine=engine,
+            time_seconds=None,
+            row_count=None,
+            status="not_started",
+            error_message=None,
+        ))
+    if output_file:
+        save_results([suite], output_file)
 
-        # First run
-        result = run_query_isolated(
-            engine_class=engine_class,
-            engine_name=engine,
-            data_paths=data_paths,
-            query_name=query_name,
-            query_sql=query_sql,
-            timeout=timeout,
-        )
+    # Install a SIGTERM handler so we flush results if the runner is shutting down
+    def _sigterm_handler(signum, frame):
+        print(f"\nReceived signal {signum}, saving partial results...", flush=True)
+        if output_file:
+            save_results([suite], output_file)
+        sys.exit(128 + signum)
 
-        # If first run succeeded and we want multiple runs, do additional runs
-        if result.status == "success" and runs > 1:
-            run_times = [result.time_seconds]
+    prev_handler = signal.signal(signal.SIGTERM, _sigterm_handler)
 
-            for run_num in range(2, runs + 1):
-                additional_result = run_query_isolated(
-                    engine_class=engine_class,
-                    engine_name=engine,
-                    data_paths=data_paths,
-                    query_name=query_name,
-                    query_sql=query_sql,
-                    timeout=timeout,
-                )
-                if additional_result.status == "success":
-                    run_times.append(additional_result.time_seconds)
-                else:
-                    # If any subsequent run fails, just use successful runs
-                    break
+    try:
+        for idx, (query_name, query_sql) in enumerate(query_items):
+            print(f"  Running {query_name}...", end=" ", flush=True)
 
-            # Calculate average of all successful runs
-            avg_time = round(sum(run_times) / len(run_times), 2)
-            result = BenchmarkResult(
-                query=query_name,
-                engine=engine,
-                time_seconds=avg_time,
-                row_count=result.row_count,
-                status="success",
-                error_message=None,
+            # First run
+            result = run_query_isolated(
+                engine_class=engine_class,
+                engine_name=engine,
+                data_paths=data_paths,
+                query_name=query_name,
+                query_sql=query_sql,
+                timeout=timeout,
             )
-            print(f"{avg_time}s avg ({len(run_times)} runs, {result.row_count} rows)")
-        elif result.status == "success":
-            print(f"{result.time_seconds}s ({result.row_count} rows)")
-        else:
-            print(f"{result.status.upper()}: {result.error_message}")
 
-        suite.results.append(result)
-        if result.status == "success":
-            suite.total_time += result.time_seconds
+            # If first run succeeded and we want multiple runs, do additional runs
+            if result.status == "success" and runs > 1:
+                run_times = [result.time_seconds]
+
+                for run_num in range(2, runs + 1):
+                    additional_result = run_query_isolated(
+                        engine_class=engine_class,
+                        engine_name=engine,
+                        data_paths=data_paths,
+                        query_name=query_name,
+                        query_sql=query_sql,
+                        timeout=timeout,
+                    )
+                    if additional_result.status == "success":
+                        run_times.append(additional_result.time_seconds)
+                    else:
+                        # If any subsequent run fails, just use successful runs
+                        break
+
+                # Calculate average of all successful runs
+                avg_time = round(sum(run_times) / len(run_times), 2)
+                result = BenchmarkResult(
+                    query=query_name,
+                    engine=engine,
+                    time_seconds=avg_time,
+                    row_count=result.row_count,
+                    status="success",
+                    error_message=None,
+                )
+                print(f"{avg_time}s avg ({len(run_times)} runs, {result.row_count} rows)")
+            elif result.status == "success":
+                print(f"{result.time_seconds}s ({result.row_count} rows)")
+            else:
+                print(f"{result.status.upper()}: {result.error_message}")
+
+            # Replace the pre-populated "not_started" entry with the actual result
+            suite.results[idx] = result
+            if result.status == "success":
+                suite.total_time += result.time_seconds
+
+            # Save partial results after each query so they survive crashes
+            if output_file:
+                save_results([suite], output_file)
+    finally:
+        signal.signal(signal.SIGTERM, prev_handler)
 
     return suite
 
@@ -629,7 +667,7 @@ def main():
         print(f"  {table}: {path}")
 
     results = [
-        run_benchmark(engine, data_paths, queries, args.timeout, args.scale_factor, args.runs)
+        run_benchmark(engine, data_paths, queries, args.timeout, args.scale_factor, args.runs, args.output)
         for engine in engines
     ]
 
