@@ -217,25 +217,32 @@ def generate_markdown_summary(results: dict, output_file: str, query_timeout: in
                 row += " — |"
         lines.append(row)
 
-    # Win count summary
+    # Win count and completion summary
     win_counts = {engine: 0 for engine in engines}
+    completed_counts = {engine: 0 for engine in engines}
+    total_queries = len(all_queries)
     for query in all_queries:
         winner = get_winner(query, data, engines)
         if winner:
             win_counts[winner] += 1
+        for engine in engines:
+            result = data.get(engine, {}).get(query, {})
+            if result.get("status") == "success":
+                completed_counts[engine] += 1
 
     lines.extend([
         "",
         "## 🥇 Performance Summary",
         "",
-        "| Engine | Wins |",
-        "|--------|:----:|",
+        "| Engine | Completed | Wins |",
+        "|--------|:---------:|:----:|",
     ])
 
     for engine in sorted(engines, key=lambda e: win_counts[e], reverse=True):
         icon_name = engine_icons.get(engine, engine.title())
         wins = win_counts[engine]
-        lines.append(f"| {icon_name} | {wins} |")
+        completed = completed_counts[engine]
+        lines.append(f"| {icon_name} | {completed}/{total_queries} | {wins} |")
 
     # Detailed results section (collapsible)
     lines.extend([
