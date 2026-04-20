@@ -56,7 +56,7 @@ nav:
       - Data Distributions: spatialbench-distributions.md
       - Single Node Results: single-node-benchmarks.md
       - Contributors Guide: contributors-guide.md
-      - Release notes: release-notes.md
+      - Release Notes: release-notes.md
   - Blog: https://sedona.apache.org/latest/blog/
   - Community: https://sedona.apache.org/latest/community/contact/
   - Apache Software Foundation: https://sedona.apache.org/latest/asf/asf/
