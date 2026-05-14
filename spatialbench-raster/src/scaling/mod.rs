@@ -41,7 +41,7 @@ pub struct ScalingTier {
 pub const SCALING_TABLE: &[ScalingTier] = &[
     ScalingTier {
         sf: 1,
-        footprints: 1_650,
+        footprints: 1_320,
         scenes_per_footprint: 16,
         narrow: (2, 8),
         balanced: (4, 4),
@@ -114,7 +114,7 @@ mod tests {
     #[test]
     fn scaling_tier_lookup() {
         let tier = scaling_tier(1).unwrap();
-        assert_eq!(tier.footprints, 1_650);
+        assert_eq!(tier.footprints, 1_320);
         assert_eq!(tier.scenes_per_footprint, 16);
     }
 
