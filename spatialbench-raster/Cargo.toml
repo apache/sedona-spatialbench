@@ -28,5 +28,14 @@ description = "Raster benchmark data generation for SpatialBench"
 keywords = ["spatial", "raster", "cog", "geotiff", "benchmark"]
 categories = ["science::geo", "data-structures"]
 
+[features]
+default = []
+cog-writer = ["dep:gdal"]
+
 [dependencies]
 spatialbench = { path = "../spatialbench", version = "0.3.0" }
+gdal = { version = "0.19", optional = true, features = ["bindgen"] }
+
+[dev-dependencies]
+gdal = { version = "0.19", features = ["bindgen"] }
+tempfile = "3"

@@ -17,10 +17,13 @@
 
 //! Raster benchmark data generation for SpatialBench.
 //!
-//! This crate provides the data model, scaling tables, footprint grid, and
-//! topology factoring logic for the SpatialBench raster benchmark. COG writing
-//! (Phase 1b) and STAC catalog generation are in separate crates.
+//! This crate provides the data model, scaling tables, footprint grid,
+//! topology factoring, and COG writing logic for the SpatialBench raster
+//! benchmark.
 
+#[cfg(feature = "cog-writer")]
+pub mod cog;
 pub mod footprint;
+pub mod noise;
 pub mod scaling;
 pub mod topology;
