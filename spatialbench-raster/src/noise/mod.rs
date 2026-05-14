@@ -86,19 +86,33 @@ impl PerlinNoise {
     ///
     /// `width` and `height` are pixel dimensions. `frequency` controls the
     /// spatial scale of the noise (higher = more detail per tile).
-    /// Returns a row-major buffer of `width * height` bytes.
-    pub fn generate_raster(&self, width: u32, height: u32, frequency: f64) -> Vec<u8> {
+    /// Writes into `buf`, resizing it to `width * height` bytes (row-major).
+    /// Passing a pre-allocated buffer avoids repeated heap allocations when
+    /// generating many COGs (see [`BufferRecycler`] pattern in spatialbench).
+    pub fn generate_raster_into(&self, width: u32, height: u32, frequency: f64, buf: &mut Vec<u8>) {
         let len = width as usize * height as usize;
-        let mut buf = Vec::with_capacity(len);
+        buf.clear();
+        buf.reserve(len.saturating_sub(buf.capacity()));
+        let inv_w = frequency / width as f64;
+        let inv_h = frequency / height as f64;
         for row in 0..height {
+            let y = row as f64 * inv_h;
             for col in 0..width {
-                let x = col as f64 * frequency / width as f64;
-                let y = row as f64 * frequency / height as f64;
+                let x = col as f64 * inv_w;
                 // Sample returns [-1, 1], map to [0, 255]
                 let val = (self.sample(x, y) + 1.0) * 0.5;
                 buf.push((val.clamp(0.0, 1.0) * 255.0) as u8);
             }
         }
+    }
+
+    /// Generate a full raster buffer of UInt8 pixel values.
+    ///
+    /// Convenience wrapper around [`Self::generate_raster_into`] that allocates
+    /// a new buffer. Prefer `generate_raster_into` in hot loops.
+    pub fn generate_raster(&self, width: u32, height: u32, frequency: f64) -> Vec<u8> {
+        let mut buf = Vec::new();
+        self.generate_raster_into(width, height, frequency, &mut buf);
         buf
     }
 }

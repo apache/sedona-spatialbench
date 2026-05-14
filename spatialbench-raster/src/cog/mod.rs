@@ -23,7 +23,7 @@
 //! - 256×256 internal tiling
 //! - Perlin noise pixel data for realistic compression ratios
 
-use crate::footprint::Footprint;
+use crate::footprint::{Footprint, FootprintConfig};
 use crate::noise::PerlinNoise;
 
 use gdal::raster::RasterCreationOptions;
@@ -34,16 +34,17 @@ use std::io;
 use std::path::Path;
 
 /// Configuration for COG generation.
+///
+/// Wraps a [`FootprintConfig`] (which defines pixel dimensions and resolution)
+/// and adds COG-specific settings like internal tile size and noise frequency.
+/// This ensures footprint grid generation and COG writing always agree on
+/// raster dimensions.
 #[derive(Debug, Clone, Copy)]
 pub struct CogConfig {
-    /// Raster width in pixels.
-    pub width: u32,
-    /// Raster height in pixels.
-    pub height: u32,
+    /// Shared raster dimensions and resolution.
+    pub raster: FootprintConfig,
     /// Internal tile size (pixels per side).
     pub tile_size: u32,
-    /// Pixel resolution in meters (for geotransform).
-    pub resolution: f64,
     /// Perlin noise frequency (controls spatial detail per tile).
     pub noise_frequency: f64,
 }
@@ -51,9 +52,7 @@ pub struct CogConfig {
 impl Default for CogConfig {
     fn default() -> Self {
         Self {
-            width: 1830,
-            height: 1830,
-            resolution: 60.0,
+            raster: FootprintConfig::default(),
             tile_size: 256,
             noise_frequency: 8.0,
         }
@@ -80,6 +79,10 @@ pub fn write_cog(
     cog_id: u32,
     output_path: &Path,
 ) -> io::Result<()> {
+    let width = config.raster.cog_width;
+    let height = config.raster.cog_height;
+    let resolution = config.raster.resolution as f64;
+
     // Create in-memory dataset
     let mem_driver = DriverManager::get_driver_by_name("MEM").map_err(|e| {
         io::Error::new(
@@ -89,7 +92,7 @@ pub fn write_cog(
     })?;
 
     let mut mem_ds = mem_driver
-        .create_with_band_type::<u8, _>("", config.width as usize, config.height as usize, 1)
+        .create_with_band_type::<u8, _>("", width as usize, height as usize, 1)
         .map_err(|e| io::Error::other(format!("failed to create MEM dataset: {e}")))?;
 
     // Set CRS to footprint's UTM zone
@@ -106,11 +109,11 @@ pub fn write_cog(
     // Geotransform: origin is NW corner, positive x-res east, negative y-res south
     let gt: GeoTransform = [
         footprint.origin.0, // top-left x (easting)
-        config.resolution,  // pixel width (meters)
+        resolution,         // pixel width (meters)
         0.0,                // rotation
         footprint.origin.1, // top-left y (northing)
         0.0,                // rotation
-        -config.resolution, // pixel height (negative = south)
+        -resolution,        // pixel height (negative = south)
     ];
     mem_ds
         .set_geo_transform(&gt)
@@ -119,20 +122,17 @@ pub fn write_cog(
     // Generate pixel data with Perlin noise
     let seed = (footprint.id as u64) << 32 | cog_id as u64;
     let noise = PerlinNoise::new(seed);
-    let pixels = noise.generate_raster(config.width, config.height, config.noise_frequency);
+    let pixels = noise.generate_raster(width, height, config.noise_frequency);
 
-    // Write raster band
-    let mut band = mem_ds
-        .rasterband(1)
-        .map_err(|e| io::Error::other(format!("failed to get raster band: {e}")))?;
-    let mut buffer =
-        gdal::raster::Buffer::new((config.width as usize, config.height as usize), pixels);
-    band.write::<u8>(
-        (0, 0),
-        (config.width as usize, config.height as usize),
-        &mut buffer,
-    )
-    .map_err(|e| io::Error::other(format!("failed to write pixel data: {e}")))?;
+    // Write raster band (scoped to release mutable borrow on mem_ds)
+    {
+        let mut band = mem_ds
+            .rasterband(1)
+            .map_err(|e| io::Error::other(format!("failed to get raster band: {e}")))?;
+        let mut buffer = gdal::raster::Buffer::new((width as usize, height as usize), pixels);
+        band.write::<u8>((0, 0), (width as usize, height as usize), &mut buffer)
+            .map_err(|e| io::Error::other(format!("failed to write pixel data: {e}")))?;
+    }
 
     // Create COG via create_copy from the MEM dataset
     let cog_driver = DriverManager::get_driver_by_name("COG").map_err(|e| {
@@ -210,6 +210,19 @@ mod tests {
         assert!((gt[3] - fp.origin.1).abs() < 1e-6);
         assert!((gt[1] - 60.0).abs() < 1e-6);
         assert!((gt[5] - (-60.0)).abs() < 1e-6);
+
+        // Verify pixel data was written (not all zeros, has variation)
+        let band = ds.rasterband(1).unwrap();
+        let buf = band
+            .read_as::<u8>((0, 0), (w, h), (w as usize, h as usize), None)
+            .unwrap();
+        let pixels = buf.data();
+        let min = *pixels.iter().min().unwrap();
+        let max = *pixels.iter().max().unwrap();
+        assert!(
+            max - min > 50,
+            "expected pixel variation in COG, got range [{min}, {max}]"
+        );
     }
 
     #[test]
