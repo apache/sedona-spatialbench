@@ -146,6 +146,7 @@ pub fn write_cog(
         "COMPRESS=ZSTD",
         &format!("BLOCKSIZE={}", config.tile_size),
         "LEVEL=3",
+        "NUM_THREADS=ALL_CPUS",
     ]);
 
     mem_ds
