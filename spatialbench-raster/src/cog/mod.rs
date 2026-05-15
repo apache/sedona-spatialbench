@@ -46,7 +46,7 @@ pub struct CogConfig {
     /// Internal tile size (pixels per side).
     pub tile_size: u32,
     /// Perlin noise frequency (controls spatial detail per tile).
-    pub noise_frequency: f64,
+    pub noise_frequency: f32,
 }
 
 impl Default for CogConfig {

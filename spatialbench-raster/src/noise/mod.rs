@@ -23,6 +23,10 @@
 //!
 //! The implementation follows Ken Perlin's improved noise (2002) with a
 //! permutation table seeded deterministically from a footprint/COG ID pair.
+//!
+//! Uses `f32` arithmetic for ~2x throughput on ARM NEON (Apple Silicon, AWS
+//! Graviton). The 23-bit mantissa is more than sufficient for mapping to
+//! UInt8 pixel values.
 
 /// A seeded 2D Perlin noise generator.
 ///
@@ -59,7 +63,7 @@ impl PerlinNoise {
 
     /// Sample noise at (x, y), returning a value in [-1.0, 1.0].
     #[inline]
-    pub fn sample(&self, x: f64, y: f64) -> f64 {
+    pub fn sample(&self, x: f32, y: f32) -> f32 {
         let xi = x.floor() as i32;
         let yi = y.floor() as i32;
         let xf = x - x.floor();
@@ -89,19 +93,49 @@ impl PerlinNoise {
     /// Writes into `buf`, resizing it to `width * height` bytes (row-major).
     /// Passing a pre-allocated buffer avoids repeated heap allocations when
     /// generating many COGs (see [`BufferRecycler`] pattern in spatialbench).
-    pub fn generate_raster_into(&self, width: u32, height: u32, frequency: f64, buf: &mut Vec<u8>) {
+    ///
+    /// Row-level y-axis values are hoisted out of the inner loop: the integer
+    /// grid cell, fractional offset, fade curve, and permutation lookups for
+    /// each row are computed once and reused across all columns.
+    pub fn generate_raster_into(&self, width: u32, height: u32, frequency: f32, buf: &mut Vec<u8>) {
         let len = width as usize * height as usize;
         buf.clear();
         buf.reserve(len.saturating_sub(buf.capacity()));
-        let inv_w = frequency / width as f64;
-        let inv_h = frequency / height as f64;
+        let inv_w = frequency / width as f32;
+        let inv_h = frequency / height as f32;
+
         for row in 0..height {
-            let y = row as f64 * inv_h;
+            let y = row as f32 * inv_h;
+
+            // Hoist row-invariant y-axis computations
+            let yi_raw = y.floor() as i32;
+            let yf = y - y.floor();
+            let v = fade(yf);
+            let yi = (yi_raw & 255) as usize;
+
             for col in 0..width {
-                let x = col as f64 * inv_w;
-                // Sample returns [-1, 1], map to [0, 255]
-                let val = (self.sample(x, y) + 1.0) * 0.5;
-                buf.push((val.clamp(0.0, 1.0) * 255.0) as u8);
+                let x = col as f32 * inv_w;
+                let xi_raw = x.floor() as i32;
+                let xf = x - x.floor();
+                let u = fade(xf);
+                let xi = (xi_raw & 255) as usize;
+
+                // Hash corners (yi and yi+1 are row-constant)
+                let p_xi = self.perm[xi] as usize;
+                let p_xi1 = self.perm[xi + 1] as usize;
+                let aa = self.perm[p_xi + yi] as usize;
+                let ab = self.perm[p_xi + yi + 1] as usize;
+                let ba = self.perm[p_xi1 + yi] as usize;
+                let bb = self.perm[p_xi1 + yi + 1] as usize;
+
+                // Gradient dot products and bilinear interpolation
+                let x1 = lerp(grad(aa, xf, yf), grad(ba, xf - 1.0, yf), u);
+                let x2 = lerp(grad(ab, xf, yf - 1.0), grad(bb, xf - 1.0, yf - 1.0), u);
+                let val = lerp(x1, x2, v);
+
+                // Map [-1, 1] → [0, 255]
+                let pixel = ((val + 1.0) * 0.5).clamp(0.0, 1.0) * 255.0;
+                buf.push(pixel as u8);
             }
         }
     }
@@ -110,7 +144,7 @@ impl PerlinNoise {
     ///
     /// Convenience wrapper around [`Self::generate_raster_into`] that allocates
     /// a new buffer. Prefer `generate_raster_into` in hot loops.
-    pub fn generate_raster(&self, width: u32, height: u32, frequency: f64) -> Vec<u8> {
+    pub fn generate_raster(&self, width: u32, height: u32, frequency: f32) -> Vec<u8> {
         let mut buf = Vec::new();
         self.generate_raster_into(width, height, frequency, &mut buf);
         buf
@@ -127,19 +161,19 @@ fn lcg_next(state: u64) -> u64 {
 
 /// Fade curve: 6t^5 - 15t^4 + 10t^3 (Perlin's improved noise, 2002).
 #[inline]
-fn fade(t: f64) -> f64 {
+fn fade(t: f32) -> f32 {
     t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
 }
 
 /// Linear interpolation.
 #[inline]
-fn lerp(a: f64, b: f64, t: f64) -> f64 {
+fn lerp(a: f32, b: f32, t: f32) -> f32 {
     a + t * (b - a)
 }
 
 /// Gradient function using hash to select from 4 directions.
 #[inline]
-fn grad(hash: usize, x: f64, y: f64) -> f64 {
+fn grad(hash: usize, x: f32, y: f32) -> f32 {
     match hash & 3 {
         0 => x + y,
         1 => -x + y,
@@ -157,8 +191,8 @@ mod tests {
         let n1 = PerlinNoise::new(42);
         let n2 = PerlinNoise::new(42);
         for i in 0..100 {
-            let x = i as f64 * 0.1;
-            let y = i as f64 * 0.07;
+            let x = i as f32 * 0.1;
+            let y = i as f32 * 0.07;
             assert_eq!(n1.sample(x, y).to_bits(), n2.sample(x, y).to_bits());
         }
     }
@@ -169,7 +203,7 @@ mod tests {
         let n2 = PerlinNoise::new(1);
         let mut differ = false;
         for i in 0..100 {
-            let x = i as f64 * 0.1;
+            let x = i as f32 * 0.1;
             if n1.sample(x, 0.5) != n2.sample(x, 0.5) {
                 differ = true;
                 break;
@@ -182,11 +216,11 @@ mod tests {
     fn output_range() {
         let n = PerlinNoise::new(123);
         for i in 0..1000 {
-            let x = i as f64 * 0.037;
-            let y = i as f64 * 0.053;
+            let x = i as f32 * 0.037;
+            let y = i as f32 * 0.053;
             let val = n.sample(x, y);
             assert!(
-                val >= -1.0 && val <= 1.0,
+                (-1.0..=1.0).contains(&val),
                 "sample out of range: {val} at ({x}, {y})"
             );
         }
