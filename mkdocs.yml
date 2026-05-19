@@ -140,6 +140,39 @@ plugins:
    - mkdocs-jupyter
    - search
    - macros
+   - i18n:
+        docs_structure: suffix
+        fallback_to_default: true
+        reconfigure_material: true
+        reconfigure_search: true
+        languages:
+          - locale: en
+            default: true
+            name: English
+            build: true
+          - locale: zh
+            name: 中文
+            build: true
+            site_name: SpatialBench
+            site_description: SpatialBench 是一个用于评估各类数据库系统中地理空间 SQL 分析查询性能的基准测试
+            nav_translations:
+              Home: 首页
+              SpatialBench: SpatialBench
+              Quickstart: 快速开始
+              Methodology: 方法论
+              Queries: 查询
+              Datasets & Generators: 数据集与生成器
+              Data Distributions: 数据分布
+              Single Node Results: 单节点结果
+              Contributors Guide: 贡献者指南
+              Release Notes: 发布说明
+              Blog: 博客
+              Community: 社区
+              Apache Software Foundation: Apache 软件基金会
+              Framework: 框架
+              SpatialBench Queries: SpatialBench 查询
+              Get Involved: 参与贡献
+              Sedona OSS Blog: Sedona 开源博客
    - git-revision-date-localized:
         type: datetime
    - glightbox:
