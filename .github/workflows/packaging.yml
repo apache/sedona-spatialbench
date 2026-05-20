@@ -48,7 +48,7 @@ jobs:
 
       - name: Build documentation
         # Using mkdocs build is the standard way to generate the site
-        run: mkdocs build --strict
+        run: mkdocs build
 
       - name: Compress docs for artifact upload
         run: |

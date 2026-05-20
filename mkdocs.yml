@@ -86,6 +86,7 @@ theme:
     - search.share
     - search.suggest
     - navigation.footer
+    - navigation.instant
     - navigation.top
     - navigation.sections
     - navigation.tabs
