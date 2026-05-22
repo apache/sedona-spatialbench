@@ -1,39 +1,39 @@
-<!DOCTYPE html><html lang="en" class="no-js"><head>
+<!DOCTYPE html><html lang="zh" class="no-js"><head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems">
+        <meta name="description" content="SpatialBench 是一个用于评估各类数据库系统中地理空间 SQL 分析查询性能的基准测试">
       
       
       
       
-        <link rel="prev" href="../spatialbench-distributions/">
+        <link rel="prev" href="../single-node-benchmarks/">
       
       
-        <link rel="next" href="../contributors-guide/">
+        <link rel="next" href="../release-notes/">
       
       
         
-          <link rel="alternate" href="./" hreflang="en">
+          <link rel="alternate" href="../../contributors-guide/" hreflang="en">
         
-          <link rel="alternate" href="../zh/single-node-benchmarks/" hreflang="zh">
+          <link rel="alternate" href="./" hreflang="zh">
         
       
       
-      <link rel="icon" href="../image/sedona_logo_symbol.png">
+      <link rel="icon" href="../../image/sedona_logo_symbol.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>SpatialBench Single Node Benchmarks - SpatialBench</title>
+        <title>贡献者指南 - SpatialBench</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -52,19 +52,21 @@
       
     
     
-      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
     
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
     
     
-  <link href="../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+  <link href="../../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
             html.glightbox-open { overflow: initial; height: 100%; }
             .gslide-title { margin-top: 0px; user-select: text; }
             .gslide-desc { color: #666; user-select: text; }
@@ -92,8 +94,8 @@
     <div data-md-component="skip">
       
         
-        <a href="#hardware" class="md-skip">
-          Skip to content
+        <a href="#_1" class="md-skip">
+          跳转至
         </a>
       
     </div>
@@ -134,7 +136,7 @@
 
 <!-- Header -->
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
-    <nav class="md-header__inner md-grid container" aria-label="Header">
+    <nav class="md-header__inner md-grid container" aria-label="页眉">
       <div class="left-part">
 
         <!-- Button to open drawer -->
@@ -144,9 +146,9 @@
         </label>
 
         <!-- Link to home -->
-        <a href=".." title="SpatialBench" class="header-logo" aria-label="SpatialBench" data-md-component="logo">
+        <a href="../" title="SpatialBench" class="header-logo" aria-label="SpatialBench" data-md-component="logo">
           
-  <img src="../image/logo.svg" alt="logo">
+  <img src="../../image/logo.svg" alt="logo">
 
         </a>
 
@@ -161,7 +163,7 @@
             <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              SpatialBench Single Node Benchmarks
+              贡献者指南
             
           </span>
             </div>
@@ -181,20 +183,20 @@
         <div class="md-header__option">
   <div class="md-select">
     
-    <button class="md-header__button md-icon" aria-label="Select language">
+    <button class="md-header__button md-icon" aria-label="选择当前语言">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"></path></svg>
     </button>
     <div class="md-select__inner">
       <ul class="md-select__list">
         
           <li class="md-select__item">
-            <a href="./" hreflang="en" class="md-select__link">
+            <a href="../../contributors-guide/" hreflang="en" class="md-select__link">
               English
             </a>
           </li>
         
           <li class="md-select__item">
-            <a href="../zh/single-node-benchmarks/" hreflang="zh" class="md-select__link">
+            <a href="./" hreflang="zh" class="md-select__link">
               中文
             </a>
           </li>
@@ -223,21 +225,21 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required="">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required="">
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
       </label>
-      <nav class="md-search__options" aria-label="Search">
+      <nav class="md-search__options" aria-label="查找">
         
-          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard="" data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="分享" aria-label="分享" data-clipboard="" data-clipboard-text="" data-md-component="search-share" tabindex="-1">
             
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"></path></svg>
           </a>
         
-        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
         </button>
@@ -250,7 +252,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix="">
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Initializing search
+            正在初始化搜索引擎
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -264,7 +266,7 @@
         <!-- Repository information -->
         
         <div class="md-header__source">
-          <a href="https://github.com/apache/sedona-spatialbench/" title="Go to repository" class="md-source" data-md-component="source">
+          <a href="https://github.com/apache/sedona-spatialbench/" title="前往仓库" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
@@ -282,7 +284,7 @@
     
     
     
-<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+<nav class="md-tabs" aria-label="标签" data-md-component="tabs">
   <div class="md-grid">
     <ul class="md-tabs__list">
       
@@ -298,7 +300,7 @@
   
     
   
-  Home
+  首页
 
       </a>
     </li>
@@ -391,7 +393,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href=".." class="md-tabs__link">
+        <a href="../" class="md-tabs__link">
           
   
   
@@ -415,7 +417,7 @@
   
     
   
-  Blog
+  博客
 
       </a>
     </li>
@@ -434,7 +436,7 @@
   
     
   
-  Community
+  社区
 
       </a>
     </li>
@@ -453,7 +455,7 @@
   
     
   
-  Apache Software Foundation
+  Apache 软件基金会
 
       </a>
     </li>
@@ -548,17 +550,17 @@
 
 
 
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="导航栏" data-md-level="0">
 
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="SpatialBench" class="logo-link" aria-label="SpatialBench" data-md-component="logo">
-      <img src="../image/header/logo-mobile.svg" alt="" class="logo">
+    <a href="../" title="SpatialBench" class="logo-link" aria-label="SpatialBench" data-md-component="logo">
+      <img src="../../image/header/logo-mobile.svg" alt="" class="logo">
     </a>
   </label>
 
   
   <div class="md-nav__source">
-    <a href="https://github.com/apache/sedona-spatialbench/" title="Go to repository" class="md-source" data-md-component="source">
+    <a href="https://github.com/apache/sedona-spatialbench/" title="前往仓库" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
@@ -586,7 +588,7 @@
   <span class="md-ellipsis">
     
   
-    Home
+    首页
   
 
     
@@ -771,14 +773,14 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Home
+    首页
   
 
     
@@ -806,7 +808,7 @@
   <span class="md-ellipsis">
     
   
-    Quickstart
+    快速开始
   
 
     
@@ -834,7 +836,7 @@
   <span class="md-ellipsis">
     
   
-    Methodology
+    方法论
   
 
     
@@ -862,7 +864,7 @@
   <span class="md-ellipsis">
     
   
-    Queries
+    查询
   
 
     
@@ -890,7 +892,7 @@
   <span class="md-ellipsis">
     
   
-    Datasets &amp; Generators
+    数据集与生成器
   
 
     
@@ -918,7 +920,35 @@
   <span class="md-ellipsis">
     
   
-    Data Distributions
+    数据分布
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../single-node-benchmarks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    单节点结果
   
 
     
@@ -945,6 +975,8 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
@@ -953,7 +985,7 @@
   <span class="md-ellipsis">
     
   
-    Single Node Results
+    贡献者指南
   
 
     
@@ -971,7 +1003,7 @@
   <span class="md-ellipsis">
     
   
-    Single Node Results
+    贡献者指南
   
 
     
@@ -983,22 +1015,24 @@
       
         
 
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+<nav class="md-nav md-nav--secondary" aria-label="目录">
   
   
+  
+    
   
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Table of contents
+      目录
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
       
         <li class="md-nav__item">
-  <a href="#hardware" class="md-nav__link">
+  <a href="#fork" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hardware
+        Fork 并克隆仓库
       
     </span>
   </a>
@@ -1006,10 +1040,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#test-data" class="md-nav__link">
+  <a href="#_2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Test Data
+        开发环境搭建
       
     </span>
   </a>
@@ -1017,33 +1051,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#software" class="md-nav__link">
+  <a href="#_3" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Software
+        调试
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#result-analysis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Result analysis
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Result analysis">
+    <nav class="md-nav" aria-label="调试">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#spatial-filters-and-basic-operations-q1q6" class="md-nav__link">
+  <a href="#ide" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Spatial filters and basic operations (Q1–Q6)
+        IDE
       
     </span>
   </a>
@@ -1051,10 +1074,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#geometric-computations-q7q9" class="md-nav__link">
+  <a href="#cli" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Geometric computations (Q7–Q9)
+        CLI 的详细输出
       
     </span>
   </a>
@@ -1062,32 +1085,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#complex-spatial-joins-and-aggregations-q10q11" class="md-nav__link">
+  <a href="#_4" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Complex spatial joins and aggregations (Q10–Q11)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#nearest-neighbor-joins-q12" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Nearest-neighbor joins (Q12)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#overall" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overall
+        日志级别
       
     </span>
   </a>
@@ -1100,60 +1101,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#automated-benchmarks-github-actions" class="md-nav__link">
+  <a href="#_5" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Automated Benchmarks (GitHub Actions)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Automated Benchmarks (GitHub Actions)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#view-latest-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        View Latest Results
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#supported-engines" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported Engines
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#run-your-own-benchmark" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Run Your Own Benchmark
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#benchmark-code" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Benchmark Code
+        测试
       
     </span>
   </a>
@@ -1161,10 +1112,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#raw-benchmark-performance-numbers" class="md-nav__link">
+  <a href="#_6" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Raw Benchmark Performance Numbers
+        代码风格检查
       
     </span>
   </a>
@@ -1172,10 +1123,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#future-work" class="md-nav__link">
+  <a href="#_7" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Future work
+        文档
       
     </span>
   </a>
@@ -1198,34 +1149,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../contributors-guide/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Contributors Guide
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../release-notes/" class="md-nav__link">
         
   
@@ -1233,7 +1156,7 @@
   <span class="md-ellipsis">
     
   
-    Release Notes
+    发布说明
   
 
     
@@ -1268,7 +1191,7 @@
   <span class="md-ellipsis">
     
   
-    Blog
+    博客
   
 
     
@@ -1295,7 +1218,7 @@
   <span class="md-ellipsis">
     
   
-    Community
+    社区
   
 
     
@@ -1322,7 +1245,7 @@
   <span class="md-ellipsis">
     
   
-    Apache Software Foundation
+    Apache 软件基金会
   
 
     
@@ -1355,22 +1278,24 @@
                   <div class="md-sidebar__inner">
                     
 
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+<nav class="md-nav md-nav--secondary" aria-label="目录">
   
   
+  
+    
   
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Table of contents
+      目录
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
       
         <li class="md-nav__item">
-  <a href="#hardware" class="md-nav__link">
+  <a href="#fork" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hardware
+        Fork 并克隆仓库
       
     </span>
   </a>
@@ -1378,10 +1303,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#test-data" class="md-nav__link">
+  <a href="#_2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Test Data
+        开发环境搭建
       
     </span>
   </a>
@@ -1389,33 +1314,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#software" class="md-nav__link">
+  <a href="#_3" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Software
+        调试
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#result-analysis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Result analysis
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Result analysis">
+    <nav class="md-nav" aria-label="调试">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#spatial-filters-and-basic-operations-q1q6" class="md-nav__link">
+  <a href="#ide" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Spatial filters and basic operations (Q1–Q6)
+        IDE
       
     </span>
   </a>
@@ -1423,10 +1337,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#geometric-computations-q7q9" class="md-nav__link">
+  <a href="#cli" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Geometric computations (Q7–Q9)
+        CLI 的详细输出
       
     </span>
   </a>
@@ -1434,32 +1348,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#complex-spatial-joins-and-aggregations-q10q11" class="md-nav__link">
+  <a href="#_4" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Complex spatial joins and aggregations (Q10–Q11)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#nearest-neighbor-joins-q12" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Nearest-neighbor joins (Q12)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#overall" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overall
+        日志级别
       
     </span>
   </a>
@@ -1472,60 +1364,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#automated-benchmarks-github-actions" class="md-nav__link">
+  <a href="#_5" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Automated Benchmarks (GitHub Actions)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Automated Benchmarks (GitHub Actions)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#view-latest-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        View Latest Results
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#supported-engines" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported Engines
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#run-your-own-benchmark" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Run Your Own Benchmark
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#benchmark-code" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Benchmark Code
+        测试
       
     </span>
   </a>
@@ -1533,10 +1375,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#raw-benchmark-performance-numbers" class="md-nav__link">
+  <a href="#_6" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Raw Benchmark Performance Numbers
+        代码风格检查
       
     </span>
   </a>
@@ -1544,10 +1386,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#future-work" class="md-nav__link">
+  <a href="#_7" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Future work
+        文档
       
     </span>
   </a>
@@ -1571,15 +1413,13 @@
 
 
   
-    <a href="https://github.com/apache/sedona-spatialbench/blob/main/docs/single-node-benchmarks.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/apache/sedona-spatialbench/blob/main/docs/contributors-guide.zh.md" title="编辑此页" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
     </a>
   
   
 
-
-  <h1>Single Node Results</h1>
 
 <!---
   Licensed to the Apache Software Foundation (ASF) under one
@@ -1596,281 +1436,130 @@
   KIND, either express or implied.  See the License for the
   specific language governing permissions and limitations
   under the License.
---><p>This page presents the SpatialBench single-node benchmark results for SedonaDB, DuckDB, and GeoPandas. The benchmark was conducted on September 22, 2025, using SpatialBench v0.1.0 pre-release (commit <code>9094be8</code> on the main branch).</p>
-<p>Here are the results from SpatialBench v0.1 for Queries 1–12 at scale factor 1 (SF1) and scale factor 10 (SF10).</p>
-<p class="grid"><a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../image/sf1-09242025.png" data-desc-position="bottom"><img alt="Scale Factor 1 benchmark results" src="../image/sf1-09242025.png" width="400"></a>
-<a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../image/sf10-09242025.png" data-desc-position="bottom"><img alt="Scale Factor 10 benchmark results" src="../image/sf10-09242025.png" width="400"></a></p>
-<h2 id="hardware">Hardware<a class="headerlink" href="#hardware" title="Permanent link">¶</a></h2>
-<p>This benchmark was run on an AWS EC2 <code>m7i.2xlarge</code> instance, which has 8 CPUs and 32 GB of RAM. We encourage you to try running SpatialBench on different hardware configurations and share your results with the community.</p>
-<h2 id="test-data">Test Data<a class="headerlink" href="#test-data" title="Permanent link">¶</a></h2>
-<p>The datasets are generated using SpatialBench’s dbgen and stored in an AWS S3 bucket in pure Parquet format. Geometry columns are encoded in Well-Known Binary (WKB) using the Parquet BINARY type. All systems read Parquet files directly from the S3 bucket. No local pre-loading is involved. Each Parquet row group is 128 MB. To better reflect real-world scenarios, large Parquet files are split into smaller ones, each around 200–300 MB in size.</p>
-<p>We provide public datasets for Scale Factor 1 and 10 in the <code>us-west-2</code> region. You can access them here:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Scale Factor = 1</label><label for="__tabbed_1_2">Scale Factor = 10</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>s3://wherobots-examples/data/spatialbench/SpatialBench_sf1/building/
-s3://wherobots-examples/data/spatialbench/SpatialBench_sf1/customer/
-s3://wherobots-examples/data/spatialbench/SpatialBench_sf1/driver/
-s3://wherobots-examples/data/spatialbench/SpatialBench_sf1/trip/
-s3://wherobots-examples/data/spatialbench/SpatialBench_sf1/vehicle/
-s3://wherobots-examples/data/spatialbench/SpatialBench_sf1/zone/
+--><h1 id="_1">贡献者指南<a class="headerlink" href="#_1" title="Permanent link">¶</a></h1>
+<p>本指南将详细介绍作为 SpatialBench 贡献者，应如何搭建开发环境。</p>
+<h2 id="fork">Fork 并克隆仓库<a class="headerlink" href="#fork" title="Permanent link">¶</a></h2>
+<p>第一步是创建仓库的个人副本，并将其与主项目关联起来。</p>
+<ol>
+<li>
+<p>Fork 仓库</p>
+</li>
+<li>
+<p>访问官方 <a href="https://github.com/apache/sedona-spatialbench">SpatialBench GitHub 仓库</a>。</p>
+</li>
+<li>
+<p>点击右上角的 <strong>Fork</strong> 按钮，这会在你的 GitHub 账号下创建一份完整的项目副本。</p>
+</li>
+<li>
+<p>克隆你的 fork</p>
+</li>
+<li>
+<p>接下来，将你刚刚 fork 的仓库克隆到本地。该命令会将仓库下载到名为 <code>sedona-spatialbench</code> 的新目录中。</p>
+</li>
+<li>
+<p>请将 <code>YourUsername</code> 替换为你实际的 GitHub 用户名。</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/YourUsername/sedona-spatialbench.git
+<span class="nb">cd</span><span class="w"> </span>sedona-spatialbench
 </code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>s3://wherobots-examples/data/spatialbench/SpatialBench_sf10/building/
-s3://wherobots-examples/data/spatialbench/SpatialBench_sf10/customer/
-s3://wherobots-examples/data/spatialbench/SpatialBench_sf10/driver/
-s3://wherobots-examples/data/spatialbench/SpatialBench_sf10/trip/
-s3://wherobots-examples/data/spatialbench/SpatialBench_sf10/vehicle/
-s3://wherobots-examples/data/spatialbench/SpatialBench_sf10/zone/
+</li>
+<li>
+<p>配置 remote</p>
+</li>
+<li>
+<p>你的本地仓库需要知道原始项目的位置，以便后续拉取更新。我们通常会添加一个名为 upstream 的远程地址，指向 SpatialBench 主仓库。</p>
+</li>
+<li>
+<p>你的 fork 会被自动配置为 origin 远程。</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 将主仓库添加为名为 "upstream" 的远程</span>
+git<span class="w"> </span>remote<span class="w"> </span>add<span class="w"> </span>upstream<span class="w"> </span>https://github.com/apache/sedona-spatialbench.git
 </code></pre></div>
-</div>
-</div>
-</div>
-<h2 id="software">Software<a class="headerlink" href="#software" title="Permanent link">¶</a></h2>
-<p>The following software versions were used in this benchmark:</p>
-<ul>
-<li>GeoPandas: 1.1.1</li>
-<li>Shapely: 2.1.1</li>
-<li>NumPy: 2.3.3</li>
-<li>DuckDB: 1.4.0</li>
-<li>SedonaDB: 0.1.0</li>
-</ul>
-<p>This benchmark report specifies software versions to make it easier to track performance improvements over time. We use the default settings of all software unless otherwise noted. For DuckDB, we explicitly set <code>enable_external_file_cache</code> to <code>false</code> to focus on the cold start queries runtime, consistent with the other engines.</p>
-<p>The reported runtimes include the entire query execution for each engine, including data loading. We used <code>COUNT</code> on every query result to trigger full execution, but did not write outputs to external files in order to avoid introducing additional overhead from data writing. A query timeout of <code>1200</code> seconds was applied.</p>
-<p>Since GeoPandas executes in a single thread and lacks a query optimizer, any parallelization or optimization must be implemented manually. For this benchmark, we did a straightforward Python implementation that mirrors the SQL queries run on other engines. If you are a GeoPandas expert, we would be happy to collaborate on a more optimized or parallelized version.</p>
-<h2 id="result-analysis">Result analysis<a class="headerlink" href="#result-analysis" title="Permanent link">¶</a></h2>
-<h3 id="spatial-filters-and-basic-operations-q1q6">Spatial filters and basic operations (Q1–Q6)<a class="headerlink" href="#spatial-filters-and-basic-operations-q1q6" title="Permanent link">¶</a></h3>
-<p>DuckDB and SedonaDB achieve similar low-latency performance at both SF 1 and SF 10, while GeoPandas struggles to keep up at larger scales. The main reasons are the lack of a query optimizer to choose efficient execution strategies and the absence of multi-core parallelism. By contrast, DuckDB and SedonaDB leverage columnar data layouts, vectorized execution, multi-core parallelism, and query optimization to achieve strong performance. However, SedonaDB faces challenges with spatial aggregation (Q5), where DuckDB performs significantly better. This is a known issue in SedonaDB and is planned for improvement.</p>
-<h3 id="geometric-computations-q7q9">Geometric computations (Q7–Q9)<a class="headerlink" href="#geometric-computations-q7q9" title="Permanent link">¶</a></h3>
-<p>SedonaDB is especially effective on intersection/IoU (Q9), showing substantial efficiency improvements. These queries focus on geometric operations like area calculations, distance computations, and spatial intersections.</p>
-<h3 id="complex-spatial-joins-and-aggregations-q10q11">Complex spatial joins and aggregations (Q10–Q11)<a class="headerlink" href="#complex-spatial-joins-and-aggregations-q10q11" title="Permanent link">¶</a></h3>
-<p>SedonaDB consistently delivers strong results on heavier joins, particularly Q10 and Q11, aided by its adaptive spatial join strategy that picks the best algorithm per partition based on spatial statistics. DuckDB handles some join queries well but encounters scaling issues in certain cases, while GeoPandas completes SF 1 but not SF 10.</p>
-<h3 id="nearest-neighbor-joins-q12">Nearest-neighbor joins (Q12)<a class="headerlink" href="#nearest-neighbor-joins-q12" title="Permanent link">¶</a></h3>
-<p>SedonaDB completes KNN joins at both SF 1 and SF 10, thanks to its native operator and optimized algorithm. In contrast, DuckDB and GeoPandas currently lack built-in KNN join support. For these engines, we had to implement additional code manually, which proved less efficient. Adding native KNN capabilities in the future would likely help both engines close this gap.</p>
-<h3 id="overall">Overall<a class="headerlink" href="#overall" title="Permanent link">¶</a></h3>
-<p>SedonaDB demonstrates balanced performance across all query types and scales effectively to SF 10. DuckDB excels at spatial filters and some geometric operations but faces challenges with complex joins and KNN queries. GeoPandas, while popular in the Python ecosystem, requires manual optimization and parallelization to handle larger datasets effectively.</p>
-<h2 id="automated-benchmarks-github-actions">Automated Benchmarks (GitHub Actions)<a class="headerlink" href="#automated-benchmarks-github-actions" title="Permanent link">¶</a></h2>
-<p>We run automated benchmarks on every pull request and periodically via GitHub Actions to verify that all SpatialBench queries are fully runnable across supported engines.</p>
-<div class="admonition note">
-<p class="admonition-title">Not for Performance Comparison</p>
-<p>The GitHub Actions benchmark is designed to validate correctness and runnability, <strong>not</strong> for serious performance comparisons. GitHub Actions runners have variable performance characteristics and limited resources. For meaningful performance benchmarks, please run SpatialBench on dedicated hardware with appropriate scale factors as described in the sections above.</p>
-</div>
-<h3 id="view-latest-results">View Latest Results<a class="headerlink" href="#view-latest-results" title="Permanent link">¶</a></h3>
-<p>Visit the <a href="https://github.com/apache/sedona-spatialbench/actions/workflows/benchmark.yml">GitHub Actions Benchmark Page</a> to see the latest results. Click on any successful workflow run and scroll to the <strong>Summary</strong> section to view:</p>
-<ul>
-<li>Query execution status for each engine</li>
-<li>Comparison across all 12 queries</li>
-<li>Error and timeout information</li>
-</ul>
-<h3 id="supported-engines">Supported Engines<a class="headerlink" href="#supported-engines" title="Permanent link">¶</a></h3>
-<p>The automated tests cover:</p>
-<ul>
-<li>🦆 <strong>DuckDB</strong> - In-process analytical database with spatial extension</li>
-<li>🐼 <strong>GeoPandas</strong> - Python geospatial data analysis library</li>
-<li>🌵 <strong>SedonaDB</strong> - High-performance spatial analytics engine</li>
-<li>🐻‍❄️ <strong>Spatial Polars</strong> - Geospatial extension for Polars dataframes</li>
-</ul>
-<h3 id="run-your-own-benchmark">Run Your Own Benchmark<a class="headerlink" href="#run-your-own-benchmark" title="Permanent link">¶</a></h3>
-<p>You can trigger the automated tests manually from the <a href="https://github.com/apache/sedona-spatialbench/actions/workflows/benchmark.yml">Actions tab</a> with configurable options:</p>
-<ul>
-<li><strong>Scale Factor</strong>: 0.1, 1, or 10</li>
-<li><strong>Engines</strong>: Select which engines to test</li>
-<li><strong>Query Timeout</strong>: Adjust timeout for longer queries (default: 60s)</li>
-<li><strong>Runs per Query</strong>: 1, 3, or 5 runs for averaging (default: 3)</li>
-<li><strong>Package Versions</strong>: Pin specific versions or use latest</li>
-</ul>
-<h2 id="benchmark-code">Benchmark Code<a class="headerlink" href="#benchmark-code" title="Permanent link">¶</a></h2>
-<p>You can access and run the benchmark code in the <a href="https://github.com/apache/sedona-spatialbench">sedona-spatialbench GitHub</a> repository.</p>
-<p>You can generate datasets and run benchmarks both locally and in cloud environments.</p>
-<p>The repository has an issue tracker where you can file bug reports or suggest code improvements.</p>
-<h2 id="raw-benchmark-performance-numbers">Raw Benchmark Performance Numbers<a class="headerlink" href="#raw-benchmark-performance-numbers" title="Permanent link">¶</a></h2>
-<p>The following tables present the benchmark results in detail. All times are in seconds. ERROR indicates that the software failed to complete the query due to an exception (e.g., out-of-memory). TIMEOUT indicates that the query exceeded 1200 seconds without returning results.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio"><input id="__tabbed_2_2" name="__tabbed_2" type="radio"><div class="tabbed-labels"><label for="__tabbed_2_1">Scale Factor = 1</label><label for="__tabbed_2_2">Scale Factor = 10</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<table>
-<thead>
-<tr>
-<th>Query</th>
-<th>SedonaDB</th>
-<th>DuckDB</th>
-<th>GeoPandas</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>q1</td>
-<td>0.66</td>
-<td>0.96</td>
-<td>12.78</td>
-</tr>
-<tr>
-<td>q2</td>
-<td>8.07</td>
-<td>9.95</td>
-<td>20.74</td>
-</tr>
-<tr>
-<td>q3</td>
-<td>0.80</td>
-<td>1.17</td>
-<td>13.59</td>
-</tr>
-<tr>
-<td>q4</td>
-<td>8.41</td>
-<td>9.83</td>
-<td>25.24</td>
-</tr>
-<tr>
-<td>q5</td>
-<td>5.10</td>
-<td>1.80</td>
-<td>47.08</td>
-</tr>
-<tr>
-<td>q6</td>
-<td>8.59</td>
-<td>9.36</td>
-<td>24.43</td>
-</tr>
-<tr>
-<td>q7</td>
-<td>1.66</td>
-<td>1.82</td>
-<td>137.00</td>
-</tr>
-<tr>
-<td>q8</td>
-<td>1.10</td>
-<td>1.08</td>
-<td>16.08</td>
-</tr>
-<tr>
-<td>q9</td>
-<td>0.23</td>
-<td>50.15</td>
-<td>0.28</td>
-</tr>
-<tr>
-<td>q10</td>
-<td>18.79</td>
-<td>207.84</td>
-<td>46.13</td>
-</tr>
-<tr>
-<td>q11</td>
-<td>32.98</td>
-<td>TIMEOUT</td>
-<td>51.01</td>
-</tr>
-<tr>
-<td>q12</td>
-<td>14.55</td>
-<td>ERROR</td>
-<td>TIMEOUT</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="tabbed-block">
-<table>
-<thead>
-<tr>
-<th>Query</th>
-<th>SedonaDB</th>
-<th>DuckDB</th>
-<th>GeoPandas</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>q1</td>
-<td>3.04</td>
-<td>4.58</td>
-<td>ERROR</td>
-</tr>
-<tr>
-<td>q2</td>
-<td>8.89</td>
-<td>8.26</td>
-<td>ERROR</td>
-</tr>
-<tr>
-<td>q3</td>
-<td>4.09</td>
-<td>5.17</td>
-<td>TIMEOUT</td>
-</tr>
-<tr>
-<td>q4</td>
-<td>7.52</td>
-<td>8.51</td>
-<td>ERROR</td>
-</tr>
-<tr>
-<td>q5</td>
-<td>50.81</td>
-<td>14.40</td>
-<td>ERROR</td>
-</tr>
-<tr>
-<td>q6</td>
-<td>9.11</td>
-<td>10.67</td>
-<td>ERROR</td>
-</tr>
-<tr>
-<td>q7</td>
-<td>14.44</td>
-<td>14.03</td>
-<td>ERROR</td>
-</tr>
-<tr>
-<td>q8</td>
-<td>7.24</td>
-<td>7.57</td>
-<td>TIMEOUT</td>
-</tr>
-<tr>
-<td>q9</td>
-<td>0.38</td>
-<td>942.98</td>
-<td>0.49</td>
-</tr>
-<tr>
-<td>q10</td>
-<td>42.02</td>
-<td>ERROR</td>
-<td>ERROR</td>
-</tr>
-<tr>
-<td>q11</td>
-<td>97.52</td>
-<td>ERROR</td>
-<td>ERROR</td>
-</tr>
-<tr>
-<td>q12</td>
-<td>145.66</td>
-<td>ERROR</td>
-<td>TIMEOUT</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
-<h2 id="future-work">Future work<a class="headerlink" href="#future-work" title="Permanent link">¶</a></h2>
-<p>We plan to include additional engines and databases in future work, such as:</p>
-<ul>
-<li><code>dask-geopandas</code> for single-node parallelism across cores</li>
-<li>An R geospatial engine</li>
-</ul>
-<p>If you're an expert in any of these technologies, we welcome you to take on this project or reach out to us about collaborating.</p>
-<p>For clarity and simplicity, compute engines designed for multi-node environments are intentionally excluded from these single-node results. Likewise, transactional databases such as PostGIS execute queries in fundamentally different ways from pure Python engines (e.g., GeoPandas) or analytical engines (e.g., SedonaDB, DuckDB). Since SpatialBench is primarily focused on analytical workloads, these systems are not included in the current study.</p>
-<p>The overarching goal of the SpatialBench initiative is to provide the spatial community with a reliable set of benchmarks and to help accelerate the development of better tooling for users.</p>
+</li>
+<li>
+<p>验证配置</p>
+</li>
+<li>
+<p>运行以下命令，确认你正确地配置了两个远程：origin（你的 fork）和 upstream（主仓库）。</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>remote<span class="w"> </span>-v
+</code></pre></div>
+</li>
+<li>
+<p>输出应当类似于：</p>
+<div class="highlight"><pre><span></span><code>origin<span class="w">    </span>https://github.com/YourUsername/sedona-spatialbench.git<span class="w"> </span><span class="o">(</span>fetch<span class="o">)</span>
+origin<span class="w">    </span>https://github.com/YourUsername/sedona-spatialbench.git<span class="w"> </span><span class="o">(</span>push<span class="o">)</span>
+upstream<span class="w">  </span>https://github.com/apache/sedona-spatialbench.git<span class="w"> </span><span class="o">(</span>fetch<span class="o">)</span>
+upstream<span class="w">  </span>https://github.com/apache/sedona-spatialbench.git<span class="w"> </span><span class="o">(</span>push<span class="o">)</span>
+</code></pre></div>
+</li>
+</ol>
+<h2 id="_2">开发环境搭建<a class="headerlink" href="#_2" title="Permanent link">¶</a></h2>
+<p>SpatialBench 使用 Rust 编写，并采用标准的 cargo workspace。你可以从 rustup.rs 安装一个较新的 Rust 编译器和 cargo。</p>
+<p>运行测试：</p>
+<div class="highlight"><pre><span></span><code>cargo<span class="w"> </span><span class="nb">test</span>
+</code></pre></div>
+<p>可以使用以下命令运行 CLI 的本地开发版本：</p>
+<div class="highlight"><pre><span></span><code>cargo<span class="w"> </span>run<span class="w"> </span>--bin<span class="w"> </span>spatialbench-cli
+</code></pre></div>
+<h2 id="_3">调试<a class="headerlink" href="#_3" title="Permanent link">¶</a></h2>
+<h3 id="ide">IDE<a class="headerlink" href="#ide" title="Permanent link">¶</a></h3>
+<p>调试 Rust 代码最方便的方式是编写或定位一个能够触发目标行为的测试，然后在 IDE 中通过 <a href="https://www.jetbrains.com/help/fleet/using-rust-analyzer.html">rust-analyzer</a> 扩展使用 Debug 模式运行该测试。</p>
+<h3 id="cli">CLI 的详细输出<a class="headerlink" href="#cli" title="Permanent link">¶</a></h3>
+<p>调试 SpatialBench CLI 时，可以启用详细输出，以查看更详细的日志：</p>
+<p>启用详细输出（info 级别日志）：</p>
+<div class="highlight"><pre><span></span><code>cargo<span class="w"> </span>run<span class="w"> </span>--bin<span class="w"> </span>spatialbench-cli<span class="w"> </span>--<span class="w"> </span>--scale-factor<span class="w"> </span><span class="m">1</span><span class="w"> </span>--verbose
+</code></pre></div>
+<p>或者通过环境变量进行更精细的控制：</p>
+<div class="highlight"><pre><span></span><code><span class="nv">RUST_LOG</span><span class="o">=</span>debug<span class="w"> </span>cargo<span class="w"> </span>run<span class="w"> </span>--bin<span class="w"> </span>spatialbench-cli<span class="w"> </span>--<span class="w"> </span>--scale-factor<span class="w"> </span><span class="m">1</span>
+</code></pre></div>
+<p><code>--verbose</code> 标志会将日志级别设置为 info，并忽略 RUST_LOG 环境变量。如果未指定 <code>--verbose</code>，则日志通过 <code>RUST_LOG</code> 进行配置。</p>
+<h3 id="_4">日志级别<a class="headerlink" href="#_4" title="Permanent link">¶</a></h3>
+<p>你可以使用 <code>RUST_LOG</code> 控制日志的粒度：</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 仅显示错误</span>
+<span class="nv">RUST_LOG</span><span class="o">=</span>error<span class="w"> </span>cargo<span class="w"> </span>run<span class="w"> </span>--bin<span class="w"> </span>spatialbench-cli<span class="w"> </span>--<span class="w"> </span>--scale-factor<span class="w"> </span><span class="m">1</span>
+
+<span class="c1"># 显示警告和错误</span>
+<span class="nv">RUST_LOG</span><span class="o">=</span>warn<span class="w"> </span>cargo<span class="w"> </span>run<span class="w"> </span>--bin<span class="w"> </span>spatialbench-cli<span class="w"> </span>--<span class="w"> </span>--scale-factor<span class="w"> </span><span class="m">1</span>
+
+<span class="c1"># 显示 info、警告和错误</span>
+<span class="nv">RUST_LOG</span><span class="o">=</span>info<span class="w"> </span>cargo<span class="w"> </span>run<span class="w"> </span>--bin<span class="w"> </span>spatialbench-cli<span class="w"> </span>--<span class="w"> </span>--scale-factor<span class="w"> </span><span class="m">1</span>
+
+<span class="c1"># 显示调试输出</span>
+<span class="nv">RUST_LOG</span><span class="o">=</span>debug<span class="w"> </span>cargo<span class="w"> </span>run<span class="w"> </span>--bin<span class="w"> </span>spatialbench-cli<span class="w"> </span>--<span class="w"> </span>--scale-factor<span class="w"> </span><span class="m">1</span>
+
+<span class="c1"># 显示 trace 输出（非常详细）</span>
+<span class="nv">RUST_LOG</span><span class="o">=</span>trace<span class="w"> </span>cargo<span class="w"> </span>run<span class="w"> </span>--bin<span class="w"> </span>spatialbench-cli<span class="w"> </span>--<span class="w"> </span>--scale-factor<span class="w"> </span><span class="m">1</span>
+
+<span class="c1"># 仅显示特定模块的调试输出</span>
+<span class="nv">RUST_LOG</span><span class="o">=</span><span class="nv">spatialbench</span><span class="o">=</span>debug<span class="w"> </span>cargo<span class="w"> </span>run<span class="w"> </span>--bin<span class="w"> </span>spatialbench-cli<span class="w"> </span>--<span class="w"> </span>--scale-factor<span class="w"> </span><span class="m">1</span>
+</code></pre></div>
+<h2 id="_5">测试<a class="headerlink" href="#_5" title="Permanent link">¶</a></h2>
+<p>我们使用 cargo 来运行 Rust 测试：</p>
+<div class="highlight"><pre><span></span><code>cargo<span class="w"> </span><span class="nb">test</span>
+</code></pre></div>
+<p>也可以仅对某个 crate 运行测试：</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>spatialbench
+cargo<span class="w"> </span><span class="nb">test</span>
+</code></pre></div>
+<h2 id="_6">代码风格检查<a class="headerlink" href="#_6" title="Permanent link">¶</a></h2>
+<p>安装 pre-commit。它会自动运行通过 CI 所必需的各项检查（例如代码格式化）：</p>
+<div class="highlight"><pre><span></span><code>pre-commit<span class="w"> </span>install
+</code></pre></div>
+<p>此外，在推送新的 Rust 改动前，你还应当运行 clippy 来发现常见的代码问题。该检查不包含在 pre-commit 中，因此需要手动运行。修复它给出的所有建议后，再运行一次以确认没有其他需要修改的地方：</p>
+<div class="highlight"><pre><span></span><code>cargo<span class="w"> </span>clippy
+</code></pre></div>
+<h2 id="_7">文档<a class="headerlink" href="#_7" title="Permanent link">¶</a></h2>
+<p>为 SpatialBench 文档做贡献的步骤如下：</p>
+<ol>
+<li>克隆仓库并创建一个 fork。</li>
+<li>安装文档相关依赖：
+    <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>docs/requirements.txt
+</code></pre></div></li>
+<li>修改文档文件。</li>
+<li>使用以下命令在本地预览改动：</li>
+<li><code>mkdocs serve</code> —— 启动支持实时刷新的文档服务器。</li>
+<li><code>mkdocs build</code> —— 构建文档站点。</li>
+<li><code>mkdocs -h</code> —— 打印帮助信息并退出。</li>
+<li>推送改动并提交 Pull Request。</li>
+</ol>
 
 
 
@@ -1888,10 +1577,10 @@ s3://wherobots-examples/data/spatialbench/SpatialBench_sf10/zone/
     
       
   <span class="md-source-file__fact">
-    <span class="md-icon" title="Last update">
+    <span class="md-icon" title="最后更新">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="May 22, 2026 06:10:17 UTC">May 22, 2026 06:10:17</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="2026年5月22日 06:10:17 UTC">2026年5月22日 06:10:17</span>
   </span>
 
     
@@ -1915,7 +1604,7 @@ s3://wherobots-examples/data/spatialbench/SpatialBench_sf10/zone/
           <button type="button" class="md-top md-icon" data-md-component="top" hidden="">
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
-  Back to top
+  回到页面顶部
 </button>
         
       </main>
@@ -1926,7 +1615,7 @@ s3://wherobots-examples/data/spatialbench/SpatialBench_sf10/zone/
     <div class="footer__top">
 
       <div class="col-left">
-        <img src="../image/footer/logo-footer.svg" alt="" class="footer-logo">
+        <img src="../../image/footer/logo-footer.svg" alt="" class="footer-logo">
       </div>
 
       <div class="col-right">
@@ -2000,18 +1689,18 @@ s3://wherobots-examples/data/spatialbench/SpatialBench_sf10/zone/
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.action.edit", "search.highlight", "search.share", "search.suggest", "navigation.footer", "navigation.instant", "navigation.top", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy", "content.action.edit", "search.highlight", "search.share", "search.suggest", "navigation.footer", "navigation.instant", "navigation.top", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
-        <script src="../assets/javascripts/main.min.js"></script>
+        <script src="../../assets/javascripts/main.min.js"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
       
-        <script src="../javascripts/katex.js"></script>
+        <script src="../../javascripts/katex.js"></script>
       
     
   
