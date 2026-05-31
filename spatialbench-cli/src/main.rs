@@ -51,6 +51,8 @@ use spatialbench::text::TextPool;
 use spatialbench_raster::cog::CogConfig;
 use spatialbench_raster::footprint::FootprintGrid;
 use spatialbench_raster::scaling::scaling_tier;
+use spatialbench_raster::stac::write_stac_geoparquet;
+use spatialbench_raster::topology::Topology;
 use std::fmt::Display;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Stdout, Write};
@@ -419,6 +421,15 @@ impl Cli {
             .await?;
 
             info!("generated {} manifest entries", manifest.len());
+
+            // Write STAC geoparquet catalogs (all 3 topologies)
+            let stac_dir = raster_dir.join("stac");
+            std::fs::create_dir_all(&stac_dir)?;
+            for topo in Topology::ALL {
+                let path = stac_dir.join(format!("{}.parquet", topo.dir_name()));
+                write_stac_geoparquet(&manifest, tier, topo, &path)?;
+                info!("wrote STAC catalog: {}", path.display());
+            }
         }
 
         info!("Generation complete!");
