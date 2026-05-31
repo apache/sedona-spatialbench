@@ -290,7 +290,7 @@ impl Cli {
             }
         };
 
-        if let Some(path) = config_path {
+        let parsed_config = if let Some(path) = config_path {
             let text = std::fs::read_to_string(&path).map_err(|e| {
                 io::Error::new(
                     io::ErrorKind::InvalidInput,
@@ -304,6 +304,7 @@ impl Cli {
                     let building = file_cfg.building.as_ref().map(|c| c.to_generator());
                     set_overrides(SpatialOverrides { trip, building });
                     info!("Loaded spider configuration from {}", path.display());
+                    Some(file_cfg)
                 }
                 Err(e) => {
                     return Err(io::Error::new(
@@ -314,7 +315,8 @@ impl Cli {
             }
         } else {
             info!("Using default spider configuration from spider_defaults.rs");
-        }
+            None
+        };
 
         // Determine which tables to generate
         let tables: Vec<Table> = if let Some(tables) = self.tables.as_ref() {
@@ -387,7 +389,11 @@ impl Cli {
             let tier = scaling_tier(sf).map_err(|e| {
                 io::Error::new(io::ErrorKind::InvalidInput, format!("raster scaling: {e}"))
             })?;
-            let cog_config = CogConfig::default();
+            let cog_config = parsed_config
+                .as_ref()
+                .and_then(|c| c.raster.as_ref())
+                .map(CogConfig::from)
+                .unwrap_or_default();
             let grid = FootprintGrid::new(
                 spatialbench::spatial::ContinentAffines::default(),
                 cog_config.raster,

@@ -21,6 +21,8 @@ use serde::{Deserialize, Deserializer};
 use spatialbench::spatial::{
     DistributionParams, DistributionType, GeomType, SpatialConfig, SpatialGenerator,
 };
+use spatialbench_raster::cog::CogConfig;
+use spatialbench_raster::footprint::FootprintConfig;
 use std::fmt;
 use std::sync::OnceLock;
 
@@ -92,6 +94,72 @@ where
 pub struct SpatialConfigFile {
     pub trip: Option<InlineSpatialConfig>,
     pub building: Option<InlineSpatialConfig>,
+    pub raster: Option<RasterConfig>,
+}
+
+/// Configuration for raster generation from config file.
+///
+/// All fields are optional with defaults matching [`CogConfig::default()`]
+/// and [`FootprintConfig::default()`].
+#[derive(Deserialize, Debug)]
+pub struct RasterConfig {
+    /// Pixel resolution in meters.
+    #[serde(default = "default_resolution")]
+    pub resolution: u32,
+    /// COG width in pixels.
+    #[serde(default = "default_cog_width")]
+    pub cog_width: u32,
+    /// COG height in pixels.
+    #[serde(default = "default_cog_height")]
+    pub cog_height: u32,
+    /// Internal COG tile size (pixels per side).
+    #[serde(default = "default_tile_size")]
+    pub tile_size: u32,
+    /// Perlin noise frequency.
+    #[serde(default = "default_noise_frequency")]
+    pub noise_frequency: f32,
+}
+
+fn default_resolution() -> u32 {
+    60
+}
+fn default_cog_width() -> u32 {
+    1830
+}
+fn default_cog_height() -> u32 {
+    1830
+}
+fn default_tile_size() -> u32 {
+    256
+}
+fn default_noise_frequency() -> f32 {
+    8.0
+}
+
+impl Default for RasterConfig {
+    fn default() -> Self {
+        Self {
+            resolution: default_resolution(),
+            cog_width: default_cog_width(),
+            cog_height: default_cog_height(),
+            tile_size: default_tile_size(),
+            noise_frequency: default_noise_frequency(),
+        }
+    }
+}
+
+impl From<&RasterConfig> for CogConfig {
+    fn from(rc: &RasterConfig) -> Self {
+        CogConfig {
+            raster: FootprintConfig {
+                cog_width: rc.cog_width,
+                cog_height: rc.cog_height,
+                resolution: rc.resolution,
+            },
+            tile_size: rc.tile_size,
+            noise_frequency: rc.noise_frequency,
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -230,4 +298,45 @@ impl InlineSpatialConfig {
 pub fn parse_yaml(text: &str) -> Result<SpatialConfigFile> {
     log::info!("Default spider config is being overridden by user-provided configuration");
     Ok(serde_yaml::from_str::<SpatialConfigFile>(text)?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_raster_config_defaults() {
+        let yaml = "raster: {}";
+        let cfg = parse_yaml(yaml).unwrap();
+        let raster = cfg.raster.unwrap();
+        assert_eq!(raster.resolution, 60);
+        assert_eq!(raster.cog_width, 1830);
+        assert_eq!(raster.tile_size, 256);
+    }
+
+    #[test]
+    fn parse_raster_config_custom() {
+        let yaml = r#"
+raster:
+  resolution: 10
+  cog_width: 1024
+  cog_height: 1024
+  tile_size: 512
+  noise_frequency: 4.0
+"#;
+        let cfg = parse_yaml(yaml).unwrap();
+        let raster = cfg.raster.unwrap();
+        assert_eq!(raster.resolution, 10);
+        assert_eq!(raster.cog_width, 1024);
+        let cog_config = CogConfig::from(&raster);
+        assert_eq!(cog_config.raster.resolution, 10);
+        assert_eq!(cog_config.tile_size, 512);
+    }
+
+    #[test]
+    fn parse_raster_config_absent() {
+        let yaml = "trip:\n  dist_type: uniform\n  geom_type: point\n  dim: 2\n  seed: 42\n  width: 1.0\n  height: 1.0\n  maxseg: 5\n  polysize: 0.5\n  params:\n    type: none";
+        let cfg = parse_yaml(yaml).unwrap();
+        assert!(cfg.raster.is_none());
+    }
 }
