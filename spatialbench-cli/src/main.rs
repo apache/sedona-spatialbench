@@ -27,6 +27,7 @@ mod generate;
 mod output_plan;
 mod parquet;
 mod plan;
+mod raster_runner;
 mod runner;
 mod s3_writer;
 mod spatial_config_file;
@@ -47,6 +48,9 @@ use log::{debug, info, LevelFilter};
 use spatialbench::distribution::Distributions;
 use spatialbench::spatial::overrides::{set_overrides, SpatialOverrides};
 use spatialbench::text::TextPool;
+use spatialbench_raster::cog::CogConfig;
+use spatialbench_raster::footprint::FootprintGrid;
+use spatialbench_raster::scaling::scaling_tier;
 use std::fmt::Display;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Stdout, Write};
@@ -137,6 +141,14 @@ struct Cli {
     /// Typical values range from 10MB to 100MB.
     #[arg(long, default_value_t = DEFAULT_PARQUET_ROW_GROUP_BYTES)]
     parquet_row_group_bytes: i64,
+
+    /// Raster output format (e.g., cog). When set, generates raster COGs.
+    #[arg(long, value_enum)]
+    raster_format: Option<RasterFormat>,
+
+    /// Maximum number of footprints to generate (dev flag for fast iteration).
+    #[arg(long)]
+    max_footprints: Option<u32>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -232,6 +244,11 @@ enum OutputFormat {
     Tbl,
     Csv,
     Parquet,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, ValueEnum)]
+enum RasterFormat {
+    Cog,
 }
 
 #[tokio::main]
@@ -363,6 +380,41 @@ impl Cli {
         // Run
         let runner = runner::PlanRunner::new(output_plans, self.num_threads);
         runner.run().await?;
+
+        // Raster generation
+        if let Some(RasterFormat::Cog) = self.raster_format {
+            let sf = self.scale_factor as u32;
+            let tier = scaling_tier(sf).map_err(|e| {
+                io::Error::new(io::ErrorKind::InvalidInput, format!("raster scaling: {e}"))
+            })?;
+            let cog_config = CogConfig::default();
+            let grid = FootprintGrid::new(
+                spatialbench::spatial::ContinentAffines::default(),
+                cog_config.raster,
+                self.max_footprints,
+            );
+            let footprints = grid.generate(tier);
+
+            info!(
+                "{} footprints, {} COGs/footprint, {} total COGs",
+                footprints.len(),
+                tier.scenes_per_footprint,
+                footprints.len() as u64 * tier.scenes_per_footprint as u64
+            );
+
+            let raster_dir = self.output_dir.join("raster");
+            let manifest = raster_runner::run_raster(
+                &footprints,
+                tier,
+                &cog_config,
+                &raster_dir,
+                self.num_threads,
+            )
+            .await?;
+
+            info!("generated {} manifest entries", manifest.len());
+        }
+
         info!("Generation complete!");
         Ok(())
     }
