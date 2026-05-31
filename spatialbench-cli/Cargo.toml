@@ -34,7 +34,7 @@ parquet = "56"
 clap = { version = "4.5.32", features = ["derive"] }
 spatialbench = { path = "../spatialbench", version = "0.3.0"}
 spatialbench-arrow = { path = "../spatialbench-arrow", version = "0.3.0" }
-spatialbench-raster = { path = "../spatialbench-raster", version = "0.3.0", features = ["cog-writer"] }
+spatialbench-raster = { path = "../spatialbench-raster", version = "0.3.0", features = ["cog-writer", "stac-writer"] }
 tokio = { version = "1.44.1", features = ["full"]}
 futures = "0.3.31"
 num_cpus = "1.0"

@@ -24,6 +24,7 @@
 use spatialbench_raster::cog::{write_cog_with_buffer, CogConfig};
 use spatialbench_raster::footprint::Footprint;
 use spatialbench_raster::scaling::ScalingTier;
+use spatialbench_raster::ManifestEntry;
 
 use log::info;
 use tokio::sync::{mpsc, Semaphore};
@@ -33,24 +34,6 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-
-/// Metadata for a single generated COG, collected for STAC catalog writing.
-///
-/// Does not store a `PathBuf` — the path is deterministic from
-/// `(footprint_id, cog_id)` as `pile/{fp:05}/{cog:04}.tif` and
-/// reconstructed when needed, avoiding heap allocations.
-#[derive(Debug, Clone, Copy)]
-#[allow(dead_code)] // Fields used in commit 4 (STAC writer)
-pub struct ManifestEntry {
-    /// Footprint ID (matches [`Footprint::id`]).
-    pub footprint_id: u32,
-    /// COG scene ID within this footprint.
-    pub cog_id: u32,
-    /// Bounding box in EPSG:4326: [west, south, east, north].
-    pub bbox_4326: [f64; 4],
-    /// EPSG code for the COG's CRS.
-    pub epsg: u32,
-}
 
 /// A single unit of work: generate one COG.
 #[derive(Clone)]

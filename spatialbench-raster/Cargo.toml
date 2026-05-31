@@ -31,11 +31,16 @@ categories = ["science::geo", "data-structures"]
 [features]
 default = []
 cog-writer = ["dep:gdal"]
+stac-writer = ["dep:arrow", "dep:parquet"]
 
 [dependencies]
 spatialbench = { path = "../spatialbench", version = "0.3.0" }
 gdal = { version = "0.19", optional = true, features = ["bindgen"] }
+arrow = { version = "56", optional = true }
+parquet = { version = "56", optional = true }
 
 [dev-dependencies]
 gdal = { version = "0.19", features = ["bindgen"] }
 tempfile = "3"
+arrow = "56"
+parquet = { version = "56", features = ["arrow"] }

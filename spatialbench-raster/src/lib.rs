@@ -26,4 +26,22 @@ pub mod cog;
 pub mod footprint;
 pub mod noise;
 pub mod scaling;
+#[cfg(feature = "stac-writer")]
+pub mod stac;
 pub mod topology;
+
+/// Metadata for a single generated COG, used for STAC catalog generation.
+///
+/// Does not store a path — the path is deterministic from
+/// `(footprint_id, cog_id)` as `pile/{fp:05}/{cog:04}.tif`.
+#[derive(Debug, Clone, Copy)]
+pub struct ManifestEntry {
+    /// Footprint ID.
+    pub footprint_id: u32,
+    /// COG scene ID within this footprint.
+    pub cog_id: u32,
+    /// Bounding box in EPSG:4326: [west, south, east, north].
+    pub bbox_4326: [f64; 4],
+    /// EPSG code for the COG's CRS.
+    pub epsg: u32,
+}
