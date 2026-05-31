@@ -156,6 +156,96 @@ pub fn write_cog(
     Ok(())
 }
 
+/// Write a single COG file, reusing `pixel_buf` for pixel data.
+///
+/// Like [`write_cog`], but accepts an externally-owned pixel buffer to
+/// avoid heap allocation on the hot path. The buffer is cleared and
+/// refilled via [`PerlinNoise::generate_raster_into`].
+///
+/// # Performance
+///
+/// At 1830×1830 = ~3.2 MB per buffer, reusing this across COGs on the
+/// same thread avoids ~3.2 MB alloc/dealloc per COG.
+pub fn write_cog_with_buffer(
+    config: &CogConfig,
+    footprint: &Footprint,
+    cog_id: u32,
+    output_path: &Path,
+    pixel_buf: &mut Vec<u8>,
+) -> io::Result<()> {
+    let width = config.raster.cog_width;
+    let height = config.raster.cog_height;
+    let resolution = config.raster.resolution as f64;
+
+    let mem_driver = DriverManager::get_driver_by_name("MEM").map_err(|e| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("GDAL MEM driver not available: {e}"),
+        )
+    })?;
+
+    let mut mem_ds = mem_driver
+        .create_with_band_type::<u8, _>("", width as usize, height as usize, 1)
+        .map_err(|e| io::Error::other(format!("failed to create MEM dataset: {e}")))?;
+
+    let srs = SpatialRef::from_epsg(footprint.epsg).map_err(|e| {
+        io::Error::other(format!(
+            "failed to create SRS for EPSG:{}: {e}",
+            footprint.epsg
+        ))
+    })?;
+    mem_ds
+        .set_spatial_ref(&srs)
+        .map_err(|e| io::Error::other(format!("failed to set CRS: {e}")))?;
+
+    let gt: GeoTransform = [
+        footprint.origin.0,
+        resolution,
+        0.0,
+        footprint.origin.1,
+        0.0,
+        -resolution,
+    ];
+    mem_ds
+        .set_geo_transform(&gt)
+        .map_err(|e| io::Error::other(format!("failed to set geotransform: {e}")))?;
+
+    // Generate pixel data into reusable buffer
+    let seed = (footprint.id as u64) << 32 | cog_id as u64;
+    let noise = PerlinNoise::new(seed);
+    noise.generate_raster_into(width, height, config.noise_frequency, pixel_buf);
+
+    {
+        let mut band = mem_ds
+            .rasterband(1)
+            .map_err(|e| io::Error::other(format!("failed to get raster band: {e}")))?;
+        let mut buffer =
+            gdal::raster::Buffer::new((width as usize, height as usize), pixel_buf.clone());
+        band.write::<u8>((0, 0), (width as usize, height as usize), &mut buffer)
+            .map_err(|e| io::Error::other(format!("failed to write pixel data: {e}")))?;
+    }
+
+    let cog_driver = DriverManager::get_driver_by_name("COG").map_err(|e| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("GDAL COG driver not available: {e}"),
+        )
+    })?;
+
+    let cog_options = RasterCreationOptions::from_iter([
+        "COMPRESS=ZSTD",
+        &format!("BLOCKSIZE={}", config.tile_size),
+        "LEVEL=3",
+        "NUM_THREADS=ALL_CPUS",
+    ]);
+
+    mem_ds
+        .create_copy(&cog_driver, output_path, &cog_options)
+        .map_err(|e| io::Error::other(format!("failed to create COG: {e}")))?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -256,5 +346,42 @@ mod tests {
         let a = std::fs::read(&path_a).unwrap();
         let b = std::fs::read(&path_b).unwrap();
         assert_ne!(a, b);
+    }
+
+    #[test]
+    fn cog_with_buffer_roundtrip() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("buf_test.tif");
+        let config = CogConfig::default();
+        let fp = test_footprint();
+        let mut buf = Vec::new();
+
+        write_cog_with_buffer(&config, &fp, 0, &path, &mut buf).unwrap();
+
+        let ds = Dataset::open(&path).unwrap();
+        let (w, h) = ds.raster_size();
+        assert_eq!(w, 1830);
+        assert_eq!(h, 1830);
+
+        // Buffer should have been filled and retained
+        assert_eq!(buf.len(), 1830 * 1830);
+    }
+
+    #[test]
+    fn cog_with_buffer_reuse() {
+        let dir = tempdir().unwrap();
+        let config = CogConfig::default();
+        let fp = test_footprint();
+        let mut buf = Vec::new();
+
+        // Write two COGs reusing the same buffer
+        let path_a = dir.path().join("a.tif");
+        let path_b = dir.path().join("b.tif");
+        write_cog_with_buffer(&config, &fp, 0, &path_a, &mut buf).unwrap();
+        let cap_after_first = buf.capacity();
+        write_cog_with_buffer(&config, &fp, 1, &path_b, &mut buf).unwrap();
+
+        // Buffer should not have reallocated
+        assert_eq!(buf.capacity(), cap_after_first);
     }
 }

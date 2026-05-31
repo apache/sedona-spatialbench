@@ -15,19 +15,24 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//! Sequential raster COG generation runner.
+//! Parallel raster COG generation pipeline.
 //!
-//! Generates COGs for all footprints × scenes, collecting [`ManifestEntry`]
-//! metadata for downstream STAC catalog generation.
+//! Uses a semaphore-bounded pool of `spawn_blocking` workers, each with a
+//! thread-local pixel buffer reused across COGs. Manifest entries flow back
+//! through a bounded `mpsc` channel.
 
-use spatialbench_raster::cog::{write_cog, CogConfig};
+use spatialbench_raster::cog::{write_cog_with_buffer, CogConfig};
 use spatialbench_raster::footprint::Footprint;
 use spatialbench_raster::scaling::ScalingTier;
 
 use log::info;
+use tokio::sync::{mpsc, Semaphore};
 
+use std::cell::RefCell;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 /// Metadata for a single generated COG, collected for STAC catalog writing.
 ///
@@ -47,47 +52,138 @@ pub struct ManifestEntry {
     pub epsg: u32,
 }
 
-/// Generate COGs for all footprints and return manifest entries.
+/// A single unit of work: generate one COG.
+#[derive(Clone)]
+struct CogWorkItem {
+    footprint: Footprint,
+    cog_id: u32,
+    output_path: PathBuf,
+    config: CogConfig,
+}
+
+/// Generate COGs for all footprints in parallel and return manifest entries.
 ///
-/// This is the sequential version — commit 2 upgrades to parallel.
+/// Pipeline:
+/// 1. Pre-create all footprint directories (sequential, fast).
+/// 2. Spawn all work items eagerly; semaphore gates concurrency to `num_threads`.
+/// 3. Each `spawn_blocking` worker uses a `thread_local!` pixel buffer.
+/// 4. Manifest entries flow through a bounded `mpsc` channel.
+/// 5. A collector task drains the channel into `Vec<ManifestEntry>`.
 pub async fn run_raster(
     footprints: &[Footprint],
     tier: &ScalingTier,
     cog_config: &CogConfig,
     output_dir: &Path,
-    _num_threads: usize,
+    num_threads: usize,
 ) -> io::Result<Vec<ManifestEntry>> {
     let pile_dir = output_dir.join("pile");
     let total_cogs = footprints.len() as u64 * tier.scenes_per_footprint as u64;
-    let mut manifest = Vec::with_capacity(total_cogs as usize);
 
-    // Pre-create all footprint directories
+    // Phase 1: Pre-create directories
     for fp in footprints {
-        let fp_dir = pile_dir.join(format!("{:05}", fp.id));
-        std::fs::create_dir_all(&fp_dir)?;
+        std::fs::create_dir_all(pile_dir.join(format!("{:05}", fp.id)))?;
     }
 
-    let mut count = 0u64;
+    // Phase 2: Build work items
+    let mut work_items = Vec::with_capacity(total_cogs as usize);
     for fp in footprints {
         let fp_dir = pile_dir.join(format!("{:05}", fp.id));
         for cog_id in 0..tier.scenes_per_footprint {
-            let path = fp_dir.join(format!("{:04}.tif", cog_id));
-            write_cog(cog_config, fp, cog_id, &path)?;
-
-            manifest.push(ManifestEntry {
-                footprint_id: fp.id,
+            work_items.push(CogWorkItem {
+                footprint: *fp,
                 cog_id,
-                bbox_4326: fp.bbox_4326,
-                epsg: fp.epsg,
+                output_path: fp_dir.join(format!("{:04}.tif", cog_id)),
+                config: *cog_config,
             });
-
-            count += 1;
-            if count.is_multiple_of(100) {
-                info!("generated {count}/{total_cogs} COGs");
-            }
         }
     }
 
-    info!("generated {count}/{total_cogs} COGs (complete)");
+    // Phase 3: Parallel execution
+    let semaphore = Arc::new(Semaphore::new(num_threads));
+    let counter = Arc::new(AtomicU64::new(0));
+    let (tx, mut rx) = mpsc::channel::<ManifestEntry>(num_threads * 2);
+
+    // Collector task
+    let collector = tokio::spawn(async move {
+        let mut manifest = Vec::with_capacity(total_cogs as usize);
+        while let Some(entry) = rx.recv().await {
+            manifest.push(entry);
+        }
+        manifest
+    });
+
+    // Spawn all work items eagerly; semaphore gates actual execution
+    let mut join_handles = Vec::with_capacity(work_items.len());
+    for item in work_items {
+        let permit = Arc::clone(&semaphore);
+        let tx = tx.clone();
+        let counter = Arc::clone(&counter);
+        let total = total_cogs;
+
+        let handle = tokio::spawn(async move {
+            let _permit = permit
+                .acquire()
+                .await
+                .map_err(|e| io::Error::other(format!("semaphore closed: {e}")))?;
+
+            let entry = tokio::task::spawn_blocking(move || {
+                thread_local! {
+                    static PIXEL_BUF: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+                }
+
+                PIXEL_BUF.with(|buf| {
+                    let mut buf = buf.borrow_mut();
+                    write_cog_with_buffer(
+                        &item.config,
+                        &item.footprint,
+                        item.cog_id,
+                        &item.output_path,
+                        &mut buf,
+                    )?;
+
+                    Ok::<ManifestEntry, io::Error>(ManifestEntry {
+                        footprint_id: item.footprint.id,
+                        cog_id: item.cog_id,
+                        bbox_4326: item.footprint.bbox_4326,
+                        epsg: item.footprint.epsg,
+                    })
+                })
+            })
+            .await
+            .map_err(|e| io::Error::other(format!("blocking task panicked: {e}")))??;
+
+            let n = counter.fetch_add(1, Ordering::Relaxed) + 1;
+            if n.is_multiple_of(100) {
+                info!("generated {n}/{total} COGs");
+            }
+
+            tx.send(entry)
+                .await
+                .map_err(|e| io::Error::other(format!("channel send failed: {e}")))?;
+
+            Ok::<(), io::Error>(())
+        });
+        join_handles.push(handle);
+    }
+
+    // Wait for all workers, propagating first error
+    for handle in join_handles {
+        handle
+            .await
+            .map_err(|e| io::Error::other(format!("task join failed: {e}")))??;
+    }
+
+    // Drop sender so collector finishes
+    drop(tx);
+    let manifest = collector
+        .await
+        .map_err(|e| io::Error::other(format!("collector task failed: {e}")))?;
+
+    info!(
+        "generated {}/{} COGs (complete)",
+        counter.load(Ordering::Relaxed),
+        total_cogs
+    );
+
     Ok(manifest)
 }
