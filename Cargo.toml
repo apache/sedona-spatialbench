@@ -1,6 +1,6 @@
 [workspace]
 
-members = ["spatialbench", "spatialbench-arrow", "spatialbench-cli"]
+members = ["spatialbench", "spatialbench-arrow", "spatialbench-cli", "spatialbench-raster"]
 
 resolver = "2"
 
