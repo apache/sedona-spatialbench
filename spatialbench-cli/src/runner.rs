@@ -184,6 +184,7 @@ async fn run_plan(plan: OutputPlan, num_threads: usize) -> io::Result<usize> {
         Table::Customer => run_customer_plan(plan, num_threads).await,
         Table::Trip => run_trip_plan(plan, num_threads).await,
         Table::Zone => todo!("Zone table is not supported in PlanRunner"),
+        Table::Raster => unreachable!("Raster is dispatched via raster_runner"),
     }
 }
 

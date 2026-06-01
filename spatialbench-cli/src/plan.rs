@@ -274,6 +274,7 @@ impl OutputSize {
                 Table::Trip => 144,
                 Table::Building => 212,
                 Table::Zone => 115,
+                Table::Raster => unreachable!("Raster does not use OutputPlan"),
             },
             // Average row size in bytes for each table at scale factor 1.0
             // computed using datafusion-cli:
@@ -295,6 +296,7 @@ impl OutputSize {
                         _ => 5650,
                     }
                 }
+                Table::Raster => unreachable!("Raster does not use OutputPlan"),
             },
         };
 
@@ -369,6 +371,7 @@ impl OutputSize {
             Table::Trip => TripGenerator::calculate_row_count(scale_factor, 1, 1),
             Table::Building => BuildingGenerator::calculate_row_count(scale_factor, 1, 1),
             Table::Zone => todo!(),
+            Table::Raster => unreachable!("Raster does not use OutputPlan"),
         }
     }
 

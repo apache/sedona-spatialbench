@@ -144,11 +144,7 @@ struct Cli {
     #[arg(long, default_value_t = DEFAULT_PARQUET_ROW_GROUP_BYTES)]
     parquet_row_group_bytes: i64,
 
-    /// Raster output format (e.g., cog). When set, generates raster COGs.
-    #[arg(long, value_enum)]
-    raster_format: Option<RasterFormat>,
-
-    /// Maximum number of footprints to generate (dev flag for fast iteration).
+    /// Maximum number of raster footprints to generate (limits output size for fast iteration).
     #[arg(long)]
     max_footprints: Option<u32>,
 }
@@ -161,6 +157,7 @@ enum Table {
     Trip,
     Building,
     Zone,
+    Raster,
 }
 
 impl Display for Table {
@@ -200,6 +197,8 @@ impl TypedValueParser for TableValueParser {
                 clap::builder::PossibleValue::new("trip").help("Trip table (alias: T)"),
                 clap::builder::PossibleValue::new("building").help("Building table (alias: b)"),
                 clap::builder::PossibleValue::new("zone").help("Zone table (alias: z)"),
+                clap::builder::PossibleValue::new("raster")
+                    .help("Raster COG pile + STAC catalogs (alias: r)"),
             ]
             .into_iter(),
         ))
@@ -223,6 +222,7 @@ impl FromStr for Table {
             "T" | "trip" => Ok(Table::Trip),
             "b" | "building" => Ok(Table::Building),
             "z" | "zone" => Ok(Table::Zone),
+            "r" | "raster" => Ok(Table::Raster),
             _ => Err("Invalid table name {s}"),
         }
     }
@@ -237,6 +237,7 @@ impl Table {
             Table::Trip => "trip",
             Table::Building => "building",
             Table::Zone => "zone",
+            Table::Raster => "raster",
         }
     }
 }
@@ -246,11 +247,6 @@ enum OutputFormat {
     Tbl,
     Csv,
     Parquet,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, ValueEnum)]
-enum RasterFormat {
-    Cog,
 }
 
 #[tokio::main]
@@ -358,9 +354,12 @@ impl Cli {
             self.output_dir.clone(),
         );
 
+        let mut generate_raster = false;
         for table in tables {
             if table == Table::Zone {
                 self.generate_zone().await?
+            } else if table == Table::Raster {
+                generate_raster = true;
             } else {
                 output_plan_generator.generate_plans(
                     table,
@@ -386,7 +385,7 @@ impl Cli {
         runner.run().await?;
 
         // Raster generation
-        if let Some(RasterFormat::Cog) = self.raster_format {
+        if generate_raster {
             let sf = self.scale_factor as u32;
             let tier = scaling_tier(sf).map_err(|e| {
                 io::Error::new(io::ErrorKind::InvalidInput, format!("raster scaling: {e}"))
