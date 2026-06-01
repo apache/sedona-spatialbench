@@ -52,11 +52,12 @@ use spatialbench_raster::cog::CogConfig;
 use spatialbench_raster::footprint::FootprintGrid;
 use spatialbench_raster::scaling::scaling_tier;
 use spatialbench_raster::stac::write_stac_geoparquet;
+use object_store::ObjectStore;
 use spatialbench_raster::topology::Topology;
 use std::fmt::Display;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Stdout, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Instant;
 
@@ -418,7 +419,12 @@ impl Cli {
                 cog_config.dtype,
             );
 
-            let raster_dir = self.output_dir.join("raster");
+            let output_str = self.output_dir.to_string_lossy();
+            let raster_dir = if output_str.starts_with("s3://") {
+                format!("{}/raster", output_str.trim_end_matches('/'))
+            } else {
+                self.output_dir.join("raster").to_string_lossy().into_owned()
+            };
             let manifest = raster_runner::run_raster(
                 &footprints,
                 tier,
@@ -430,13 +436,49 @@ impl Cli {
 
             info!("generated {} manifest entries", manifest.len());
 
+            // Compute the pile base href for STAC asset hrefs.
+            // S3: s3://bucket/output/raster/pile
+            // Local: absolute path to pile directory
+            let pile_base_href = if raster_dir.starts_with("s3://") {
+                format!("{}/pile", raster_dir.trim_end_matches('/'))
+            } else {
+                // Canonicalize to absolute path for local output
+                let pile_path = Path::new(&raster_dir).join("pile");
+                pile_path
+                    .canonicalize()
+                    .unwrap_or(pile_path)
+                    .to_string_lossy()
+                    .into_owned()
+            };
+
             // Write STAC geoparquet catalogs (Narrow + Balanced; Wide uses multi-band COGs)
-            let stac_dir = raster_dir.join("stac");
-            std::fs::create_dir_all(&stac_dir)?;
-            for topo in Topology::SHARED_PILE {
-                let path = stac_dir.join(format!("{}.parquet", topo.dir_name()));
-                write_stac_geoparquet(&manifest, tier, topo, &path)?;
-                info!("wrote STAC catalog: {}", path.display());
+            let is_s3 = raster_dir.starts_with("s3://");
+            if is_s3 {
+                let (bucket, _) = crate::s3_writer::parse_s3_uri(&raster_dir)?;
+                let client = crate::s3_writer::build_s3_client(&bucket)?;
+                for topo in Topology::SHARED_PILE {
+                    let mut buf = Vec::new();
+                    write_stac_geoparquet(&manifest, tier, topo, &mut buf, &pile_base_href)?;
+                    let key = format!(
+                        "{}/stac/{}.parquet",
+                        raster_dir.trim_start_matches("s3://").trim_start_matches(&bucket).trim_start_matches('/'),
+                        topo.dir_name()
+                    );
+                    let path = object_store::path::Path::from(key.as_str());
+                    let rt = tokio::runtime::Handle::current();
+                    rt.block_on(client.put(&path, buf.into()))
+                        .map_err(|e| io::Error::other(format!("S3 upload failed: {e}")))?;
+                    info!("wrote STAC catalog: s3://{}/{}", bucket, key);
+                }
+            } else {
+                let stac_dir = Path::new(&raster_dir).join("stac");
+                std::fs::create_dir_all(&stac_dir)?;
+                for topo in Topology::SHARED_PILE {
+                    let path = stac_dir.join(format!("{}.parquet", topo.dir_name()));
+                    let file = std::fs::File::create(&path)?;
+                    write_stac_geoparquet(&manifest, tier, topo, file, &pile_base_href)?;
+                    info!("wrote STAC catalog: {}", path.display());
+                }
             }
         }
 

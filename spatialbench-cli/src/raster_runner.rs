@@ -20,6 +20,10 @@
 //! Uses a semaphore-bounded pool of `spawn_blocking` workers, each with a
 //! thread-local pixel buffer reused across COGs. Manifest entries flow back
 //! through a bounded `mpsc` channel.
+//!
+//! Supports S3 output via GDAL's `/vsis3/` virtual filesystem. When the
+//! output directory starts with `s3://`, paths are translated to `/vsis3/`
+//! and directory pre-creation is skipped (S3 has no directories).
 
 use spatialbench_raster::cog::{write_cog_with_buffer, CogConfig, PixelBuffer};
 use spatialbench_raster::footprint::Footprint;
@@ -40,14 +44,20 @@ use std::sync::Arc;
 struct CogWorkItem {
     footprint: Footprint,
     cog_id: u32,
+    /// Output path — local filesystem or `/vsis3/` for S3.
     output_path: PathBuf,
     config: CogConfig,
+}
+
+/// Translate an `s3://bucket/key` URI to GDAL's `/vsis3/bucket/key` path.
+fn s3_to_vsis3(s3_uri: &str) -> String {
+    format!("/vsis3/{}", s3_uri.strip_prefix("s3://").unwrap_or(s3_uri))
 }
 
 /// Generate COGs for all footprints in parallel and return manifest entries.
 ///
 /// Pipeline:
-/// 1. Pre-create all footprint directories (sequential, fast).
+/// 1. Pre-create all footprint directories (skipped for S3 output).
 /// 2. Spawn all work items eagerly; semaphore gates concurrency to `num_threads`.
 /// 3. Each `spawn_blocking` worker uses a `thread_local!` pixel buffer.
 /// 4. Manifest entries flow through a bounded `mpsc` channel.
@@ -56,26 +66,34 @@ pub async fn run_raster(
     footprints: &[Footprint],
     tier: &ScalingTier,
     cog_config: &CogConfig,
-    output_dir: &Path,
+    output_dir: &str,
     num_threads: usize,
 ) -> io::Result<Vec<ManifestEntry>> {
-    let pile_dir = output_dir.join("pile");
+    let is_s3 = output_dir.starts_with("s3://");
+    let pile_dir = if is_s3 {
+        format!("{}/pile", s3_to_vsis3(output_dir.trim_end_matches('/')))
+    } else {
+        let p = Path::new(output_dir).join("pile");
+        p.to_string_lossy().into_owned()
+    };
     let total_cogs = footprints.len() as u64 * tier.scenes_per_footprint as u64;
 
-    // Phase 1: Pre-create directories
-    for fp in footprints {
-        std::fs::create_dir_all(pile_dir.join(format!("{:05}", fp.id)))?;
+    // Phase 1: Pre-create directories (local only; S3 has no directories)
+    if !is_s3 {
+        for fp in footprints {
+            std::fs::create_dir_all(format!("{}/{:05}", pile_dir, fp.id))?;
+        }
     }
 
     // Phase 2: Build work items
     let mut work_items = Vec::with_capacity(total_cogs as usize);
     for fp in footprints {
-        let fp_dir = pile_dir.join(format!("{:05}", fp.id));
+        let fp_dir = format!("{}/{:05}", pile_dir, fp.id);
         for cog_id in 0..tier.scenes_per_footprint {
             work_items.push(CogWorkItem {
                 footprint: *fp,
                 cog_id,
-                output_path: fp_dir.join(format!("{:04}.tif", cog_id)),
+                output_path: PathBuf::from(format!("{}/{:04}.tif", fp_dir, cog_id)),
                 config: *cog_config,
             });
         }

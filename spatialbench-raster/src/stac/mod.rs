@@ -39,7 +39,6 @@ use parquet::file::properties::WriterProperties;
 
 use std::collections::BTreeMap;
 use std::io;
-use std::path::Path;
 use std::sync::Arc;
 
 /// Size of a WKB Polygon with a single 5-point ring.
@@ -175,16 +174,17 @@ const MAX_ROW_GROUP_SIZE: usize = 1_000_000;
 /// Each call produces one Parquet file with one row per **item**.
 /// Row count = `T × A_actual` where `A_actual` is the number of distinct
 /// footprints in the manifest. Each item has M assets in a nested map.
-pub fn write_stac_geoparquet(
+pub fn write_stac_geoparquet<W: io::Write + Send>(
     manifest: &[ManifestEntry],
     tier: &ScalingTier,
     topology: Topology,
-    output_path: &Path,
+    writer: W,
+    pile_base_href: &str,
 ) -> io::Result<()> {
     let (m, _t) = topology.factor(tier);
 
     // Group manifest entries into items: key = (footprint_id, timeslice_id)
-    let items = assemble_items(manifest, m, topology);
+    let items = assemble_items(manifest, m, topology, pile_base_href);
 
     let schema = Arc::new(stac_schema());
     let props = WriterProperties::builder()
@@ -194,18 +194,17 @@ pub fn write_stac_geoparquet(
         .set_max_row_group_size(MAX_ROW_GROUP_SIZE)
         .build();
 
-    let file = std::fs::File::create(output_path)?;
-    let mut writer = ArrowWriter::try_new(file, Arc::clone(&schema), Some(props))
+    let mut arrow_writer = ArrowWriter::try_new(writer, Arc::clone(&schema), Some(props))
         .map_err(|e| io::Error::other(format!("failed to create ArrowWriter: {e}")))?;
 
     for chunk in items.chunks(MAX_ROW_GROUP_SIZE) {
         let batch = build_record_batch(chunk, topology, &schema)?;
-        writer
+        arrow_writer
             .write(&batch)
             .map_err(|e| io::Error::other(format!("failed to write batch: {e}")))?;
     }
 
-    writer
+    arrow_writer
         .close()
         .map_err(|e| io::Error::other(format!("failed to close writer: {e}")))?;
 
@@ -216,7 +215,7 @@ pub fn write_stac_geoparquet(
 ///
 /// Each item corresponds to a unique `(footprint_id, timeslice_id)` pair.
 /// Assets within an item are the M COGs assigned to that timeslice.
-fn assemble_items(manifest: &[ManifestEntry], m: u32, topology: Topology) -> Vec<StacItem> {
+fn assemble_items(manifest: &[ManifestEntry], m: u32, topology: Topology, pile_base_href: &str) -> Vec<StacItem> {
     // Group by (footprint_id, timeslice_id)
     let mut groups: BTreeMap<(u32, u32), Vec<&ManifestEntry>> = BTreeMap::new();
     for entry in manifest {
@@ -235,7 +234,7 @@ fn assemble_items(manifest: &[ManifestEntry], m: u32, topology: Topology) -> Vec
         for entry in entries {
             let scene = assign_scene(entry.cog_id, m);
             let role = topology.asset_label_for(scene.mosaic_id);
-            let href = format!("pile/{:05}/{:04}.tif", entry.footprint_id, entry.cog_id);
+            let href = format!("{}/{:05}/{:04}.tif", pile_base_href, entry.footprint_id, entry.cog_id);
             assets.push(AssetEntry { role, href });
         }
 
@@ -364,6 +363,8 @@ mod tests {
     use arrow::array::{AsArray, MapArray};
     use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 
+    const TEST_PILE_HREF: &str = "s3://test-bucket/raster/pile";
+
     /// Build a manifest for testing: 2 footprints × 16 COGs each = 32 entries.
     fn sample_manifest() -> Vec<ManifestEntry> {
         let mut entries = Vec::with_capacity(32);
@@ -406,9 +407,9 @@ mod tests {
         let tier = scaling_tier(1).unwrap();
 
         // Narrow: M=2, T=8 → 8 items per footprint × 2 footprints = 16 items
-        let narrow_items = assemble_items(&manifest, 2, Topology::Narrow);
+        let narrow_items = assemble_items(&manifest, 2, Topology::Narrow, TEST_PILE_HREF);
         // Balanced: M=4, T=4 → 4 items per footprint × 2 footprints = 8 items
-        let balanced_items = assemble_items(&manifest, 4, Topology::Balanced);
+        let balanced_items = assemble_items(&manifest, 4, Topology::Balanced, TEST_PILE_HREF);
 
         assert_eq!(narrow_items.len(), 16); // T=8 × 2 footprints
         assert_eq!(balanced_items.len(), 8); // T=4 × 2 footprints
@@ -422,7 +423,7 @@ mod tests {
     #[test]
     fn narrow_asset_labels_are_climate_vars() {
         let manifest = sample_manifest();
-        let items = assemble_items(&manifest, 2, Topology::Narrow);
+        let items = assemble_items(&manifest, 2, Topology::Narrow, TEST_PILE_HREF);
         let labels: Vec<&str> = items[0].assets.iter().map(|a| a.role.as_str()).collect();
         assert_eq!(labels, &["tasmax", "tasmin"]);
     }
@@ -430,7 +431,7 @@ mod tests {
     #[test]
     fn balanced_asset_labels_are_spectral_bands() {
         let manifest = sample_manifest();
-        let items = assemble_items(&manifest, 4, Topology::Balanced);
+        let items = assemble_items(&manifest, 4, Topology::Balanced, TEST_PILE_HREF);
         let labels: Vec<&str> = items[0].assets.iter().map(|a| a.role.as_str()).collect();
         // M=4 at SF=1: first 4 from the balanced label list
         assert_eq!(labels, &["blue", "green", "nir", "red"]);
@@ -439,7 +440,7 @@ mod tests {
     #[test]
     fn item_id_format() {
         let manifest = sample_manifest();
-        let items = assemble_items(&manifest, 2, Topology::Narrow);
+        let items = assemble_items(&manifest, 2, Topology::Narrow, TEST_PILE_HREF);
         assert_eq!(items[0].id, "NRW_F00000_t0000");
         assert_eq!(items[1].id, "NRW_F00000_t0001");
     }
@@ -451,7 +452,7 @@ mod tests {
 
         for topo in Topology::SHARED_PILE {
             let (m, _t) = topo.factor(tier);
-            let items = assemble_items(&manifest, m, topo);
+            let items = assemble_items(&manifest, m, topo, "s3://test-bucket/pile");
 
             // Count total assets across all items
             let total_assets: usize = items.iter().map(|i| i.assets.len()).sum();
@@ -475,7 +476,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("narrow.parquet");
 
-        write_stac_geoparquet(&manifest, tier, Topology::Narrow, &path).unwrap();
+        write_stac_geoparquet(&manifest, tier, Topology::Narrow, std::fs::File::create(&path).unwrap(), TEST_PILE_HREF).unwrap();
 
         let file = std::fs::File::open(&path).unwrap();
         let builder = ParquetRecordBatchReaderBuilder::try_new(file).unwrap();
@@ -494,7 +495,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("balanced.parquet");
 
-        write_stac_geoparquet(&manifest, tier, Topology::Balanced, &path).unwrap();
+        write_stac_geoparquet(&manifest, tier, Topology::Balanced, std::fs::File::create(&path).unwrap(), TEST_PILE_HREF).unwrap();
 
         let file = std::fs::File::open(&path).unwrap();
         let builder = ParquetRecordBatchReaderBuilder::try_new(file).unwrap();
@@ -515,8 +516,7 @@ mod tests {
         let mut row_counts = Vec::new();
         for topo in Topology::SHARED_PILE {
             let path = dir.path().join(format!("{}.parquet", topo.dir_name()));
-            write_stac_geoparquet(&manifest, tier, topo, &path).unwrap();
-
+            write_stac_geoparquet(&manifest, tier, topo, std::fs::File::create(&path).unwrap(), TEST_PILE_HREF).unwrap();
             let file = std::fs::File::open(&path).unwrap();
             let builder = ParquetRecordBatchReaderBuilder::try_new(file).unwrap();
             let reader = builder.build().unwrap();
@@ -541,7 +541,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("narrow.parquet");
 
-        write_stac_geoparquet(&manifest, tier, Topology::Narrow, &path).unwrap();
+        write_stac_geoparquet(&manifest, tier, Topology::Narrow, std::fs::File::create(&path).unwrap(), TEST_PILE_HREF).unwrap();
 
         let file = std::fs::File::open(&path).unwrap();
         let builder = ParquetRecordBatchReaderBuilder::try_new(file).unwrap();
