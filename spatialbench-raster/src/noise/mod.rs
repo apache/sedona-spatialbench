@@ -17,7 +17,7 @@
 
 //! 2D Perlin noise generator for deterministic raster pixel generation.
 //!
-//! Produces spatially correlated UInt8 pixel values that mimic the spectral
+//! Produces spatially correlated pixel values that mimic the spectral
 //! characteristics of real satellite imagery, yielding realistic compression
 //! ratios (~2-4x with DEFLATE/ZSTD).
 //!
@@ -26,7 +26,10 @@
 //!
 //! Uses `f32` arithmetic for ~2x throughput on ARM NEON (Apple Silicon, AWS
 //! Graviton). The 23-bit mantissa is more than sufficient for mapping to
-//! UInt8 pixel values.
+//! pixel values.
+//!
+//! Supports direct generation into `u8`, `u16`, and `f32` buffers to avoid
+//! intermediate allocations when the target dtype differs from UInt8.
 
 /// A seeded 2D Perlin noise generator.
 ///
@@ -101,13 +104,77 @@ impl PerlinNoise {
         let len = width as usize * height as usize;
         buf.clear();
         buf.reserve(len.saturating_sub(buf.capacity()));
+        self.generate_noise(width, height, frequency, |val| {
+            let pixel = ((val + 1.0) * 0.5).clamp(0.0, 1.0) * 255.0;
+            buf.push(pixel as u8);
+        });
+    }
+
+    /// Generate a full raster buffer of UInt8 pixel values.
+    ///
+    /// Convenience wrapper around [`Self::generate_raster_into`] that allocates
+    /// a new buffer. Prefer `generate_raster_into` in hot loops.
+    pub fn generate_raster(&self, width: u32, height: u32, frequency: f32) -> Vec<u8> {
+        let mut buf = Vec::new();
+        self.generate_raster_into(width, height, frequency, &mut buf);
+        buf
+    }
+
+    /// Generate a full raster buffer of UInt16 pixel values directly.
+    ///
+    /// Maps Perlin noise [-1, 1] → [0, 65535] without an intermediate u8 buffer.
+    /// The `* 257` scaling used in the u8→u16 path is equivalent to mapping
+    /// `0..=255` → `0..=65535`, which this achieves directly.
+    pub fn generate_raster_u16_into(
+        &self,
+        width: u32,
+        height: u32,
+        frequency: f32,
+        buf: &mut Vec<u16>,
+    ) {
+        let len = width as usize * height as usize;
+        buf.clear();
+        buf.reserve(len.saturating_sub(buf.capacity()));
+        self.generate_noise(width, height, frequency, |val| {
+            let normalized = ((val + 1.0) * 0.5).clamp(0.0, 1.0);
+            buf.push((normalized * 65535.0) as u16);
+        });
+    }
+
+    /// Generate a full raster buffer of Float32 pixel values directly.
+    ///
+    /// Maps Perlin noise [-1, 1] → [0.0, 1.0] without an intermediate u8 buffer.
+    pub fn generate_raster_f32_into(
+        &self,
+        width: u32,
+        height: u32,
+        frequency: f32,
+        buf: &mut Vec<f32>,
+    ) {
+        let len = width as usize * height as usize;
+        buf.clear();
+        buf.reserve(len.saturating_sub(buf.capacity()));
+        self.generate_noise(width, height, frequency, |val| {
+            buf.push(((val + 1.0) * 0.5).clamp(0.0, 1.0));
+        });
+    }
+
+    /// Core noise generation loop. Calls `emit` for each pixel with the raw
+    /// noise value in [-1, 1]. Row-level y-axis values are hoisted out of the
+    /// inner loop.
+    #[inline]
+    fn generate_noise(
+        &self,
+        width: u32,
+        height: u32,
+        frequency: f32,
+        mut emit: impl FnMut(f32),
+    ) {
         let inv_w = frequency / width as f32;
         let inv_h = frequency / height as f32;
 
         for row in 0..height {
             let y = row as f32 * inv_h;
-
-            // Hoist row-invariant y-axis computations
             let yi_raw = y.floor() as i32;
             let yf = y - y.floor();
             let v = fade(yf);
@@ -120,7 +187,6 @@ impl PerlinNoise {
                 let u = fade(xf);
                 let xi = (xi_raw & 255) as usize;
 
-                // Hash corners (yi and yi+1 are row-constant)
                 let p_xi = self.perm[xi] as usize;
                 let p_xi1 = self.perm[xi + 1] as usize;
                 let aa = self.perm[p_xi + yi] as usize;
@@ -128,26 +194,11 @@ impl PerlinNoise {
                 let ba = self.perm[p_xi1 + yi] as usize;
                 let bb = self.perm[p_xi1 + yi + 1] as usize;
 
-                // Gradient dot products and bilinear interpolation
                 let x1 = lerp(grad(aa, xf, yf), grad(ba, xf - 1.0, yf), u);
                 let x2 = lerp(grad(ab, xf, yf - 1.0), grad(bb, xf - 1.0, yf - 1.0), u);
-                let val = lerp(x1, x2, v);
-
-                // Map [-1, 1] → [0, 255]
-                let pixel = ((val + 1.0) * 0.5).clamp(0.0, 1.0) * 255.0;
-                buf.push(pixel as u8);
+                emit(lerp(x1, x2, v));
             }
         }
-    }
-
-    /// Generate a full raster buffer of UInt8 pixel values.
-    ///
-    /// Convenience wrapper around [`Self::generate_raster_into`] that allocates
-    /// a new buffer. Prefer `generate_raster_into` in hot loops.
-    pub fn generate_raster(&self, width: u32, height: u32, frequency: f32) -> Vec<u8> {
-        let mut buf = Vec::new();
-        self.generate_raster_into(width, height, frequency, &mut buf);
-        buf
     }
 }
 
@@ -244,5 +295,53 @@ mod tests {
             max - min > 50,
             "expected pixel variation, got range [{min}, {max}]"
         );
+    }
+
+    #[test]
+    fn generate_raster_u16_correct_size() {
+        let n = PerlinNoise::new(7);
+        let mut buf = Vec::new();
+        n.generate_raster_u16_into(64, 64, 4.0, &mut buf);
+        assert_eq!(buf.len(), 64 * 64);
+    }
+
+    #[test]
+    fn generate_raster_u16_range() {
+        let n = PerlinNoise::new(42);
+        let mut buf = Vec::new();
+        n.generate_raster_u16_into(128, 128, 8.0, &mut buf);
+        let min = *buf.iter().min().unwrap();
+        let max = *buf.iter().max().unwrap();
+        assert!(max <= 65535);
+        assert!(max - min > 10000, "expected u16 variation, got [{min}, {max}]");
+    }
+
+    #[test]
+    fn generate_raster_f32_correct_size() {
+        let n = PerlinNoise::new(7);
+        let mut buf = Vec::new();
+        n.generate_raster_f32_into(64, 64, 4.0, &mut buf);
+        assert_eq!(buf.len(), 64 * 64);
+    }
+
+    #[test]
+    fn generate_raster_f32_range() {
+        let n = PerlinNoise::new(42);
+        let mut buf = Vec::new();
+        n.generate_raster_f32_into(128, 128, 8.0, &mut buf);
+        for &v in &buf {
+            assert!((0.0..=1.0).contains(&v), "f32 pixel out of range: {v}");
+        }
+    }
+
+    #[test]
+    fn generate_raster_u16_buffer_reuse() {
+        let n = PerlinNoise::new(10);
+        let mut buf = Vec::new();
+        n.generate_raster_u16_into(32, 32, 4.0, &mut buf);
+        assert_eq!(buf.len(), 32 * 32);
+        let cap = buf.capacity();
+        n.generate_raster_u16_into(32, 32, 4.0, &mut buf);
+        assert_eq!(buf.capacity(), cap, "buffer should not reallocate");
     }
 }

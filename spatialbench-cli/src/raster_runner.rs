@@ -21,7 +21,7 @@
 //! thread-local pixel buffer reused across COGs. Manifest entries flow back
 //! through a bounded `mpsc` channel.
 
-use spatialbench_raster::cog::{write_cog_with_buffer, CogConfig};
+use spatialbench_raster::cog::{write_cog_with_buffer, CogConfig, PixelBuffer};
 use spatialbench_raster::footprint::Footprint;
 use spatialbench_raster::scaling::ScalingTier;
 use spatialbench_raster::ManifestEntry;
@@ -111,17 +111,18 @@ pub async fn run_raster(
 
             let entry = tokio::task::spawn_blocking(move || {
                 thread_local! {
-                    static PIXEL_BUF: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+                    static PIXEL_BUF: RefCell<Option<PixelBuffer>> = const { RefCell::new(None) };
                 }
 
-                PIXEL_BUF.with(|buf| {
-                    let mut buf = buf.borrow_mut();
+                PIXEL_BUF.with(|cell| {
+                    let mut opt = cell.borrow_mut();
+                    let buf = opt.get_or_insert_with(|| PixelBuffer::new(item.config.dtype));
                     write_cog_with_buffer(
                         &item.config,
                         &item.footprint,
                         item.cog_id,
                         &item.output_path,
-                        &mut buf,
+                        buf,
                     )?;
 
                     Ok::<ManifestEntry, io::Error>(ManifestEntry {

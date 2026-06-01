@@ -17,10 +17,10 @@
 
 //! Cloud-Optimized GeoTIFF (COG) writer using GDAL.
 //!
-//! Generates single-band UInt8 COGs with:
+//! Generates single-band COGs with configurable data type (UInt8, UInt16, Float32):
 //! - Per-footprint UTM CRS (EPSG:326xx)
 //! - ZSTD compression
-//! - 256×256 internal tiling
+//! - Configurable internal tiling
 //! - Perlin noise pixel data for realistic compression ratios
 
 use crate::footprint::{Footprint, FootprintConfig};
@@ -32,6 +32,60 @@ use gdal::{DriverManager, GeoTransform};
 
 use std::io;
 use std::path::Path;
+
+/// Raster data type for COG generation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RasterDtype {
+    /// Unsigned 8-bit integer (0–255). Smallest files, common for classification/indices.
+    UInt8,
+    /// Unsigned 16-bit integer (0–65535). Common for Sentinel-2 L2A reflectance.
+    UInt16,
+    /// 32-bit float. Common for climate variables, analysis-ready data.
+    Float32,
+}
+
+impl Default for RasterDtype {
+    fn default() -> Self {
+        Self::UInt8
+    }
+}
+
+impl RasterDtype {
+    /// Bytes per pixel for this data type.
+    pub const fn bytes_per_pixel(&self) -> usize {
+        match self {
+            Self::UInt8 => 1,
+            Self::UInt16 => 2,
+            Self::Float32 => 4,
+        }
+    }
+}
+
+/// Reusable pixel buffer for COG generation.
+///
+/// Holds a typed buffer matching the target [`RasterDtype`], avoiding
+/// intermediate allocations when generating noise directly into the
+/// target type. Each variant's inner `Vec` is reused across COGs on
+/// the same thread.
+pub enum PixelBuffer {
+    /// UInt8 pixel buffer.
+    U8(Vec<u8>),
+    /// UInt16 pixel buffer.
+    U16(Vec<u16>),
+    /// Float32 pixel buffer.
+    F32(Vec<f32>),
+}
+
+impl PixelBuffer {
+    /// Create a new empty buffer for the given dtype.
+    pub fn new(dtype: RasterDtype) -> Self {
+        match dtype {
+            RasterDtype::UInt8 => Self::U8(Vec::new()),
+            RasterDtype::UInt16 => Self::U16(Vec::new()),
+            RasterDtype::Float32 => Self::F32(Vec::new()),
+        }
+    }
+}
 
 /// Configuration for COG generation.
 ///
@@ -47,6 +101,8 @@ pub struct CogConfig {
     pub tile_size: u32,
     /// Perlin noise frequency (controls spatial detail per tile).
     pub noise_frequency: f32,
+    /// Pixel data type.
+    pub dtype: RasterDtype,
 }
 
 impl Default for CogConfig {
@@ -55,6 +111,7 @@ impl Default for CogConfig {
             raster: FootprintConfig::default(),
             tile_size: 256,
             noise_frequency: 8.0,
+            dtype: RasterDtype::default(),
         }
     }
 }
@@ -62,7 +119,7 @@ impl Default for CogConfig {
 /// Write a single COG file for a given footprint and scene ID.
 ///
 /// The output is a Cloud-Optimized GeoTIFF with:
-/// - Single band, UInt8, ZSTD compressed
+/// - Single band, configurable dtype, ZSTD compressed
 /// - CRS set to the footprint's UTM zone
 /// - Geotransform derived from the footprint's NW corner origin
 /// - Deterministic Perlin noise pixel data seeded from `(footprint.id, cog_id)`
@@ -83,100 +140,85 @@ pub fn write_cog(
     let height = config.raster.cog_height;
     let resolution = config.raster.resolution as f64;
 
-    // Create in-memory dataset
-    let mem_driver = DriverManager::get_driver_by_name("MEM").map_err(|e| {
-        io::Error::new(
-            io::ErrorKind::NotFound,
-            format!("GDAL MEM driver not available: {e}"),
-        )
-    })?;
-
-    let mut mem_ds = mem_driver
-        .create_with_band_type::<u8, _>("", width as usize, height as usize, 1)
-        .map_err(|e| io::Error::other(format!("failed to create MEM dataset: {e}")))?;
-
-    // Set CRS to footprint's UTM zone
-    let srs = SpatialRef::from_epsg(footprint.epsg).map_err(|e| {
-        io::Error::other(format!(
-            "failed to create SRS for EPSG:{}: {e}",
-            footprint.epsg
-        ))
-    })?;
-    mem_ds
-        .set_spatial_ref(&srs)
-        .map_err(|e| io::Error::other(format!("failed to set CRS: {e}")))?;
-
-    // Geotransform: origin is NW corner, positive x-res east, negative y-res south
-    let gt: GeoTransform = [
-        footprint.origin.0, // top-left x (easting)
-        resolution,         // pixel width (meters)
-        0.0,                // rotation
-        footprint.origin.1, // top-left y (northing)
-        0.0,                // rotation
-        -resolution,        // pixel height (negative = south)
-    ];
-    mem_ds
-        .set_geo_transform(&gt)
-        .map_err(|e| io::Error::other(format!("failed to set geotransform: {e}")))?;
-
-    // Generate pixel data with Perlin noise
     let seed = (footprint.id as u64) << 32 | cog_id as u64;
     let noise = PerlinNoise::new(seed);
-    let pixels = noise.generate_raster(width, height, config.noise_frequency);
 
-    // Write raster band (scoped to release mutable borrow on mem_ds)
-    {
-        let mut band = mem_ds
-            .rasterband(1)
-            .map_err(|e| io::Error::other(format!("failed to get raster band: {e}")))?;
-        let mut buffer = gdal::raster::Buffer::new((width as usize, height as usize), pixels);
-        band.write::<u8>((0, 0), (width as usize, height as usize), &mut buffer)
-            .map_err(|e| io::Error::other(format!("failed to write pixel data: {e}")))?;
+    let mut mem_ds = create_mem_dataset(config, width, height)?;
+    set_crs_and_geotransform(&mut mem_ds, footprint, resolution)?;
+
+    // Generate and write pixel data directly in target dtype
+    match config.dtype {
+        RasterDtype::UInt8 => {
+            let pixels = noise.generate_raster(width, height, config.noise_frequency);
+            write_band_data::<u8>(&mut mem_ds, width, height, pixels)?;
+        }
+        RasterDtype::UInt16 => {
+            let mut pixels = Vec::new();
+            noise.generate_raster_u16_into(width, height, config.noise_frequency, &mut pixels);
+            write_band_data::<u16>(&mut mem_ds, width, height, pixels)?;
+        }
+        RasterDtype::Float32 => {
+            let mut pixels = Vec::new();
+            noise.generate_raster_f32_into(width, height, config.noise_frequency, &mut pixels);
+            write_band_data::<f32>(&mut mem_ds, width, height, pixels)?;
+        }
     }
 
-    // Create COG via create_copy from the MEM dataset
-    let cog_driver = DriverManager::get_driver_by_name("COG").map_err(|e| {
-        io::Error::new(
-            io::ErrorKind::NotFound,
-            format!("GDAL COG driver not available: {e}"),
-        )
-    })?;
-
-    let cog_options = RasterCreationOptions::from_iter([
-        "COMPRESS=ZSTD",
-        &format!("BLOCKSIZE={}", config.tile_size),
-        "LEVEL=3",
-        "NUM_THREADS=ALL_CPUS",
-    ]);
-
-    mem_ds
-        .create_copy(&cog_driver, output_path, &cog_options)
-        .map_err(|e| io::Error::other(format!("failed to create COG: {e}")))?;
-
-    Ok(())
+    create_cog_from_mem(&mem_ds, config, output_path)
 }
 
-/// Write a single COG file, reusing `pixel_buf` for pixel data.
+/// Write a single COG file, reusing a [`PixelBuffer`] for pixel data.
 ///
-/// Like [`write_cog`], but accepts an externally-owned pixel buffer to
-/// avoid heap allocation on the hot path. The buffer is cleared and
-/// refilled via [`PerlinNoise::generate_raster_into`].
+/// Like [`write_cog`], but accepts an externally-owned typed pixel buffer
+/// to avoid heap allocation on the hot path. Noise is generated directly
+/// into the target dtype — no intermediate u8 buffer or conversion step.
 ///
 /// # Performance
 ///
-/// At 1830×1830 = ~3.2 MB per buffer, reusing this across COGs on the
-/// same thread avoids ~3.2 MB alloc/dealloc per COG.
+/// At 1830×1830 pixels, reusing this buffer across COGs on the same
+/// thread avoids ~3.3 MB (UInt8), ~6.7 MB (UInt16), or ~13.4 MB (Float32)
+/// of alloc/dealloc per COG.
+///
+/// # Panics
+///
+/// Panics if the `pixel_buf` variant does not match `config.dtype`.
 pub fn write_cog_with_buffer(
     config: &CogConfig,
     footprint: &Footprint,
     cog_id: u32,
     output_path: &Path,
-    pixel_buf: &mut Vec<u8>,
+    pixel_buf: &mut PixelBuffer,
 ) -> io::Result<()> {
     let width = config.raster.cog_width;
     let height = config.raster.cog_height;
     let resolution = config.raster.resolution as f64;
 
+    let seed = (footprint.id as u64) << 32 | cog_id as u64;
+    let noise = PerlinNoise::new(seed);
+
+    let mut mem_ds = create_mem_dataset(config, width, height)?;
+    set_crs_and_geotransform(&mut mem_ds, footprint, resolution)?;
+
+    match pixel_buf {
+        PixelBuffer::U8(buf) => {
+            noise.generate_raster_into(width, height, config.noise_frequency, buf);
+            write_band_data::<u8>(&mut mem_ds, width, height, buf.clone())?;
+        }
+        PixelBuffer::U16(buf) => {
+            noise.generate_raster_u16_into(width, height, config.noise_frequency, buf);
+            write_band_data::<u16>(&mut mem_ds, width, height, buf.clone())?;
+        }
+        PixelBuffer::F32(buf) => {
+            noise.generate_raster_f32_into(width, height, config.noise_frequency, buf);
+            write_band_data::<f32>(&mut mem_ds, width, height, buf.clone())?;
+        }
+    }
+
+    create_cog_from_mem(&mem_ds, config, output_path)
+}
+
+/// Create an in-memory GDAL dataset with the correct band type.
+fn create_mem_dataset(config: &CogConfig, width: u32, height: u32) -> io::Result<gdal::Dataset> {
     let mem_driver = DriverManager::get_driver_by_name("MEM").map_err(|e| {
         io::Error::new(
             io::ErrorKind::NotFound,
@@ -184,18 +226,31 @@ pub fn write_cog_with_buffer(
         )
     })?;
 
-    let mut mem_ds = mem_driver
-        .create_with_band_type::<u8, _>("", width as usize, height as usize, 1)
-        .map_err(|e| io::Error::other(format!("failed to create MEM dataset: {e}")))?;
+    let w = width as usize;
+    let h = height as usize;
+    let ds = match config.dtype {
+        RasterDtype::UInt8 => mem_driver.create_with_band_type::<u8, _>("", w, h, 1),
+        RasterDtype::UInt16 => mem_driver.create_with_band_type::<u16, _>("", w, h, 1),
+        RasterDtype::Float32 => mem_driver.create_with_band_type::<f32, _>("", w, h, 1),
+    }
+    .map_err(|e| io::Error::other(format!("failed to create MEM dataset: {e}")))?;
 
+    Ok(ds)
+}
+
+/// Set CRS and geotransform on a dataset.
+fn set_crs_and_geotransform(
+    ds: &mut gdal::Dataset,
+    footprint: &Footprint,
+    resolution: f64,
+) -> io::Result<()> {
     let srs = SpatialRef::from_epsg(footprint.epsg).map_err(|e| {
         io::Error::other(format!(
             "failed to create SRS for EPSG:{}: {e}",
             footprint.epsg
         ))
     })?;
-    mem_ds
-        .set_spatial_ref(&srs)
+    ds.set_spatial_ref(&srs)
         .map_err(|e| io::Error::other(format!("failed to set CRS: {e}")))?;
 
     let gt: GeoTransform = [
@@ -206,25 +261,34 @@ pub fn write_cog_with_buffer(
         0.0,
         -resolution,
     ];
-    mem_ds
-        .set_geo_transform(&gt)
+    ds.set_geo_transform(&gt)
         .map_err(|e| io::Error::other(format!("failed to set geotransform: {e}")))?;
 
-    // Generate pixel data into reusable buffer
-    let seed = (footprint.id as u64) << 32 | cog_id as u64;
-    let noise = PerlinNoise::new(seed);
-    noise.generate_raster_into(width, height, config.noise_frequency, pixel_buf);
+    Ok(())
+}
 
-    {
-        let mut band = mem_ds
-            .rasterband(1)
-            .map_err(|e| io::Error::other(format!("failed to get raster band: {e}")))?;
-        let mut buffer =
-            gdal::raster::Buffer::new((width as usize, height as usize), pixel_buf.clone());
-        band.write::<u8>((0, 0), (width as usize, height as usize), &mut buffer)
-            .map_err(|e| io::Error::other(format!("failed to write pixel data: {e}")))?;
-    }
+/// Write pixel data to band 1 of a dataset.
+fn write_band_data<T: gdal::raster::GdalType + Copy>(
+    ds: &mut gdal::Dataset,
+    width: u32,
+    height: u32,
+    pixels: Vec<T>,
+) -> io::Result<()> {
+    let mut band = ds
+        .rasterband(1)
+        .map_err(|e| io::Error::other(format!("failed to get raster band: {e}")))?;
+    let mut buffer = gdal::raster::Buffer::new((width as usize, height as usize), pixels);
+    band.write::<T>((0, 0), (width as usize, height as usize), &mut buffer)
+        .map_err(|e| io::Error::other(format!("failed to write pixel data: {e}")))?;
+    Ok(())
+}
 
+/// Create a COG file from an in-memory dataset via create_copy.
+fn create_cog_from_mem(
+    mem_ds: &gdal::Dataset,
+    config: &CogConfig,
+    output_path: &Path,
+) -> io::Result<()> {
     let cog_driver = DriverManager::get_driver_by_name("COG").map_err(|e| {
         io::Error::new(
             io::ErrorKind::NotFound,
@@ -354,7 +418,7 @@ mod tests {
         let path = dir.path().join("buf_test.tif");
         let config = CogConfig::default();
         let fp = test_footprint();
-        let mut buf = Vec::new();
+        let mut buf = PixelBuffer::new(config.dtype);
 
         write_cog_with_buffer(&config, &fp, 0, &path, &mut buf).unwrap();
 
@@ -363,8 +427,11 @@ mod tests {
         assert_eq!(w, 1830);
         assert_eq!(h, 1830);
 
-        // Buffer should have been filled and retained
-        assert_eq!(buf.len(), 1830 * 1830);
+        // Buffer should have been filled
+        match &buf {
+            PixelBuffer::U8(v) => assert_eq!(v.len(), 1830 * 1830),
+            _ => panic!("expected U8 buffer for default config"),
+        }
     }
 
     #[test]
@@ -372,16 +439,22 @@ mod tests {
         let dir = tempdir().unwrap();
         let config = CogConfig::default();
         let fp = test_footprint();
-        let mut buf = Vec::new();
+        let mut buf = PixelBuffer::new(config.dtype);
 
         // Write two COGs reusing the same buffer
         let path_a = dir.path().join("a.tif");
         let path_b = dir.path().join("b.tif");
         write_cog_with_buffer(&config, &fp, 0, &path_a, &mut buf).unwrap();
-        let cap_after_first = buf.capacity();
+        let cap_after_first = match &buf {
+            PixelBuffer::U8(v) => v.capacity(),
+            _ => panic!("expected U8 buffer"),
+        };
         write_cog_with_buffer(&config, &fp, 1, &path_b, &mut buf).unwrap();
 
         // Buffer should not have reallocated
-        assert_eq!(buf.capacity(), cap_after_first);
+        match &buf {
+            PixelBuffer::U8(v) => assert_eq!(v.capacity(), cap_after_first),
+            _ => panic!("expected U8 buffer"),
+        }
     }
 }
