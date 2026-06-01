@@ -421,10 +421,10 @@ impl Cli {
 
             info!("generated {} manifest entries", manifest.len());
 
-            // Write STAC geoparquet catalogs (all 3 topologies)
+            // Write STAC geoparquet catalogs (Narrow + Balanced; Wide uses multi-band COGs)
             let stac_dir = raster_dir.join("stac");
             std::fs::create_dir_all(&stac_dir)?;
-            for topo in Topology::ALL {
+            for topo in Topology::SHARED_PILE {
                 let path = stac_dir.join(format!("{}.parquet", topo.dir_name()));
                 write_stac_geoparquet(&manifest, tier, topo, &path)?;
                 info!("wrote STAC catalog: {}", path.display());

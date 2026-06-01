@@ -34,6 +34,9 @@ impl Topology {
     /// All three topologies.
     pub const ALL: [Topology; 3] = [Topology::Narrow, Topology::Balanced, Topology::Wide];
 
+    /// Topologies that share the single-band COG pile (Wide uses multi-band COGs).
+    pub const SHARED_PILE: [Topology; 2] = [Topology::Narrow, Topology::Balanced];
+
     /// Return the (M, T) factoring for this topology from a scaling tier.
     pub fn factor(&self, tier: &ScalingTier) -> (u32, u32) {
         match self {
@@ -49,6 +52,46 @@ impl Topology {
             Topology::Narrow => "narrow",
             Topology::Balanced => "balanced",
             Topology::Wide => "wide",
+        }
+    }
+
+    /// Item ID prefix for STAC catalogs.
+    pub fn item_prefix(&self) -> &'static str {
+        match self {
+            Topology::Narrow => "NRW",
+            Topology::Balanced => "BAL",
+            Topology::Wide => "WDE",
+        }
+    }
+
+    /// Semantic asset role labels for this topology.
+    ///
+    /// Returns a slice of role names. The slice length must be >= M for
+    /// the topology at the given scale factor. Labels cycle if M exceeds
+    /// the base label set.
+    pub fn asset_labels(&self) -> &'static [&'static str] {
+        match self {
+            Topology::Narrow => &["tasmax", "tasmin"],
+            Topology::Balanced => &[
+                "red", "green", "blue", "nir", "swir1", "swir2", "coastal", "rededge1", "rededge2",
+                "rededge3", "cirrus", "tir",
+            ],
+            Topology::Wide => &["dim"],
+        }
+    }
+
+    /// Get the asset role label for a given mosaic index within this topology.
+    ///
+    /// For Narrow (M=2): cycles through `["tasmax", "tasmin"]`.
+    /// For Balanced: cycles through spectral band names.
+    /// For Wide: `"dim_NNN"` but Wide is not used with shared pile.
+    pub fn asset_label_for(&self, mosaic_id: u32) -> String {
+        let labels = self.asset_labels();
+        if labels.len() == 1 {
+            // Wide-style: dim_000, dim_001, ...
+            format!("{}_{:03}", labels[0], mosaic_id)
+        } else {
+            labels[mosaic_id as usize % labels.len()].to_string()
         }
     }
 }
