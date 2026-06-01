@@ -390,23 +390,32 @@ impl Cli {
             let tier = scaling_tier(sf).map_err(|e| {
                 io::Error::new(io::ErrorKind::InvalidInput, format!("raster scaling: {e}"))
             })?;
-            let cog_config = parsed_config
-                .as_ref()
-                .and_then(|c| c.raster.as_ref())
-                .map(CogConfig::from)
-                .unwrap_or_default();
-            let grid = FootprintGrid::new(
-                spatialbench::spatial::ContinentAffines::default(),
-                cog_config.raster,
-                self.max_footprints,
-            );
-            let footprints = grid.generate(tier);
+
+            let raster_config = parsed_config.as_ref().and_then(|c| c.raster.as_ref());
+
+            let cog_config = if let Some(rc) = raster_config {
+                rc.to_cog_config()?
+            } else {
+                CogConfig::default()
+            };
+
+            let continent_name = raster_config
+                .map(|rc| rc.continent.as_str())
+                .unwrap_or("south_north_america");
+
+            let affines = spatialbench::spatial::ContinentAffines::default();
+            let affine = crate::spatial_config_file::continent_affine(&affines, continent_name)?;
+
+            let grid = FootprintGrid::new(affine, cog_config.raster, self.max_footprints);
+            let footprints = grid.generate();
 
             info!(
-                "{} footprints, {} COGs/footprint, {} total COGs",
+                "continent={}, {} footprints, {} COGs/footprint, {} total COGs, dtype={:?}",
+                continent_name,
                 footprints.len(),
                 tier.scenes_per_footprint,
-                footprints.len() as u64 * tier.scenes_per_footprint as u64
+                footprints.len() as u64 * tier.scenes_per_footprint as u64,
+                cog_config.dtype,
             );
 
             let raster_dir = self.output_dir.join("raster");

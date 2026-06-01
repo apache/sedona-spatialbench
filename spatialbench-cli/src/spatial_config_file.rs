@@ -19,11 +19,13 @@ use anyhow::Result;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer};
 use spatialbench::spatial::{
-    DistributionParams, DistributionType, GeomType, SpatialConfig, SpatialGenerator,
+    ContinentAffines, DistributionParams, DistributionType, GeomType, SpatialConfig,
+    SpatialGenerator,
 };
-use spatialbench_raster::cog::CogConfig;
+use spatialbench_raster::cog::{CogConfig, RasterDtype};
 use spatialbench_raster::footprint::FootprintConfig;
 use std::fmt;
+use std::io;
 use std::sync::OnceLock;
 
 // Deserializer for DistributionType
@@ -118,6 +120,14 @@ pub struct RasterConfig {
     /// Perlin noise frequency.
     #[serde(default = "default_noise_frequency")]
     pub noise_frequency: f32,
+    /// Pixel data type: "uint8", "uint16", "float32".
+    #[serde(default = "default_dtype")]
+    pub dtype: String,
+    /// Continent for spatial coverage. Valid values:
+    /// "south_north_america" (default), "north_north_america", "europe",
+    /// "africa", "south_asia", "north_asia", "oceania", "south_america".
+    #[serde(default = "default_continent")]
+    pub continent: String,
 }
 
 fn default_resolution() -> u32 {
@@ -135,6 +145,46 @@ fn default_tile_size() -> u32 {
 fn default_noise_frequency() -> f32 {
     8.0
 }
+fn default_dtype() -> String {
+    "uint8".to_string()
+}
+fn default_continent() -> String {
+    "south_north_america".to_string()
+}
+
+/// Parse a dtype string into a [`RasterDtype`].
+fn parse_dtype(s: &str) -> io::Result<RasterDtype> {
+    match s {
+        "uint8" => Ok(RasterDtype::UInt8),
+        "uint16" => Ok(RasterDtype::UInt16),
+        "float32" => Ok(RasterDtype::Float32),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("unsupported raster dtype: '{s}'. Valid values: uint8, uint16, float32"),
+        )),
+    }
+}
+
+/// Look up a continent's affine from [`ContinentAffines`] by name.
+pub fn continent_affine(affines: &ContinentAffines, name: &str) -> io::Result<[f64; 6]> {
+    match name {
+        "africa" => Ok(affines.africa),
+        "europe" => Ok(affines.europe),
+        "south_asia" => Ok(affines.south_asia),
+        "north_asia" => Ok(affines.north_asia),
+        "oceania" => Ok(affines.oceania),
+        "south_america" => Ok(affines.south_america),
+        "south_north_america" => Ok(affines.south_north_america),
+        "north_north_america" => Ok(affines.north_north_america),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!(
+                "unknown continent: '{name}'. Valid values: africa, europe, south_asia, \
+                 north_asia, oceania, south_america, south_north_america, north_north_america"
+            ),
+        )),
+    }
+}
 
 impl Default for RasterConfig {
     fn default() -> Self {
@@ -144,21 +194,26 @@ impl Default for RasterConfig {
             cog_height: default_cog_height(),
             tile_size: default_tile_size(),
             noise_frequency: default_noise_frequency(),
+            dtype: default_dtype(),
+            continent: default_continent(),
         }
     }
 }
 
-impl From<&RasterConfig> for CogConfig {
-    fn from(rc: &RasterConfig) -> Self {
-        CogConfig {
+impl RasterConfig {
+    /// Convert to [`CogConfig`], parsing the dtype string.
+    pub fn to_cog_config(&self) -> io::Result<CogConfig> {
+        let dtype = parse_dtype(&self.dtype)?;
+        Ok(CogConfig {
             raster: FootprintConfig {
-                cog_width: rc.cog_width,
-                cog_height: rc.cog_height,
-                resolution: rc.resolution,
+                cog_width: self.cog_width,
+                cog_height: self.cog_height,
+                resolution: self.resolution,
             },
-            tile_size: rc.tile_size,
-            noise_frequency: rc.noise_frequency,
-        }
+            tile_size: self.tile_size,
+            noise_frequency: self.noise_frequency,
+            dtype,
+        })
     }
 }
 

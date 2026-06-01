@@ -19,13 +19,14 @@
 
 use std::io;
 
-/// One row of the SF → footprint/scene scaling table.
+/// One row of the SF → scene depth and topology factoring table.
+///
+/// Footprint count is no longer part of the scaling tier — it is derived
+/// from the continent affine extent and configured resolution/tile dimensions.
 #[derive(Debug, Clone, Copy)]
 pub struct ScalingTier {
     /// Scale factor (1, 10, 100, 1000).
     pub sf: u32,
-    /// Number of footprints (A). Derived from continent tiling.
-    pub footprints: u32,
     /// Total COGs per footprint (N). Each topology factors this as M × T.
     pub scenes_per_footprint: u32,
     /// Narrow topology (M, T) factoring.
@@ -41,7 +42,6 @@ pub struct ScalingTier {
 pub const SCALING_TABLE: &[ScalingTier] = &[
     ScalingTier {
         sf: 1,
-        footprints: 1_320,
         scenes_per_footprint: 16,
         narrow: (2, 8),
         balanced: (4, 4),
@@ -49,7 +49,6 @@ pub const SCALING_TABLE: &[ScalingTier] = &[
     },
     ScalingTier {
         sf: 10,
-        footprints: 4_234,
         scenes_per_footprint: 64,
         narrow: (2, 32),
         balanced: (8, 8),
@@ -57,7 +56,6 @@ pub const SCALING_TABLE: &[ScalingTier] = &[
     },
     ScalingTier {
         sf: 100,
-        footprints: 9_851,
         scenes_per_footprint: 384,
         narrow: (2, 192),
         balanced: (12, 32),
@@ -65,7 +63,6 @@ pub const SCALING_TABLE: &[ScalingTier] = &[
     },
     ScalingTier {
         sf: 1000,
-        footprints: 28_164,
         scenes_per_footprint: 1_152,
         narrow: (2, 576),
         balanced: (12, 96),
@@ -114,7 +111,6 @@ mod tests {
     #[test]
     fn scaling_tier_lookup() {
         let tier = scaling_tier(1).unwrap();
-        assert_eq!(tier.footprints, 1_320);
         assert_eq!(tier.scenes_per_footprint, 16);
     }
 

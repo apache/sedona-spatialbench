@@ -25,9 +25,6 @@
 //! Snyder, J.P. (1987) "Map Projections — A Working Manual", USGS Professional
 //! Paper 1395, equations 8-1 through 8-18 (forward) and 8-20 through 8-23 (inverse).
 
-use crate::scaling::ScalingTier;
-use spatialbench::spatial::ContinentAffines;
-
 // WGS84 ellipsoid constants (Snyder 1987, Table 1).
 const WGS84_A: f64 = 6_378_137.0; // Semi-major axis (meters)
 const WGS84_F: f64 = 1.0 / 298.257223563; // Flattening
@@ -84,39 +81,37 @@ impl FootprintConfig {
     }
 }
 
-/// Generates footprints by tessellating continent affines into a UTM-based grid.
+/// Generates footprints by tessellating a continent affine into a UTM-based grid.
 ///
-/// Phase 1 uses only the S. North America affine. Multi-continent scaling
-/// (engaging additional affines at higher SF) is deferred to Phase 1d.
+/// The continent affine is selected via config (default: S. North America).
+/// Footprint count is derived from tessellation — not from the scaling tier.
+/// The scaling tier controls only temporal depth (scenes per footprint).
 #[derive(Debug, Clone)]
 pub struct FootprintGrid {
-    affines: ContinentAffines,
+    affine: [f64; 6],
     config: FootprintConfig,
     max_footprints: Option<u32>,
 }
 
 impl FootprintGrid {
-    /// Create a new footprint grid.
+    /// Create a new footprint grid for a specific continent affine.
     ///
     /// `max_footprints` caps the number of footprints generated (dev flag).
-    pub fn new(
-        affines: ContinentAffines,
-        config: FootprintConfig,
-        max_footprints: Option<u32>,
-    ) -> Self {
+    pub fn new(affine: [f64; 6], config: FootprintConfig, max_footprints: Option<u32>) -> Self {
         Self {
-            affines,
+            affine,
             config,
             max_footprints,
         }
     }
 
-    /// Generate footprints for S. North America (Phase 1).
+    /// Generate footprints by tessellating the continent extent.
     ///
-    /// Tessellates the continent affine extent into fixed-metric tiles per UTM zone.
-    /// Returns a Vec because the generation requires stateful iteration across zones.
-    pub fn generate(&self, tier: &ScalingTier) -> Vec<Footprint> {
-        let affine = self.affines.south_north_america;
+    /// Footprint count is determined by the continent's geographic extent
+    /// and the configured resolution/tile dimensions. The `--max-footprints`
+    /// CLI flag caps the result for fast iteration.
+    pub fn generate(&self) -> Vec<Footprint> {
+        let affine = self.affine;
         // Affine layout: [width_deg, shx, west, shy, -height_deg, north]
         let west = affine[2];
         let east = west + affine[0];
@@ -126,12 +121,9 @@ impl FootprintGrid {
         let step_x = self.config.step_x();
         let step_y = self.config.step_y();
 
-        let limit = self
-            .max_footprints
-            .map(|m| m.min(tier.footprints))
-            .unwrap_or(tier.footprints);
+        let limit = self.max_footprints.unwrap_or(u32::MAX);
 
-        let mut footprints = Vec::with_capacity(limit as usize);
+        let mut footprints = Vec::with_capacity(limit.min(4096) as usize);
 
         // Iterate over UTM zones that intersect the extent
         let zone_start = lon_to_utm_zone(west);
@@ -320,7 +312,12 @@ fn meridian_arc(phi: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::scaling::scaling_tier;
+    use spatialbench::spatial::ContinentAffines;
+
+    /// Default S. North America affine for tests.
+    fn test_affine() -> [f64; 6] {
+        ContinentAffines::default().south_north_america
+    }
 
     #[test]
     fn utm_zone_assignment() {
@@ -332,7 +329,6 @@ mod tests {
 
     #[test]
     fn utm_roundtrip() {
-        // Test forward + inverse at a known point
         let lon = -100.0;
         let lat = 35.0;
         let zone = lon_to_utm_zone(lon);
@@ -344,7 +340,6 @@ mod tests {
 
     #[test]
     fn utm_roundtrip_edge_cases() {
-        // Near zone boundary
         for &lon in &[-124.0, -69.0, -90.0] {
             for &lat in &[12.0, 42.0, 30.0] {
                 let zone = lon_to_utm_zone(lon);
@@ -364,64 +359,37 @@ mod tests {
 
     #[test]
     fn generates_footprints() {
-        let tier = scaling_tier(1).unwrap();
-        let grid = FootprintGrid::new(
-            ContinentAffines::default(),
-            FootprintConfig::default(),
-            None,
-        );
-        let footprints = grid.generate(tier);
-        // The UTM tessellation may produce a different count than the scaling
-        // table's target (which was based on a 1° grid approximation).
-        // Verify we get a reasonable number of footprints and that it's capped.
+        let grid = FootprintGrid::new(test_affine(), FootprintConfig::default(), None);
+        let footprints = grid.generate();
         assert!(
             footprints.len() > 1000,
             "expected >1000 footprints, got {}",
             footprints.len()
         );
-        assert!(
-            footprints.len() <= tier.footprints as usize,
-            "exceeded tier cap: {} > {}",
-            footprints.len(),
-            tier.footprints
-        );
     }
 
     #[test]
     fn max_footprints_caps() {
-        let tier = scaling_tier(1).unwrap();
-        let grid = FootprintGrid::new(
-            ContinentAffines::default(),
-            FootprintConfig::default(),
-            Some(5),
-        );
-        let footprints = grid.generate(tier);
+        let grid = FootprintGrid::new(test_affine(), FootprintConfig::default(), Some(5));
+        let footprints = grid.generate();
         assert_eq!(footprints.len(), 5);
     }
 
     #[test]
     fn footprint_has_valid_bbox() {
-        let tier = scaling_tier(1).unwrap();
-        let grid = FootprintGrid::new(
-            ContinentAffines::default(),
-            FootprintConfig::default(),
-            Some(10),
-        );
-        let footprints = grid.generate(tier);
+        let grid = FootprintGrid::new(test_affine(), FootprintConfig::default(), Some(10));
+        let footprints = grid.generate();
         for fp in &footprints {
-            // west < east
             assert!(
                 fp.bbox_4326[0] < fp.bbox_4326[2],
                 "fp {}: invalid bbox",
                 fp.id
             );
-            // south < north
             assert!(
                 fp.bbox_4326[1] < fp.bbox_4326[3],
                 "fp {}: invalid bbox",
                 fp.id
             );
-            // Reasonable geographic extent (~1° in each direction)
             let width = fp.bbox_4326[2] - fp.bbox_4326[0];
             let height = fp.bbox_4326[3] - fp.bbox_4326[1];
             assert!(
@@ -439,15 +407,9 @@ mod tests {
 
     #[test]
     fn footprint_epsg_is_valid_utm() {
-        let tier = scaling_tier(1).unwrap();
-        let grid = FootprintGrid::new(
-            ContinentAffines::default(),
-            FootprintConfig::default(),
-            Some(10),
-        );
-        let footprints = grid.generate(tier);
+        let grid = FootprintGrid::new(test_affine(), FootprintConfig::default(), Some(10));
+        let footprints = grid.generate();
         for fp in &footprints {
-            // Northern hemisphere UTM: 32601-32660
             assert!(
                 fp.epsg >= 32601 && fp.epsg <= 32660,
                 "fp {}: invalid EPSG {}",
@@ -459,13 +421,8 @@ mod tests {
 
     #[test]
     fn footprint_ids_sequential() {
-        let tier = scaling_tier(1).unwrap();
-        let grid = FootprintGrid::new(
-            ContinentAffines::default(),
-            FootprintConfig::default(),
-            Some(20),
-        );
-        let footprints = grid.generate(tier);
+        let grid = FootprintGrid::new(test_affine(), FootprintConfig::default(), Some(20));
+        let footprints = grid.generate();
         for (i, fp) in footprints.iter().enumerate() {
             assert_eq!(fp.id, i as u32);
         }
