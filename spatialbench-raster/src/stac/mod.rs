@@ -215,7 +215,12 @@ pub fn write_stac_geoparquet<W: io::Write + Send>(
 ///
 /// Each item corresponds to a unique `(footprint_id, timeslice_id)` pair.
 /// Assets within an item are the M COGs assigned to that timeslice.
-fn assemble_items(manifest: &[ManifestEntry], m: u32, topology: Topology, pile_base_href: &str) -> Vec<StacItem> {
+fn assemble_items(
+    manifest: &[ManifestEntry],
+    m: u32,
+    topology: Topology,
+    pile_base_href: &str,
+) -> Vec<StacItem> {
     // Group by (footprint_id, timeslice_id)
     let mut groups: BTreeMap<(u32, u32), Vec<&ManifestEntry>> = BTreeMap::new();
     for entry in manifest {
@@ -234,7 +239,10 @@ fn assemble_items(manifest: &[ManifestEntry], m: u32, topology: Topology, pile_b
         for entry in entries {
             let scene = assign_scene(entry.cog_id, m);
             let role = topology.asset_label_for(scene.mosaic_id);
-            let href = format!("{}/{:05}/{:04}.tif", pile_base_href, entry.footprint_id, entry.cog_id);
+            let href = format!(
+                "{}/{:05}/{:04}.tif",
+                pile_base_href, entry.footprint_id, entry.cog_id
+            );
             assets.push(AssetEntry { role, href });
         }
 
@@ -476,7 +484,14 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("narrow.parquet");
 
-        write_stac_geoparquet(&manifest, tier, Topology::Narrow, std::fs::File::create(&path).unwrap(), TEST_PILE_HREF).unwrap();
+        write_stac_geoparquet(
+            &manifest,
+            tier,
+            Topology::Narrow,
+            std::fs::File::create(&path).unwrap(),
+            TEST_PILE_HREF,
+        )
+        .unwrap();
 
         let file = std::fs::File::open(&path).unwrap();
         let builder = ParquetRecordBatchReaderBuilder::try_new(file).unwrap();
@@ -495,7 +510,14 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("balanced.parquet");
 
-        write_stac_geoparquet(&manifest, tier, Topology::Balanced, std::fs::File::create(&path).unwrap(), TEST_PILE_HREF).unwrap();
+        write_stac_geoparquet(
+            &manifest,
+            tier,
+            Topology::Balanced,
+            std::fs::File::create(&path).unwrap(),
+            TEST_PILE_HREF,
+        )
+        .unwrap();
 
         let file = std::fs::File::open(&path).unwrap();
         let builder = ParquetRecordBatchReaderBuilder::try_new(file).unwrap();
@@ -516,7 +538,14 @@ mod tests {
         let mut row_counts = Vec::new();
         for topo in Topology::SHARED_PILE {
             let path = dir.path().join(format!("{}.parquet", topo.dir_name()));
-            write_stac_geoparquet(&manifest, tier, topo, std::fs::File::create(&path).unwrap(), TEST_PILE_HREF).unwrap();
+            write_stac_geoparquet(
+                &manifest,
+                tier,
+                topo,
+                std::fs::File::create(&path).unwrap(),
+                TEST_PILE_HREF,
+            )
+            .unwrap();
             let file = std::fs::File::open(&path).unwrap();
             let builder = ParquetRecordBatchReaderBuilder::try_new(file).unwrap();
             let reader = builder.build().unwrap();
@@ -541,7 +570,14 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("narrow.parquet");
 
-        write_stac_geoparquet(&manifest, tier, Topology::Narrow, std::fs::File::create(&path).unwrap(), TEST_PILE_HREF).unwrap();
+        write_stac_geoparquet(
+            &manifest,
+            tier,
+            Topology::Narrow,
+            std::fs::File::create(&path).unwrap(),
+            TEST_PILE_HREF,
+        )
+        .unwrap();
 
         let file = std::fs::File::open(&path).unwrap();
         let builder = ParquetRecordBatchReaderBuilder::try_new(file).unwrap();

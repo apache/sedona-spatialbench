@@ -30,12 +30,13 @@ categories = ["science::geo", "data-structures"]
 
 [features]
 default = []
-cog-writer = ["dep:gdal"]
+cog-writer = ["dep:tiff", "dep:zstd"]
 stac-writer = ["dep:arrow", "dep:parquet"]
 
 [dependencies]
 spatialbench = { path = "../spatialbench", version = "0.3.0" }
-gdal = { version = "0.19", optional = true, features = ["bindgen"] }
+tiff = { version = "0.11", optional = true }
+zstd = { version = "0.13", optional = true }
 arrow = { version = "56", optional = true }
 parquet = { version = "56", optional = true }
 

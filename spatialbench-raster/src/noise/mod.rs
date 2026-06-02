@@ -163,13 +163,7 @@ impl PerlinNoise {
     /// noise value in [-1, 1]. Row-level y-axis values are hoisted out of the
     /// inner loop.
     #[inline]
-    fn generate_noise(
-        &self,
-        width: u32,
-        height: u32,
-        frequency: f32,
-        mut emit: impl FnMut(f32),
-    ) {
+    fn generate_noise(&self, width: u32, height: u32, frequency: f32, mut emit: impl FnMut(f32)) {
         let inv_w = frequency / width as f32;
         let inv_h = frequency / height as f32;
 
@@ -313,7 +307,10 @@ mod tests {
         let min = *buf.iter().min().unwrap();
         let max = *buf.iter().max().unwrap();
         assert!(max <= 65535);
-        assert!(max - min > 10000, "expected u16 variation, got [{min}, {max}]");
+        assert!(
+            max - min > 10000,
+            "expected u16 variation, got [{min}, {max}]"
+        );
     }
 
     #[test]

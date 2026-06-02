@@ -19,7 +19,7 @@
 //!
 //! Usage: `cargo run --release -p spatialbench-raster --features cog-writer --example bench_cog`
 
-use spatialbench_raster::cog::{write_cog, CogConfig};
+use spatialbench_raster::cog::{write_cog, CogConfig, PixelBuffer};
 use spatialbench_raster::footprint::{lon_to_utm_zone, lonlat_to_utm, utm_to_lonlat, Footprint};
 use spatialbench_raster::noise::PerlinNoise;
 
@@ -79,14 +79,22 @@ fn bench_cog_write() {
     let config = CogConfig::default();
     let fp = test_footprint();
     let dir = tempfile::tempdir().unwrap();
+    let mut pixel_buf = PixelBuffer::new(config.dtype);
 
     // Warmup
-    write_cog(&config, &fp, 999, &dir.path().join("warmup.tif")).unwrap();
+    write_cog(
+        &config,
+        &fp,
+        999,
+        &dir.path().join("warmup.tif"),
+        &mut pixel_buf,
+    )
+    .unwrap();
 
     let start = Instant::now();
     for i in 0..iterations {
         let path = dir.path().join(format!("{i:04}.tif"));
-        write_cog(&config, &fp, i, &path).unwrap();
+        write_cog(&config, &fp, i, &path, &mut pixel_buf).unwrap();
     }
     let elapsed = start.elapsed();
 
@@ -95,7 +103,7 @@ fn bench_cog_write() {
         .unwrap()
         .len();
 
-    println!("\n=== Full COG write (noise + MEM + ZSTD + disk) ===");
+    println!("\n=== Full COG write (noise + ZSTD + disk) ===");
     println!("  {iterations} iterations in {elapsed:.2?}");
     println!("  {per_call:.2?} per COG");
     println!(
@@ -113,18 +121,18 @@ fn bench_cog_write() {
         black_box(&buf);
     }
     let noise_elapsed = noise_start.elapsed();
-    let gdal_elapsed = elapsed - noise_elapsed;
+    let encode_elapsed = elapsed - noise_elapsed;
 
     println!("\n=== Breakdown ===");
     println!(
-        "  Noise: {:.2?} ({:.0}%)",
+        "  Noise:  {:.2?} ({:.0}%)",
         noise_elapsed,
         100.0 * noise_elapsed.as_secs_f64() / elapsed.as_secs_f64()
     );
     println!(
-        "  GDAL:  {:.2?} ({:.0}%)",
-        gdal_elapsed,
-        100.0 * gdal_elapsed.as_secs_f64() / elapsed.as_secs_f64()
+        "  Encode: {:.2?} ({:.0}%)",
+        encode_elapsed,
+        100.0 * encode_elapsed.as_secs_f64() / elapsed.as_secs_f64()
     );
 
     // Extrapolate SF=1
