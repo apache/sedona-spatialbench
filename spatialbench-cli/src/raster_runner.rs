@@ -21,21 +21,25 @@
 //! thread-local pixel buffer reused across COGs. Manifest entries flow back
 //! through a bounded `mpsc` channel.
 //!
-//! Supports S3 output via GDAL's `/vsis3/` virtual filesystem. When the
-//! output directory starts with `s3://`, paths are translated to `/vsis3/`
-//! and directory pre-creation is skipped (S3 has no directories).
+//! For S3 output, COGs are encoded to `Vec<u8>` in memory and uploaded via
+//! `object_store::put()`. For local output, bytes are written to files.
 
-use spatialbench_raster::cog::{write_cog_with_buffer, CogConfig, PixelBuffer};
+use crate::s3_writer::{build_s3_client, parse_s3_uri};
+
+use spatialbench_raster::cog::{write_cog_bytes, CogConfig, PixelBuffer};
 use spatialbench_raster::footprint::Footprint;
 use spatialbench_raster::scaling::ScalingTier;
 use spatialbench_raster::ManifestEntry;
 
+use bytes::Bytes;
 use log::info;
+use object_store::path::Path as ObjectPath;
+use object_store::ObjectStore;
 use tokio::sync::{mpsc, Semaphore};
 
 use std::cell::RefCell;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
@@ -44,14 +48,9 @@ use std::sync::Arc;
 struct CogWorkItem {
     footprint: Footprint,
     cog_id: u32,
-    /// Output path — local filesystem or `/vsis3/` for S3.
-    output_path: PathBuf,
+    /// Relative path within the output directory (e.g., "pile/00000/0000.tif").
+    key: String,
     config: CogConfig,
-}
-
-/// Translate an `s3://bucket/key` URI to GDAL's `/vsis3/bucket/key` path.
-fn s3_to_vsis3(s3_uri: &str) -> String {
-    format!("/vsis3/{}", s3_uri.strip_prefix("s3://").unwrap_or(s3_uri))
 }
 
 /// Generate COGs for all footprints in parallel and return manifest entries.
@@ -60,8 +59,9 @@ fn s3_to_vsis3(s3_uri: &str) -> String {
 /// 1. Pre-create all footprint directories (skipped for S3 output).
 /// 2. Spawn all work items eagerly; semaphore gates concurrency to `num_threads`.
 /// 3. Each `spawn_blocking` worker uses a `thread_local!` pixel buffer.
-/// 4. Manifest entries flow through a bounded `mpsc` channel.
-/// 5. A collector task drains the channel into `Vec<ManifestEntry>`.
+/// 4. COG bytes are written to local files or uploaded to S3 via `object_store`.
+/// 5. Manifest entries flow through a bounded `mpsc` channel.
+/// 6. A collector task drains the channel into `Vec<ManifestEntry>`.
 pub async fn run_raster(
     footprints: &[Footprint],
     tier: &ScalingTier,
@@ -70,16 +70,26 @@ pub async fn run_raster(
     num_threads: usize,
 ) -> io::Result<Vec<ManifestEntry>> {
     let is_s3 = output_dir.starts_with("s3://");
-    let pile_dir = if is_s3 {
-        format!("{}/pile", s3_to_vsis3(output_dir.trim_end_matches('/')))
-    } else {
-        let p = Path::new(output_dir).join("pile");
-        p.to_string_lossy().into_owned()
-    };
     let total_cogs = footprints.len() as u64 * tier.scenes_per_footprint as u64;
 
+    // Build S3 client if needed, otherwise prepare local pile directory
+    let s3 = if is_s3 {
+        let (bucket, prefix) = parse_s3_uri(output_dir.trim_end_matches('/'))?;
+        let client = build_s3_client(&bucket)?;
+        Some((client, format!("{}/pile", prefix)))
+    } else {
+        None
+    };
+
+    let local_pile_dir = if !is_s3 {
+        let p = Path::new(output_dir).join("pile");
+        Some(p.to_string_lossy().into_owned())
+    } else {
+        None
+    };
+
     // Phase 1: Pre-create directories (local only; S3 has no directories)
-    if !is_s3 {
+    if let Some(ref pile_dir) = local_pile_dir {
         for fp in footprints {
             std::fs::create_dir_all(format!("{}/{:05}", pile_dir, fp.id))?;
         }
@@ -88,12 +98,11 @@ pub async fn run_raster(
     // Phase 2: Build work items
     let mut work_items = Vec::with_capacity(total_cogs as usize);
     for fp in footprints {
-        let fp_dir = format!("{}/{:05}", pile_dir, fp.id);
         for cog_id in 0..tier.scenes_per_footprint {
             work_items.push(CogWorkItem {
                 footprint: *fp,
                 cog_id,
-                output_path: PathBuf::from(format!("{}/{:04}.tif", fp_dir, cog_id)),
+                key: format!("{:05}/{:04}.tif", fp.id, cog_id),
                 config: *cog_config,
             });
         }
@@ -103,7 +112,6 @@ pub async fn run_raster(
     let semaphore = Arc::new(Semaphore::new(num_threads));
     let counter = Arc::new(AtomicU64::new(0));
     let (tx, mut rx) = mpsc::channel::<ManifestEntry>(num_threads * 2);
-
     // Collector task
     let collector = tokio::spawn(async move {
         let mut manifest = Vec::with_capacity(total_cogs as usize);
@@ -113,21 +121,24 @@ pub async fn run_raster(
         manifest
     });
 
-    // Spawn all work items eagerly; semaphore gates actual execution
+    // Spawn work items with backpressure; semaphore acquired before spawn
+    // to prevent eagerly queuing millions of tasks in memory.
     let mut join_handles = Vec::with_capacity(work_items.len());
     for item in work_items {
-        let permit = Arc::clone(&semaphore);
+        // Acquire permit BEFORE spawning to apply backpressure to the loop
+        let permit = Arc::clone(&semaphore)
+            .acquire_owned()
+            .await
+            .map_err(|e| io::Error::other(format!("semaphore closed: {e}")))?;
+
         let tx = tx.clone();
         let counter = Arc::clone(&counter);
         let total = total_cogs;
+        let s3 = s3.clone();
+        let local_pile_dir = local_pile_dir.clone();
 
         let handle = tokio::spawn(async move {
-            let _permit = permit
-                .acquire()
-                .await
-                .map_err(|e| io::Error::other(format!("semaphore closed: {e}")))?;
-
-            let entry = tokio::task::spawn_blocking(move || {
+            let cog_output = tokio::task::spawn_blocking(move || {
                 thread_local! {
                     static PIXEL_BUF: RefCell<Option<PixelBuffer>> = const { RefCell::new(None) };
                 }
@@ -135,24 +146,41 @@ pub async fn run_raster(
                 PIXEL_BUF.with(|cell| {
                     let mut opt = cell.borrow_mut();
                     let buf = opt.get_or_insert_with(|| PixelBuffer::new(item.config.dtype));
-                    write_cog_with_buffer(
-                        &item.config,
-                        &item.footprint,
-                        item.cog_id,
-                        &item.output_path,
-                        buf,
-                    )?;
+                    let bytes = write_cog_bytes(&item.config, &item.footprint, item.cog_id, buf)?;
 
-                    Ok::<ManifestEntry, io::Error>(ManifestEntry {
-                        footprint_id: item.footprint.id,
-                        cog_id: item.cog_id,
-                        bbox_4326: item.footprint.bbox_4326,
-                        epsg: item.footprint.epsg,
-                    })
+                    Ok::<(Vec<u8>, String, ManifestEntry), io::Error>((
+                        bytes,
+                        item.key,
+                        ManifestEntry {
+                            footprint_id: item.footprint.id,
+                            cog_id: item.cog_id,
+                            bbox_4326: item.footprint.bbox_4326,
+                            epsg: item.footprint.epsg,
+                        },
+                    ))
                 })
             })
             .await
             .map_err(|e| io::Error::other(format!("blocking task panicked: {e}")))??;
+
+            // Release permit after generation, before I/O — lets other workers
+            // start generating while this task uploads.
+            drop(permit);
+
+            let (bytes, key, entry) = cog_output;
+
+            // Write output: S3 upload or local file
+            if let Some((ref client, ref prefix)) = s3 {
+                let path = ObjectPath::from(format!("{}/{}", prefix, key));
+                let payload = Bytes::from(bytes);
+                client
+                    .put(&path, payload.into())
+                    .await
+                    .map_err(|e| io::Error::other(format!("S3 PUT failed: {e}")))?;
+            } else if let Some(ref pile_dir) = local_pile_dir {
+                let path = format!("{}/{}", pile_dir, key);
+                tokio::fs::write(&path, &bytes).await?;
+            }
 
             let n = counter.fetch_add(1, Ordering::Relaxed) + 1;
             if n.is_multiple_of(100) {

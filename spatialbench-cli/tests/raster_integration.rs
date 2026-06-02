@@ -28,10 +28,10 @@ fn raster_end_to_end_sf1_max2() {
     Command::cargo_bin("spatialbench-cli")
         .unwrap()
         .args([
+            "--tables",
+            "raster",
             "--scale-factor",
             "1",
-            "--raster-format",
-            "cog",
             "--max-footprints",
             "2",
             "--output-dir",
@@ -61,10 +61,10 @@ fn raster_end_to_end_sf1_max2() {
         .count();
     assert_eq!(cog_count, 16, "expected 16 COGs per footprint");
 
-    // Verify STAC catalogs
+    // Verify STAC catalogs (Narrow + Balanced; Wide is deferred)
     let stac_dir = dir.path().join("raster/stac");
     assert!(stac_dir.exists(), "stac directory missing");
-    for name in ["narrow", "balanced", "wide"] {
+    for name in ["narrow", "balanced"] {
         let path = stac_dir.join(format!("{name}.parquet"));
         assert!(path.exists(), "STAC {name}.parquet missing");
         let meta = std::fs::metadata(&path).unwrap();
@@ -74,16 +74,16 @@ fn raster_end_to_end_sf1_max2() {
 
 #[test]
 fn raster_without_vector() {
-    // When only --raster-format is set (no --tables), only raster output produced
+    // When only --tables raster is set, only raster output is produced
     let dir = tempdir().unwrap();
 
     Command::cargo_bin("spatialbench-cli")
         .unwrap()
         .args([
+            "--tables",
+            "raster",
             "--scale-factor",
             "1",
-            "--raster-format",
-            "cog",
             "--max-footprints",
             "1",
             "--output-dir",

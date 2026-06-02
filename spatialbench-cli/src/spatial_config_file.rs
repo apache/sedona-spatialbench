@@ -383,7 +383,7 @@ raster:
         let raster = cfg.raster.unwrap();
         assert_eq!(raster.resolution, 10);
         assert_eq!(raster.cog_width, 1024);
-        let cog_config = CogConfig::from(&raster);
+        let cog_config = raster.to_cog_config().unwrap();
         assert_eq!(cog_config.raster.resolution, 10);
         assert_eq!(cog_config.tile_size, 512);
     }

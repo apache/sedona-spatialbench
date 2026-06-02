@@ -45,6 +45,7 @@ use ::parquet::basic::Compression;
 use clap::builder::TypedValueParser;
 use clap::{Parser, ValueEnum};
 use log::{debug, info, LevelFilter};
+use object_store::ObjectStore;
 use spatialbench::distribution::Distributions;
 use spatialbench::spatial::overrides::{set_overrides, SpatialOverrides};
 use spatialbench::text::TextPool;
@@ -52,7 +53,6 @@ use spatialbench_raster::cog::CogConfig;
 use spatialbench_raster::footprint::FootprintGrid;
 use spatialbench_raster::scaling::scaling_tier;
 use spatialbench_raster::stac::write_stac_geoparquet;
-use object_store::ObjectStore;
 use spatialbench_raster::topology::Topology;
 use std::fmt::Display;
 use std::fs::{self, File};
@@ -423,7 +423,10 @@ impl Cli {
             let raster_dir = if output_str.starts_with("s3://") {
                 format!("{}/raster", output_str.trim_end_matches('/'))
             } else {
-                self.output_dir.join("raster").to_string_lossy().into_owned()
+                self.output_dir
+                    .join("raster")
+                    .to_string_lossy()
+                    .into_owned()
             };
             let manifest = raster_runner::run_raster(
                 &footprints,
@@ -454,14 +457,14 @@ impl Cli {
             // Write STAC geoparquet catalogs (Narrow + Balanced; Wide uses multi-band COGs)
             let is_s3 = raster_dir.starts_with("s3://");
             if is_s3 {
-                let (bucket, _) = crate::s3_writer::parse_s3_uri(&raster_dir)?;
+                let (bucket, prefix) = crate::s3_writer::parse_s3_uri(&raster_dir)?;
                 let client = crate::s3_writer::build_s3_client(&bucket)?;
                 for topo in Topology::SHARED_PILE {
                     let mut buf = Vec::new();
                     write_stac_geoparquet(&manifest, tier, topo, &mut buf, &pile_base_href)?;
                     let key = format!(
                         "{}/stac/{}.parquet",
-                        raster_dir.trim_start_matches("s3://").trim_start_matches(&bucket).trim_start_matches('/'),
+                        prefix.trim_end_matches('/'),
                         topo.dir_name()
                     );
                     let path = object_store::path::Path::from(key.as_str());
