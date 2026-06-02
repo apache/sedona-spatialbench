@@ -64,32 +64,6 @@ impl RasterDtype {
     }
 }
 
-/// Reusable pixel buffer for COG generation.
-///
-/// Holds a typed buffer matching the target [`RasterDtype`], avoiding
-/// intermediate allocations when generating noise directly into the
-/// target type. Each variant's inner `Vec` is reused across COGs on
-/// the same thread.
-pub enum PixelBuffer {
-    /// UInt8 pixel buffer.
-    U8(Vec<u8>),
-    /// UInt16 pixel buffer.
-    U16(Vec<u16>),
-    /// Float32 pixel buffer.
-    F32(Vec<f32>),
-}
-
-impl PixelBuffer {
-    /// Create a new empty buffer for the given dtype.
-    pub fn new(dtype: RasterDtype) -> Self {
-        match dtype {
-            RasterDtype::UInt8 => Self::U8(Vec::new()),
-            RasterDtype::UInt16 => Self::U16(Vec::new()),
-            RasterDtype::Float32 => Self::F32(Vec::new()),
-        }
-    }
-}
-
 /// Configuration for COG generation.
 ///
 /// Wraps a [`FootprintConfig`] (which defines pixel dimensions and resolution)
@@ -147,28 +121,10 @@ pub fn write_cog_bytes(
     config: &CogConfig,
     footprint: &Footprint,
     cog_id: u32,
-    pixel_buf: &mut PixelBuffer,
 ) -> io::Result<Vec<u8>> {
-    let width = config.raster.cog_width;
-    let height = config.raster.cog_height;
-
     let seed = (footprint.id as u64) << 32 | cog_id as u64;
     let noise = PerlinNoise::new(seed);
-
-    // Generate noise into the pixel buffer (reuses allocation)
-    match pixel_buf {
-        PixelBuffer::U8(buf) => {
-            noise.generate_raster_into(width, height, config.noise_frequency, buf);
-        }
-        PixelBuffer::U16(buf) => {
-            noise.generate_raster_u16_into(width, height, config.noise_frequency, buf);
-        }
-        PixelBuffer::F32(buf) => {
-            noise.generate_raster_f32_into(width, height, config.noise_frequency, buf);
-        }
-    }
-
-    encode_cog(config, footprint, pixel_buf)
+    encode_cog(config, footprint, &noise)
 }
 
 /// Write a single COG file to a local path.
@@ -184,21 +140,21 @@ pub fn write_cog(
     footprint: &Footprint,
     cog_id: u32,
     output_path: &Path,
-    pixel_buf: &mut PixelBuffer,
 ) -> io::Result<()> {
-    let bytes = write_cog_bytes(config, footprint, cog_id, pixel_buf)?;
+    let bytes = write_cog_bytes(config, footprint, cog_id)?;
     std::fs::write(output_path, &bytes)?;
     Ok(())
 }
 
-/// Encode pixel data into a COG byte buffer.
+/// Encode a COG byte buffer from a seeded noise field.
 ///
-/// Core encoding function that takes a filled [`PixelBuffer`] and produces
-/// a complete TIFF file in memory using the `tiff` crate's `DirectoryEncoder`.
+/// Core encoding function that generates pixels per tile (no whole-image
+/// buffer) and produces a complete TIFF file in memory using the `tiff`
+/// crate's `DirectoryEncoder`.
 fn encode_cog(
     config: &CogConfig,
     footprint: &Footprint,
-    pixel_buf: &PixelBuffer,
+    noise: &PerlinNoise,
 ) -> io::Result<Vec<u8>> {
     // Pre-allocate output buffer (~1 MB typical for 1830×1830 UInt8 ZSTD)
     let mut cursor = Cursor::new(Vec::with_capacity(1024 * 1024));
@@ -215,7 +171,7 @@ fn encode_cog(
     write_geotiff_tags(&mut dir, config, footprint)?;
 
     // Compress and write tiles, collecting offsets and byte counts
-    let (tile_offsets, tile_byte_counts) = write_tiles(&mut dir, config, pixel_buf)?;
+    let (tile_offsets, tile_byte_counts) = write_tiles(&mut dir, config, noise)?;
 
     // Write tile offset/count arrays
     dir.write_tag(Tag::TileOffsets, &tile_offsets[..])
@@ -563,11 +519,12 @@ fn write_geotiff_tags(
 fn write_tiles(
     dir: &mut tiff::encoder::DirectoryEncoder<&mut Cursor<Vec<u8>>, TiffKindStandard>,
     config: &CogConfig,
-    pixel_buf: &PixelBuffer,
+    noise: &PerlinNoise,
 ) -> io::Result<(Vec<u32>, Vec<u32>)> {
     let width = config.raster.cog_width;
     let height = config.raster.cog_height;
     let ts = config.tile_size;
+    let freq = config.noise_frequency;
     let bpp = config.dtype.bytes_per_pixel();
     let tiles_across = width.div_ceil(ts);
     let tiles_down = height.div_ceil(ts);
@@ -576,7 +533,9 @@ fn write_tiles(
     let mut tile_offsets = Vec::with_capacity(num_tiles);
     let mut tile_byte_counts = Vec::with_capacity(num_tiles);
 
-    // Pre-allocate tile buffer and ZSTD compressor (reused across all tiles)
+    // Pre-allocate tile buffer and ZSTD compressor (reused across all tiles).
+    // Noise is generated directly into each tile, so no whole-image buffer is
+    // ever materialized.
     let tile_byte_len = ts as usize * ts as usize * bpp;
     let mut tile_buf = vec![0u8; tile_byte_len];
     let mut compressor = zstd::bulk::Compressor::new(config.zstd_level)
@@ -584,7 +543,17 @@ fn write_tiles(
 
     for ty in 0..tiles_down {
         for tx in 0..tiles_across {
-            extract_tile_into(pixel_buf, width, height, ts, tx, ty, &mut tile_buf);
+            match config.dtype {
+                RasterDtype::UInt8 => {
+                    noise.generate_tile_u8_into(width, height, freq, ts, tx, ty, &mut tile_buf)
+                }
+                RasterDtype::UInt16 => {
+                    noise.generate_tile_u16_into(width, height, freq, ts, tx, ty, &mut tile_buf)
+                }
+                RasterDtype::Float32 => {
+                    noise.generate_tile_f32_into(width, height, freq, ts, tx, ty, &mut tile_buf)
+                }
+            }
             apply_predictor(&mut tile_buf, ts as usize, ts as usize, config.dtype);
             let compressed = compressor
                 .compress(&tile_buf)
@@ -684,74 +653,6 @@ fn apply_predictor(tile: &mut [u8], tile_width: usize, tile_height: usize, dtype
     }
 }
 
-/// Extract a single tile's raw bytes into a pre-allocated buffer.
-///
-/// Handles edge tiles that extend past the image boundary by zero-padding.
-/// Output is row-major, always `tile_size × tile_size × bytes_per_pixel` bytes.
-/// The buffer is zeroed first to handle edge padding cleanly.
-fn extract_tile_into(
-    pixel_buf: &PixelBuffer,
-    img_width: u32,
-    img_height: u32,
-    tile_size: u32,
-    tile_x: u32,
-    tile_y: u32,
-    out: &mut [u8],
-) {
-    out.fill(0);
-    let ts = tile_size as usize;
-    let w = img_width as usize;
-    let h = img_height as usize;
-    let x0 = (tile_x * tile_size) as usize;
-    let y0 = (tile_y * tile_size) as usize;
-
-    match pixel_buf {
-        PixelBuffer::U8(buf) => {
-            for row in 0..ts {
-                let sy = y0 + row;
-                if sy >= h {
-                    break;
-                }
-                let copy_cols = ts.min(w.saturating_sub(x0));
-                let src_start = sy * w + x0;
-                let dst_start = row * ts;
-                out[dst_start..dst_start + copy_cols]
-                    .copy_from_slice(&buf[src_start..src_start + copy_cols]);
-            }
-        }
-        PixelBuffer::U16(buf) => {
-            let bpp = 2;
-            for row in 0..ts {
-                let sy = y0 + row;
-                if sy >= h {
-                    break;
-                }
-                let copy_cols = ts.min(w.saturating_sub(x0));
-                for col in 0..copy_cols {
-                    let pixel = buf[sy * w + x0 + col];
-                    let dst = (row * ts + col) * bpp;
-                    out[dst..dst + 2].copy_from_slice(&pixel.to_le_bytes());
-                }
-            }
-        }
-        PixelBuffer::F32(buf) => {
-            let bpp = 4;
-            for row in 0..ts {
-                let sy = y0 + row;
-                if sy >= h {
-                    break;
-                }
-                let copy_cols = ts.min(w.saturating_sub(x0));
-                for col in 0..copy_cols {
-                    let pixel = buf[sy * w + x0 + col];
-                    let dst = (row * ts + col) * bpp;
-                    out[dst..dst + 4].copy_from_slice(&pixel.to_le_bytes());
-                }
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -786,9 +687,8 @@ mod tests {
     fn cog_bytes_valid_tiff() {
         let config = CogConfig::default();
         let fp = test_footprint();
-        let mut buf = PixelBuffer::new(config.dtype);
 
-        let bytes = write_cog_bytes(&config, &fp, 0, &mut buf).unwrap();
+        let bytes = write_cog_bytes(&config, &fp, 0).unwrap();
 
         // Verify TIFF header magic bytes (little-endian: 0x49 0x49 0x2A 0x00)
         assert!(bytes.len() > 8);
@@ -803,10 +703,9 @@ mod tests {
     fn cog_bytes_deterministic() {
         let config = CogConfig::default();
         let fp = test_footprint();
-        let mut buf = PixelBuffer::new(config.dtype);
 
-        let a = write_cog_bytes(&config, &fp, 7, &mut buf).unwrap();
-        let b = write_cog_bytes(&config, &fp, 7, &mut buf).unwrap();
+        let a = write_cog_bytes(&config, &fp, 7).unwrap();
+        let b = write_cog_bytes(&config, &fp, 7).unwrap();
         assert_eq!(a, b);
     }
 
@@ -814,32 +713,48 @@ mod tests {
     fn cog_bytes_different_seeds_differ() {
         let config = CogConfig::default();
         let fp = test_footprint();
-        let mut buf = PixelBuffer::new(config.dtype);
 
-        let a = write_cog_bytes(&config, &fp, 0, &mut buf).unwrap();
-        let b = write_cog_bytes(&config, &fp, 1, &mut buf).unwrap();
+        let a = write_cog_bytes(&config, &fp, 0).unwrap();
+        let b = write_cog_bytes(&config, &fp, 1).unwrap();
         assert_ne!(a, b);
     }
 
+    /// Byte-for-byte guard against the pre-per-tile implementation. Hashes are
+    /// captured from `main` (whole-image generate + extract path) for a fixed
+    /// config; per-tile generation must reproduce them exactly. If these break,
+    /// the COG output changed — investigate before updating the constants.
     #[test]
-    fn cog_bytes_buffer_reuse() {
-        let config = CogConfig::default();
-        let fp = test_footprint();
-        let mut buf = PixelBuffer::new(config.dtype);
-
-        let _ = write_cog_bytes(&config, &fp, 0, &mut buf).unwrap();
-        let cap = match &buf {
-            PixelBuffer::U8(v) => v.capacity(),
-            _ => panic!("expected U8 buffer"),
+    fn cog_bytes_golden() {
+        use std::hash::{Hash, Hasher};
+        let fp = Footprint {
+            id: 3,
+            epsg: 32614,
+            origin: (500_000.0, 4_000_000.0),
+            bbox_4326: [-100.0, 35.0, -99.0, 36.0],
         };
-        let _ = write_cog_bytes(&config, &fp, 1, &mut buf).unwrap();
-        assert_eq!(
-            match &buf {
-                PixelBuffer::U8(v) => v.capacity(),
-                _ => panic!("expected U8 buffer"),
-            },
-            cap
-        );
+        let cases = [
+            (RasterDtype::UInt8, 7826usize, 0x3722b80ef66da018u64),
+            (RasterDtype::UInt16, 19109, 0x9d8a2712b512d47c),
+            (RasterDtype::Float32, 32448, 0x14616d811c77befe),
+        ];
+        for (dtype, len, hash) in cases {
+            let config = CogConfig {
+                raster: FootprintConfig {
+                    cog_width: 100,
+                    cog_height: 100,
+                    resolution: 60,
+                },
+                tile_size: 32,
+                noise_frequency: 8.0,
+                dtype,
+                zstd_level: 6,
+            };
+            let bytes = write_cog_bytes(&config, &fp, 5).unwrap();
+            assert_eq!(bytes.len(), len, "{dtype:?} length changed");
+            let mut h = std::collections::hash_map::DefaultHasher::new();
+            bytes.hash(&mut h);
+            assert_eq!(h.finish(), hash, "{dtype:?} bytes changed");
+        }
     }
 
     /// Test with dimensions that aren't a multiple of tile_size.
@@ -849,9 +764,8 @@ mod tests {
     fn cog_bytes_edge_tiles() {
         let config = CogConfig::default();
         let fp = test_footprint();
-        let mut buf = PixelBuffer::new(config.dtype);
 
-        let bytes = write_cog_bytes(&config, &fp, 0, &mut buf).unwrap();
+        let bytes = write_cog_bytes(&config, &fp, 0).unwrap();
         assert!(!bytes.is_empty());
     }
 
@@ -862,9 +776,8 @@ mod tests {
     fn cog_strict_layout() {
         let config = CogConfig::default();
         let fp = test_footprint();
-        let mut buf = PixelBuffer::new(config.dtype);
 
-        let bytes = write_cog_bytes(&config, &fp, 0, &mut buf).unwrap();
+        let bytes = write_cog_bytes(&config, &fp, 0).unwrap();
 
         // Ghost header should be present after the 8-byte TIFF header
         let ghost_marker = b"GDAL_STRUCTURAL_METADATA_SIZE=";
@@ -897,8 +810,7 @@ mod tests {
                 dtype,
                 ..CogConfig::default()
             };
-            let mut buf = PixelBuffer::new(dtype);
-            let bytes = write_cog_bytes(&config, &fp, 0, &mut buf).unwrap();
+            let bytes = write_cog_bytes(&config, &fp, 0).unwrap();
             assert!(!bytes.is_empty(), "empty COG for {:?}", dtype);
         }
     }
@@ -909,9 +821,8 @@ mod tests {
         let path = dir.path().join("test.tif");
         let config = CogConfig::default();
         let fp = test_footprint();
-        let mut buf = PixelBuffer::new(config.dtype);
 
-        write_cog(&config, &fp, 0, &path, &mut buf).unwrap();
+        write_cog(&config, &fp, 0, &path).unwrap();
 
         let file_bytes = std::fs::read(&path).unwrap();
         assert!(file_bytes.len() > 100);
@@ -923,9 +834,8 @@ mod tests {
     fn gdal_validates_cog() {
         let config = CogConfig::default();
         let fp = test_footprint();
-        let mut buf = PixelBuffer::new(config.dtype);
 
-        let bytes = write_cog_bytes(&config, &fp, 0, &mut buf).unwrap();
+        let bytes = write_cog_bytes(&config, &fp, 0).unwrap();
 
         let dir = tempdir().unwrap();
         let path = dir.path().join("test.tif");
@@ -966,8 +876,7 @@ mod tests {
             ..CogConfig::default()
         };
         let fp = test_footprint();
-        let mut buf = PixelBuffer::new(config.dtype);
-        let bytes = write_cog_bytes(&config, &fp, 0, &mut buf).unwrap();
+        let bytes = write_cog_bytes(&config, &fp, 0).unwrap();
 
         let dir = tempdir().unwrap();
         let path = dir.path().join("test_u16.tif");
@@ -994,8 +903,7 @@ mod tests {
             ..CogConfig::default()
         };
         let fp = test_footprint();
-        let mut buf = PixelBuffer::new(config.dtype);
-        let bytes = write_cog_bytes(&config, &fp, 0, &mut buf).unwrap();
+        let bytes = write_cog_bytes(&config, &fp, 0).unwrap();
 
         let dir = tempdir().unwrap();
         let path = dir.path().join("test_f32.tif");

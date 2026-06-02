@@ -105,8 +105,7 @@ impl PerlinNoise {
         buf.clear();
         buf.reserve(len.saturating_sub(buf.capacity()));
         self.generate_noise(width, height, frequency, |val| {
-            let pixel = ((val + 1.0) * 0.5).clamp(0.0, 1.0) * 255.0;
-            buf.push(pixel as u8);
+            buf.push(noise_to_u8(val));
         });
     }
 
@@ -136,8 +135,7 @@ impl PerlinNoise {
         buf.clear();
         buf.reserve(len.saturating_sub(buf.capacity()));
         self.generate_noise(width, height, frequency, |val| {
-            let normalized = ((val + 1.0) * 0.5).clamp(0.0, 1.0);
-            buf.push((normalized * 65535.0) as u16);
+            buf.push(noise_to_u16(val));
         });
     }
 
@@ -155,7 +153,7 @@ impl PerlinNoise {
         buf.clear();
         buf.reserve(len.saturating_sub(buf.capacity()));
         self.generate_noise(width, height, frequency, |val| {
-            buf.push(((val + 1.0) * 0.5).clamp(0.0, 1.0));
+            buf.push(noise_to_f32(val));
         });
     }
 
@@ -194,6 +192,171 @@ impl PerlinNoise {
             }
         }
     }
+
+    /// Invoke `emit(local_index, noise_value)` for every in-bounds pixel of the
+    /// tile at `(tile_x, tile_y)`. `local_index` is the row-major index within
+    /// the `tile_size × tile_size` tile (`ly * tile_size + lx`). Pixels past the
+    /// image edge are not emitted — the caller zero-fills first.
+    ///
+    /// Uses the same global coordinates and arithmetic as [`Self::generate_noise`],
+    /// so values are bit-identical to the whole-image path at the same pixel.
+    /// Generating per tile avoids materializing the whole-image pixel buffer.
+    // Image geometry + tile coordinates + output is an irreducible arg set for
+    // a noise primitive; bundling would only obscure the call sites.
+    #[allow(clippy::too_many_arguments)]
+    #[inline]
+    fn generate_tile(
+        &self,
+        img_width: u32,
+        img_height: u32,
+        frequency: f32,
+        tile_size: u32,
+        tile_x: u32,
+        tile_y: u32,
+        mut emit: impl FnMut(usize, f32),
+    ) {
+        let inv_w = frequency / img_width as f32;
+        let inv_h = frequency / img_height as f32;
+        let ts = tile_size as usize;
+        let w = img_width as usize;
+        let h = img_height as usize;
+        let x0 = tile_x as usize * ts;
+        let y0 = tile_y as usize * ts;
+
+        for ly in 0..ts {
+            let gy = y0 + ly;
+            if gy >= h {
+                break;
+            }
+            let y = gy as f32 * inv_h;
+            let yi_raw = y.floor() as i32;
+            let yf = y - y.floor();
+            let v = fade(yf);
+            let yi = (yi_raw & 255) as usize;
+
+            for lx in 0..ts {
+                let gx = x0 + lx;
+                if gx >= w {
+                    break;
+                }
+                let x = gx as f32 * inv_w;
+                let xi_raw = x.floor() as i32;
+                let xf = x - x.floor();
+                let u = fade(xf);
+                let xi = (xi_raw & 255) as usize;
+
+                let p_xi = self.perm[xi] as usize;
+                let p_xi1 = self.perm[xi + 1] as usize;
+                let aa = self.perm[p_xi + yi] as usize;
+                let ab = self.perm[p_xi + yi + 1] as usize;
+                let ba = self.perm[p_xi1 + yi] as usize;
+                let bb = self.perm[p_xi1 + yi + 1] as usize;
+
+                let x1 = lerp(grad(aa, xf, yf), grad(ba, xf - 1.0, yf), u);
+                let x2 = lerp(grad(ab, xf, yf - 1.0), grad(bb, xf - 1.0, yf - 1.0), u);
+                emit(ly * ts + lx, lerp(x1, x2, v));
+            }
+        }
+    }
+
+    /// Fill a UInt8 tile (`tile_size² × 1` bytes). Edge padding is zero.
+    #[allow(clippy::too_many_arguments)]
+    pub fn generate_tile_u8_into(
+        &self,
+        img_width: u32,
+        img_height: u32,
+        frequency: f32,
+        tile_size: u32,
+        tile_x: u32,
+        tile_y: u32,
+        out: &mut [u8],
+    ) {
+        out.fill(0);
+        self.generate_tile(
+            img_width,
+            img_height,
+            frequency,
+            tile_size,
+            tile_x,
+            tile_y,
+            |idx, val| out[idx] = noise_to_u8(val),
+        );
+    }
+
+    /// Fill a UInt16 tile (`tile_size² × 2` bytes, little-endian). Edge padding is zero.
+    #[allow(clippy::too_many_arguments)]
+    pub fn generate_tile_u16_into(
+        &self,
+        img_width: u32,
+        img_height: u32,
+        frequency: f32,
+        tile_size: u32,
+        tile_x: u32,
+        tile_y: u32,
+        out: &mut [u8],
+    ) {
+        out.fill(0);
+        self.generate_tile(
+            img_width,
+            img_height,
+            frequency,
+            tile_size,
+            tile_x,
+            tile_y,
+            |idx, val| {
+                let b = noise_to_u16(val).to_le_bytes();
+                out[idx * 2..idx * 2 + 2].copy_from_slice(&b);
+            },
+        );
+    }
+
+    /// Fill a Float32 tile (`tile_size² × 4` bytes, little-endian). Edge padding is zero.
+    #[allow(clippy::too_many_arguments)]
+    pub fn generate_tile_f32_into(
+        &self,
+        img_width: u32,
+        img_height: u32,
+        frequency: f32,
+        tile_size: u32,
+        tile_x: u32,
+        tile_y: u32,
+        out: &mut [u8],
+    ) {
+        out.fill(0);
+        self.generate_tile(
+            img_width,
+            img_height,
+            frequency,
+            tile_size,
+            tile_x,
+            tile_y,
+            |idx, val| {
+                let b = noise_to_f32(val).to_le_bytes();
+                out[idx * 4..idx * 4 + 4].copy_from_slice(&b);
+            },
+        );
+    }
+}
+
+/// Map raw Perlin noise in `[-1, 1]` to a UInt8 pixel.
+///
+/// Shared by the whole-image (`generate_raster_into`) and per-tile
+/// (`generate_tile_u8_into`) paths so they produce identical bytes.
+#[inline]
+pub(crate) fn noise_to_u8(val: f32) -> u8 {
+    (((val + 1.0) * 0.5).clamp(0.0, 1.0) * 255.0) as u8
+}
+
+/// Map raw Perlin noise in `[-1, 1]` to a UInt16 pixel.
+#[inline]
+pub(crate) fn noise_to_u16(val: f32) -> u16 {
+    (((val + 1.0) * 0.5).clamp(0.0, 1.0) * 65535.0) as u16
+}
+
+/// Map raw Perlin noise in `[-1, 1]` to a Float32 pixel in `[0, 1]`.
+#[inline]
+pub(crate) fn noise_to_f32(val: f32) -> f32 {
+    ((val + 1.0) * 0.5).clamp(0.0, 1.0)
 }
 
 /// Simple LCG for permutation table shuffling (Numerical Recipes constants).
@@ -306,7 +469,6 @@ mod tests {
         n.generate_raster_u16_into(128, 128, 8.0, &mut buf);
         let min = *buf.iter().min().unwrap();
         let max = *buf.iter().max().unwrap();
-        assert!(max <= 65535);
         assert!(
             max - min > 10000,
             "expected u16 variation, got [{min}, {max}]"
@@ -340,5 +502,112 @@ mod tests {
         let cap = buf.capacity();
         n.generate_raster_u16_into(32, 32, 4.0, &mut buf);
         assert_eq!(buf.capacity(), cap, "buffer should not reallocate");
+    }
+
+    /// Per-tile generation must produce bytes identical to extracting the same
+    /// tile from the whole-image buffer — including edge tiles (100 is not a
+    /// multiple of 32). This is the load-bearing bit-identity guard.
+    #[test]
+    fn tile_matches_whole_image() {
+        let (w, h, ts, freq) = (100u32, 100u32, 32u32, 8.0f32);
+        let n = PerlinNoise::new(0xABCD);
+        let tiles_across = w.div_ceil(ts);
+        let tiles_down = h.div_ceil(ts);
+
+        // UInt8
+        let mut whole_u8 = Vec::new();
+        n.generate_raster_into(w, h, freq, &mut whole_u8);
+        // UInt16
+        let mut whole_u16 = Vec::new();
+        n.generate_raster_u16_into(w, h, freq, &mut whole_u16);
+        // Float32
+        let mut whole_f32 = Vec::new();
+        n.generate_raster_f32_into(w, h, freq, &mut whole_f32);
+
+        for ty in 0..tiles_down {
+            for tx in 0..tiles_across {
+                // UInt8 (1 byte/px)
+                let mut tile = vec![0u8; (ts * ts) as usize];
+                n.generate_tile_u8_into(w, h, freq, ts, tx, ty, &mut tile);
+                let expected = extract_ref(w, h, ts, tx, ty, 1, |px, out| out[0] = whole_u8[px]);
+                assert_eq!(tile, expected, "u8 tile ({tx},{ty})");
+
+                // UInt16 (2 bytes/px, LE)
+                let mut tile = vec![0u8; (ts * ts * 2) as usize];
+                n.generate_tile_u16_into(w, h, freq, ts, tx, ty, &mut tile);
+                let expected = extract_ref(w, h, ts, tx, ty, 2, |px, out| {
+                    out.copy_from_slice(&whole_u16[px].to_le_bytes());
+                });
+                assert_eq!(tile, expected, "u16 tile ({tx},{ty})");
+
+                // Float32 (4 bytes/px, LE)
+                let mut tile = vec![0u8; (ts * ts * 4) as usize];
+                n.generate_tile_f32_into(w, h, freq, ts, tx, ty, &mut tile);
+                let expected = extract_ref(w, h, ts, tx, ty, 4, |px, out| {
+                    out.copy_from_slice(&whole_f32[px].to_le_bytes());
+                });
+                assert_eq!(tile, expected, "f32 tile ({tx},{ty})");
+            }
+        }
+    }
+
+    /// Reference tile extractor: zero-pad a tile and copy each in-bounds pixel
+    /// from the whole-image buffer via `write_px(global_pixel_index, dst_slice)`.
+    fn extract_ref(
+        w: u32,
+        h: u32,
+        ts: u32,
+        tx: u32,
+        ty: u32,
+        bpp: usize,
+        mut write_px: impl FnMut(usize, &mut [u8]),
+    ) -> Vec<u8> {
+        let ts = ts as usize;
+        let (w, h) = (w as usize, h as usize);
+        let (x0, y0) = (tx as usize * ts, ty as usize * ts);
+        let mut out = vec![0u8; ts * ts * bpp];
+        for ly in 0..ts {
+            let gy = y0 + ly;
+            if gy >= h {
+                break;
+            }
+            for lx in 0..ts {
+                let gx = x0 + lx;
+                if gx >= w {
+                    break;
+                }
+                let dst = (ly * ts + lx) * bpp;
+                write_px(gy * w + gx, &mut out[dst..dst + bpp]);
+            }
+        }
+        out
+    }
+
+    /// Edge tile beyond the image bounds is zero-padded; in-bounds pixels match.
+    #[test]
+    fn tile_edge_is_zero_padded() {
+        let (w, h, ts, freq) = (40u32, 40u32, 32u32, 8.0f32);
+        let n = PerlinNoise::new(7);
+        let mut whole = Vec::new();
+        n.generate_raster_u16_into(w, h, freq, &mut whole);
+
+        // Tile (1,1) covers global 32..64 in both axes; only 32..40 is valid.
+        let mut tile = vec![0u8; (ts * ts * 2) as usize];
+        n.generate_tile_u16_into(w, h, freq, ts, 1, 1, &mut tile);
+
+        let ts = ts as usize;
+        for ly in 0..ts {
+            for lx in 0..ts {
+                let (gx, gy) = (32 + lx, 32 + ly);
+                let dst = (ly * ts + lx) * 2;
+                let bytes = [tile[dst], tile[dst + 1]];
+                if gx < w as usize && gy < h as usize {
+                    let expected = whole[gy * w as usize + gx].to_le_bytes();
+                    assert_eq!(bytes, expected, "in-bounds ({gx},{gy})");
+                } else {
+                    assert_eq!(bytes, [0, 0], "padding ({gx},{gy}) must be zero");
+                }
+            }
+        }
     }
 }

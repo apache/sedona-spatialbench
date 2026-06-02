@@ -31,7 +31,7 @@
 
 use crate::s3_writer::{build_s3_client, parse_s3_uri};
 
-use spatialbench_raster::cog::{write_cog_bytes, CogConfig, PixelBuffer};
+use spatialbench_raster::cog::{write_cog_bytes, CogConfig};
 use spatialbench_raster::footprint::Footprint;
 use spatialbench_raster::scaling::ScalingTier;
 use spatialbench_raster::ManifestEntry;
@@ -42,7 +42,6 @@ use log::info;
 use object_store::path::Path as ObjectPath;
 use object_store::ObjectStore;
 
-use std::cell::RefCell;
 use std::collections::HashSet;
 use std::io;
 use std::path::Path;
@@ -269,17 +268,11 @@ fn filter_pending(work: Vec<CogWorkItem>, existing: &HashSet<String>) -> Vec<Cog
         .collect()
 }
 
-/// Generate one COG's bytes, reusing a thread-local pixel buffer.
+/// Generate one COG's bytes. Noise is generated per tile inside
+/// `write_cog_bytes`, so there is no large per-COG buffer to pool.
 fn generate_cog(item: CogWorkItem) -> io::Result<(Vec<u8>, String)> {
-    thread_local! {
-        static PIXEL_BUF: RefCell<Option<PixelBuffer>> = const { RefCell::new(None) };
-    }
-    PIXEL_BUF.with(|cell| {
-        let mut opt = cell.borrow_mut();
-        let buf = opt.get_or_insert_with(|| PixelBuffer::new(item.config.dtype));
-        let bytes = write_cog_bytes(&item.config, &item.footprint, item.cog_id, buf)?;
-        Ok((bytes, item.key))
-    })
+    let bytes = write_cog_bytes(&item.config, &item.footprint, item.cog_id)?;
+    Ok((bytes, item.key))
 }
 
 /// Run the bounded two-stage pipeline over `items`, writing to `sink`.
