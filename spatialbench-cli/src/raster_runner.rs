@@ -17,12 +17,17 @@
 
 //! Parallel raster COG generation pipeline.
 //!
-//! Uses a semaphore-bounded pool of `spawn_blocking` workers, each with a
-//! thread-local pixel buffer reused across COGs. Manifest entries flow back
-//! through a bounded `mpsc` channel.
+//! A bounded two-stage `futures` stream: a CPU stage generates COG bytes in
+//! `spawn_blocking` workers (each with a thread-local pixel buffer reused
+//! across COGs), and an I/O stage writes them to a local directory or uploads
+//! to S3. The two stages have independent concurrency limits, so peak memory
+//! is a function of concurrency — not the total number of COGs — making
+//! multi-TB runs memory-safe regardless of size.
 //!
-//! For S3 output, COGs are encoded to `Vec<u8>` in memory and uploaded via
-//! `object_store::put()`. For local output, bytes are written to files.
+//! With `resume`, COGs already present at the destination are skipped (both
+//! generation and upload). The returned manifest is always built from the full
+//! work list, so the STAC catalog covers the whole pile even on a resume that
+//! generates nothing.
 
 use crate::s3_writer::{build_s3_client, parse_s3_uri};
 
@@ -32,71 +37,212 @@ use spatialbench_raster::scaling::ScalingTier;
 use spatialbench_raster::ManifestEntry;
 
 use bytes::Bytes;
+use futures::stream::{StreamExt, TryStreamExt};
 use log::info;
 use object_store::path::Path as ObjectPath;
 use object_store::ObjectStore;
-use tokio::sync::{mpsc, Semaphore};
 
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::io;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+
+/// Default memory budget for in-flight COG buffers when none is supplied: 8 GiB.
+const DEFAULT_RASTER_MEMORY_BUDGET_BYTES: u64 = 8 * 1024 * 1024 * 1024;
 
 /// A single unit of work: generate one COG.
 #[derive(Clone)]
 struct CogWorkItem {
     footprint: Footprint,
     cog_id: u32,
-    /// Relative path within the output directory (e.g., "pile/00000/0000.tif").
+    /// Pile-relative key, e.g. "00000/0000.tif".
     key: String,
     config: CogConfig,
 }
 
-/// Generate COGs for all footprints in parallel and return manifest entries.
-///
-/// Pipeline:
-/// 1. Pre-create all footprint directories (skipped for S3 output).
-/// 2. Spawn all work items eagerly; semaphore gates concurrency to `num_threads`.
-/// 3. Each `spawn_blocking` worker uses a `thread_local!` pixel buffer.
-/// 4. COG bytes are written to local files or uploaded to S3 via `object_store`.
-/// 5. Manifest entries flow through a bounded `mpsc` channel.
-/// 6. A collector task drains the channel into `Vec<ManifestEntry>`.
-pub async fn run_raster(
-    footprints: &[Footprint],
-    tier: &ScalingTier,
-    cog_config: &CogConfig,
-    output_dir: &str,
-    num_threads: usize,
-) -> io::Result<Vec<ManifestEntry>> {
-    let is_s3 = output_dir.starts_with("s3://");
-    let total_cogs = footprints.len() as u64 * tier.scenes_per_footprint as u64;
+/// Destination for generated COG bytes. Keys are relative to the pile root,
+/// formatted as "{fp:05}/{cog:04}.tif" (matches [`CogWorkItem::key`]).
+enum OutputSink {
+    Local {
+        /// Path to the `pile` directory.
+        pile_dir: String,
+    },
+    S3 {
+        client: Arc<dyn ObjectStore>,
+        /// Object-key prefix up to (not including) the trailing slash,
+        /// e.g. "output/raster/pile".
+        prefix: String,
+    },
+    /// Instrumented sink for pipeline tests: counts puts, tracks concurrent
+    /// in-flight puts, and can inject latency or a failure.
+    #[cfg(test)]
+    Test {
+        inflight: Arc<std::sync::atomic::AtomicUsize>,
+        max_inflight: Arc<std::sync::atomic::AtomicUsize>,
+        put_count: Arc<AtomicU64>,
+        /// 1-based put index that should return an error (`None` = never).
+        fail_at: Option<u64>,
+        delay_ms: u64,
+    },
+}
 
-    // Build S3 client if needed, otherwise prepare local pile directory
-    let s3 = if is_s3 {
-        let (bucket, prefix) = parse_s3_uri(output_dir.trim_end_matches('/'))?;
-        let client = build_s3_client(&bucket)?;
-        Some((client, format!("{}/pile", prefix)))
-    } else {
-        None
-    };
-
-    let local_pile_dir = if !is_s3 {
-        let p = Path::new(output_dir).join("pile");
-        Some(p.to_string_lossy().into_owned())
-    } else {
-        None
-    };
-
-    // Phase 1: Pre-create directories (local only; S3 has no directories)
-    if let Some(ref pile_dir) = local_pile_dir {
-        for fp in footprints {
-            std::fs::create_dir_all(format!("{}/{:05}", pile_dir, fp.id))?;
+impl OutputSink {
+    /// Write one COG. `key` is the pile-relative key, e.g. "00007/0003.tif".
+    async fn put(&self, key: &str, bytes: Vec<u8>) -> io::Result<()> {
+        match self {
+            OutputSink::Local { pile_dir } => {
+                let path = format!("{pile_dir}/{key}");
+                tokio::fs::write(&path, &bytes).await
+            }
+            OutputSink::S3 { client, prefix } => {
+                let path = ObjectPath::from(format!("{prefix}/{key}"));
+                client
+                    .put(&path, Bytes::from(bytes).into())
+                    .await
+                    .map(|_| ())
+                    .map_err(|e| io::Error::other(format!("S3 PUT failed: {e}")))
+            }
+            #[cfg(test)]
+            OutputSink::Test {
+                inflight,
+                max_inflight,
+                put_count,
+                fail_at,
+                delay_ms,
+            } => {
+                let cur = inflight.fetch_add(1, Ordering::SeqCst) + 1;
+                max_inflight.fetch_max(cur, Ordering::SeqCst);
+                if *delay_ms > 0 {
+                    tokio::time::sleep(std::time::Duration::from_millis(*delay_ms)).await;
+                }
+                let n = put_count.fetch_add(1, Ordering::SeqCst) + 1;
+                inflight.fetch_sub(1, Ordering::SeqCst);
+                if Some(n) == *fail_at {
+                    return Err(io::Error::other("injected put failure"));
+                }
+                Ok(())
+            }
         }
     }
 
-    // Phase 2: Build work items
-    let mut work_items = Vec::with_capacity(total_cogs as usize);
+    /// Return the set of pile-relative keys ("{fp:05}/{cog:04}.tif") that
+    /// already exist at this destination. Used only for `resume`.
+    async fn existing_keys(&self) -> io::Result<HashSet<String>> {
+        match self {
+            OutputSink::Local { pile_dir } => local_existing_keys(pile_dir),
+            OutputSink::S3 { client, prefix } => s3_existing_keys(client, prefix).await,
+            #[cfg(test)]
+            OutputSink::Test { .. } => Ok(HashSet::new()),
+        }
+    }
+}
+
+/// List existing pile objects in S3 with one paginated LIST and strip the
+/// prefix down to pile-relative `.tif` keys.
+async fn s3_existing_keys(
+    client: &Arc<dyn ObjectStore>,
+    prefix: &str,
+) -> io::Result<HashSet<String>> {
+    let list_prefix = ObjectPath::from(prefix);
+    let mut stream = client.list(Some(&list_prefix));
+    let strip = format!("{prefix}/");
+    let mut keys = HashSet::new();
+    while let Some(meta) = stream.next().await {
+        let meta = meta.map_err(|e| io::Error::other(format!("S3 LIST failed: {e}")))?;
+        if let Some(rel) = meta.location.as_ref().strip_prefix(&strip) {
+            if rel.ends_with(".tif") {
+                keys.insert(rel.to_string());
+            }
+        }
+    }
+    Ok(keys)
+}
+
+/// Walk a local pile directory (`pile/{fp}/{cog}.tif`) collecting existing
+/// pile-relative keys. A missing pile directory yields an empty set.
+fn local_existing_keys(pile_dir: &str) -> io::Result<HashSet<String>> {
+    let mut keys = HashSet::new();
+    let root = Path::new(pile_dir);
+    if !root.exists() {
+        return Ok(keys);
+    }
+    for fp_entry in std::fs::read_dir(root)? {
+        let fp_entry = fp_entry?;
+        if !fp_entry.file_type()?.is_dir() {
+            continue;
+        }
+        let fp_name = fp_entry.file_name();
+        let fp_name = fp_name.to_string_lossy();
+        for cog_entry in std::fs::read_dir(fp_entry.path())? {
+            let cog_entry = cog_entry?;
+            let cog_name = cog_entry.file_name();
+            let cog_name = cog_name.to_string_lossy();
+            if cog_name.ends_with(".tif") {
+                keys.insert(format!("{fp_name}/{cog_name}"));
+            }
+        }
+    }
+    Ok(keys)
+}
+
+/// Resolved concurrency limits for the two pipeline stages.
+#[derive(Debug, Clone, Copy)]
+struct RasterConcurrency {
+    /// CPU-bound generation stage.
+    gen: usize,
+    /// Network/memory-bound output stage.
+    upload: usize,
+}
+
+impl RasterConcurrency {
+    /// Derive limits.
+    ///
+    /// - `gen` = `num_threads`.
+    /// - `upload` = `clamp(memory_budget / est_cog_bytes, gen, 4 * gen)`,
+    ///   unless `upload_override` is `Some`, which wins (clamped to `>= 1`).
+    ///
+    /// `est_cog_bytes` is the conservative per-in-flight-COG memory unit (raw
+    /// pixel size); raw ≥ compressed output, so this keeps peak memory under
+    /// budget even for incompressible data.
+    fn resolve(
+        num_threads: usize,
+        est_cog_bytes: u64,
+        memory_budget_bytes: u64,
+        upload_override: Option<usize>,
+    ) -> Self {
+        let gen = num_threads.max(1);
+        let upload = match upload_override {
+            Some(u) => u.max(1),
+            None => {
+                let by_budget = (memory_budget_bytes / est_cog_bytes.max(1)) as usize;
+                by_budget.clamp(gen, gen * 4)
+            }
+        };
+        Self { gen, upload }
+    }
+}
+
+/// Raw bytes of one COG's pixel buffer — the dominant in-flight memory unit.
+fn est_cog_bytes(cog: &CogConfig) -> u64 {
+    cog.raster.cog_width as u64
+        * cog.raster.cog_height as u64
+        * cog.dtype.bytes_per_pixel() as u64
+}
+
+/// Build the full work list and the full deterministic manifest.
+///
+/// The manifest is independent of which COGs are later skipped or generated,
+/// so the STAC catalog always describes the entire pile.
+fn build_work_and_manifest(
+    footprints: &[Footprint],
+    tier: &ScalingTier,
+    cog_config: &CogConfig,
+) -> (Vec<CogWorkItem>, Vec<ManifestEntry>) {
+    let cap = footprints.len() * tier.scenes_per_footprint as usize;
+    let mut work_items = Vec::with_capacity(cap);
+    let mut manifest = Vec::with_capacity(cap);
     for fp in footprints {
         for cog_id in 0..tier.scenes_per_footprint {
             work_items.push(CogWorkItem {
@@ -105,115 +251,435 @@ pub async fn run_raster(
                 key: format!("{:05}/{:04}.tif", fp.id, cog_id),
                 config: *cog_config,
             });
+            manifest.push(ManifestEntry {
+                footprint_id: fp.id,
+                cog_id,
+                bbox_4326: fp.bbox_4326,
+                epsg: fp.epsg,
+            });
         }
     }
+    (work_items, manifest)
+}
 
-    // Phase 3: Parallel execution
-    let semaphore = Arc::new(Semaphore::new(num_threads));
+/// Drop work items whose key already exists at the destination.
+fn filter_pending(work: Vec<CogWorkItem>, existing: &HashSet<String>) -> Vec<CogWorkItem> {
+    work.into_iter()
+        .filter(|w| !existing.contains(&w.key))
+        .collect()
+}
+
+/// Generate one COG's bytes, reusing a thread-local pixel buffer.
+fn generate_cog(item: CogWorkItem) -> io::Result<(Vec<u8>, String)> {
+    thread_local! {
+        static PIXEL_BUF: RefCell<Option<PixelBuffer>> = const { RefCell::new(None) };
+    }
+    PIXEL_BUF.with(|cell| {
+        let mut opt = cell.borrow_mut();
+        let buf = opt.get_or_insert_with(|| PixelBuffer::new(item.config.dtype));
+        let bytes = write_cog_bytes(&item.config, &item.footprint, item.cog_id, buf)?;
+        Ok((bytes, item.key))
+    })
+}
+
+/// Run the bounded two-stage pipeline over `items`, writing to `sink`.
+///
+/// Stage 1 (CPU) generates at most `conc.gen` COGs concurrently; stage 2 (I/O)
+/// writes at most `conc.upload` concurrently. Because the stages are chained,
+/// the CPU stage cannot run more than ~`conc.gen` ahead of the I/O stage, so
+/// peak in-flight COGs ≈ `gen + upload` — independent of `items.len()`.
+async fn run_pipeline(
+    sink: Arc<OutputSink>,
+    items: Vec<CogWorkItem>,
+    conc: RasterConcurrency,
+    total_cogs: u64,
+) -> io::Result<()> {
     let counter = Arc::new(AtomicU64::new(0));
-    let (tx, mut rx) = mpsc::channel::<ManifestEntry>(num_threads * 2);
-    // Collector task
-    let collector = tokio::spawn(async move {
-        let mut manifest = Vec::with_capacity(total_cogs as usize);
-        while let Some(entry) = rx.recv().await {
-            manifest.push(entry);
-        }
-        manifest
-    });
 
-    // Spawn work items with backpressure; semaphore acquired before spawn
-    // to prevent eagerly queuing millions of tasks in memory.
-    let mut join_handles = Vec::with_capacity(work_items.len());
-    for item in work_items {
-        // Acquire permit BEFORE spawning to apply backpressure to the loop
-        let permit = Arc::clone(&semaphore)
-            .acquire_owned()
-            .await
-            .map_err(|e| io::Error::other(format!("semaphore closed: {e}")))?;
-
-        let tx = tx.clone();
-        let counter = Arc::clone(&counter);
-        let total = total_cogs;
-        let s3 = s3.clone();
-        let local_pile_dir = local_pile_dir.clone();
-
-        let handle = tokio::spawn(async move {
-            let cog_output = tokio::task::spawn_blocking(move || {
-                thread_local! {
-                    static PIXEL_BUF: RefCell<Option<PixelBuffer>> = const { RefCell::new(None) };
-                }
-
-                PIXEL_BUF.with(|cell| {
-                    let mut opt = cell.borrow_mut();
-                    let buf = opt.get_or_insert_with(|| PixelBuffer::new(item.config.dtype));
-                    let bytes = write_cog_bytes(&item.config, &item.footprint, item.cog_id, buf)?;
-
-                    Ok::<(Vec<u8>, String, ManifestEntry), io::Error>((
-                        bytes,
-                        item.key,
-                        ManifestEntry {
-                            footprint_id: item.footprint.id,
-                            cog_id: item.cog_id,
-                            bbox_4326: item.footprint.bbox_4326,
-                            epsg: item.footprint.epsg,
-                        },
-                    ))
-                })
-            })
-            .await
-            .map_err(|e| io::Error::other(format!("blocking task panicked: {e}")))??;
-
-            // Release permit after generation, before I/O — lets other workers
-            // start generating while this task uploads.
-            drop(permit);
-
-            let (bytes, key, entry) = cog_output;
-
-            // Write output: S3 upload or local file
-            if let Some((ref client, ref prefix)) = s3 {
-                let path = ObjectPath::from(format!("{}/{}", prefix, key));
-                let payload = Bytes::from(bytes);
-                client
-                    .put(&path, payload.into())
-                    .await
-                    .map_err(|e| io::Error::other(format!("S3 PUT failed: {e}")))?;
-            } else if let Some(ref pile_dir) = local_pile_dir {
-                let path = format!("{}/{}", pile_dir, key);
-                tokio::fs::write(&path, &bytes).await?;
-            }
-
-            let n = counter.fetch_add(1, Ordering::Relaxed) + 1;
-            if n.is_multiple_of(100) {
-                info!("generated {n}/{total} COGs");
-            }
-
-            tx.send(entry)
+    futures::stream::iter(items.into_iter())
+        // Stage 1 (CPU): generate bytes off the async runtime.
+        .map(|item| async move {
+            tokio::task::spawn_blocking(move || generate_cog(item))
                 .await
-                .map_err(|e| io::Error::other(format!("channel send failed: {e}")))?;
-
-            Ok::<(), io::Error>(())
-        });
-        join_handles.push(handle);
-    }
-
-    // Wait for all workers, propagating first error
-    for handle in join_handles {
-        handle
-            .await
-            .map_err(|e| io::Error::other(format!("task join failed: {e}")))??;
-    }
-
-    // Drop sender so collector finishes
-    drop(tx);
-    let manifest = collector
+                .map_err(|e| io::Error::other(format!("blocking task panicked: {e}")))?
+        })
+        .buffer_unordered(conc.gen)
+        // Stage 2 (I/O): write/upload, bounded independently.
+        .map(|res: io::Result<(Vec<u8>, String)>| {
+            let sink = Arc::clone(&sink);
+            let counter = Arc::clone(&counter);
+            async move {
+                let (bytes, key) = res?;
+                sink.put(&key, bytes).await?;
+                let n = counter.fetch_add(1, Ordering::Relaxed) + 1;
+                if n.is_multiple_of(100) {
+                    info!("generated {n}/{total_cogs} COGs");
+                }
+                Ok::<(), io::Error>(())
+            }
+        })
+        .buffer_unordered(conc.upload)
+        .try_for_each(|()| async { Ok(()) })
         .await
-        .map_err(|e| io::Error::other(format!("collector task failed: {e}")))?;
+}
 
+/// Parameters for [`run_raster`].
+pub struct RunRasterArgs<'a> {
+    pub footprints: &'a [Footprint],
+    pub tier: &'a ScalingTier,
+    pub cog_config: &'a CogConfig,
+    pub output_dir: &'a str,
+    pub num_threads: usize,
+    /// Skip COGs already present at the destination (LIST/walk on start).
+    pub resume: bool,
+    /// Explicit output-stage concurrency; `None` auto-derives from budget.
+    pub upload_concurrency: Option<usize>,
+    /// In-flight memory budget in bytes; `None` uses the 8 GiB default.
+    pub memory_budget_bytes: Option<u64>,
+}
+
+/// Generate COGs for all footprints and return manifest entries.
+///
+/// See the module docs for the pipeline shape. Output goes to a local `pile`
+/// directory or, for `s3://` URIs, to S3.
+pub async fn run_raster(args: RunRasterArgs<'_>) -> io::Result<Vec<ManifestEntry>> {
+    let RunRasterArgs {
+        footprints,
+        tier,
+        cog_config,
+        output_dir,
+        num_threads,
+        resume,
+        upload_concurrency,
+        memory_budget_bytes,
+    } = args;
+
+    // Build the output sink.
+    let sink = if output_dir.starts_with("s3://") {
+        let (bucket, prefix) = parse_s3_uri(output_dir.trim_end_matches('/'))?;
+        let client = build_s3_client(&bucket)?;
+        OutputSink::S3 {
+            client,
+            prefix: format!("{prefix}/pile"),
+        }
+    } else {
+        let pile_dir = Path::new(output_dir)
+            .join("pile")
+            .to_string_lossy()
+            .into_owned();
+        OutputSink::Local { pile_dir }
+    };
+
+    // Pre-create local footprint directories (S3 has no directories).
+    if let OutputSink::Local { ref pile_dir } = sink {
+        for fp in footprints {
+            std::fs::create_dir_all(format!("{pile_dir}/{:05}", fp.id))?;
+        }
+    }
+
+    let (work_items, manifest) = build_work_and_manifest(footprints, tier, cog_config);
+    let total_cogs = work_items.len() as u64;
+
+    // Resume: drop already-present COGs.
+    let pending = if resume {
+        let existing = sink.existing_keys().await?;
+        let before = work_items.len();
+        let pending = filter_pending(work_items, &existing);
+        info!(
+            "resume: {} of {} COGs already present, generating {}",
+            before - pending.len(),
+            before,
+            pending.len()
+        );
+        pending
+    } else {
+        work_items
+    };
+
+    let conc = RasterConcurrency::resolve(
+        num_threads,
+        est_cog_bytes(cog_config),
+        memory_budget_bytes.unwrap_or(DEFAULT_RASTER_MEMORY_BUDGET_BYTES),
+        upload_concurrency,
+    );
     info!(
-        "generated {}/{} COGs (complete)",
-        counter.load(Ordering::Relaxed),
-        total_cogs
+        "raster pipeline: gen_concurrency={}, upload_concurrency={}, pending={}",
+        conc.gen,
+        conc.upload,
+        pending.len()
     );
 
+    run_pipeline(Arc::new(sink), pending, conc, total_cogs).await?;
+
+    info!("generated {} COGs (complete)", total_cogs);
     Ok(manifest)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use object_store::memory::InMemory;
+    use spatialbench_raster::cog::RasterDtype;
+    use spatialbench_raster::footprint::FootprintConfig;
+    use std::sync::atomic::AtomicUsize;
+
+    fn tiny_cog_config() -> CogConfig {
+        CogConfig {
+            raster: FootprintConfig {
+                cog_width: 64,
+                cog_height: 64,
+                resolution: 60,
+            },
+            tile_size: 32,
+            noise_frequency: 4.0,
+            dtype: RasterDtype::UInt8,
+            zstd_level: 1,
+        }
+    }
+
+    fn footprint(id: u32) -> Footprint {
+        Footprint {
+            id,
+            epsg: 32614,
+            origin: (500_000.0, 4_000_000.0),
+            bbox_4326: [-100.0, 35.0, -99.0, 36.0],
+        }
+    }
+
+    fn tier(scenes: u32) -> ScalingTier {
+        ScalingTier {
+            sf: 1,
+            scenes_per_footprint: scenes,
+            narrow: (1, scenes),
+            balanced: (1, scenes),
+            wide: (1, scenes),
+        }
+    }
+
+    // ---- RasterConcurrency::resolve ----
+
+    #[test]
+    fn resolve_budget_caps_low() {
+        // 1 GiB / 241 MB ≈ 4, clamped up to gen.
+        let c = RasterConcurrency::resolve(12, 241_000_000, 1024 * 1024 * 1024, None);
+        assert_eq!(c.gen, 12);
+        assert_eq!(c.upload, 12);
+    }
+
+    #[test]
+    fn resolve_budget_mid() {
+        let c = RasterConcurrency::resolve(12, 241_000_000, 8 * 1024 * 1024 * 1024, None);
+        assert_eq!(c.upload, 35); // 8 GiB / 241 MB
+    }
+
+    #[test]
+    fn resolve_budget_huge_clamps_to_4x() {
+        let c = RasterConcurrency::resolve(12, 241_000_000, 1024u64.pow(4), None);
+        assert_eq!(c.upload, 48);
+    }
+
+    #[test]
+    fn resolve_override_wins() {
+        let c = RasterConcurrency::resolve(12, 241_000_000, 8 * 1024 * 1024 * 1024, Some(5));
+        assert_eq!(c.upload, 5);
+    }
+
+    #[test]
+    fn resolve_override_floor_is_one() {
+        let c = RasterConcurrency::resolve(12, 241_000_000, 8 * 1024 * 1024 * 1024, Some(0));
+        assert_eq!(c.upload, 1);
+    }
+
+    #[test]
+    fn resolve_est_zero_no_panic() {
+        let c = RasterConcurrency::resolve(12, 0, 8 * 1024 * 1024 * 1024, None);
+        assert_eq!(c.upload, 48);
+    }
+
+    // ---- OutputSink round-trips ----
+
+    #[tokio::test]
+    async fn s3_put_and_list_roundtrip() {
+        let store: Arc<dyn ObjectStore> = Arc::new(InMemory::new());
+        let sink = OutputSink::S3 {
+            client: Arc::clone(&store),
+            prefix: "out/raster/pile".to_string(),
+        };
+        sink.put("00000/0000.tif", vec![1, 2, 3]).await.unwrap();
+        // A non-.tif object under the prefix must be excluded.
+        store
+            .put(
+                &ObjectPath::from("out/raster/pile/_marker.txt"),
+                Bytes::from_static(b"x").into(),
+            )
+            .await
+            .unwrap();
+
+        let keys = sink.existing_keys().await.unwrap();
+        assert_eq!(keys, HashSet::from(["00000/0000.tif".to_string()]));
+    }
+
+    #[tokio::test]
+    async fn local_put_and_walk_roundtrip() {
+        let dir = tempfile::tempdir().unwrap();
+        let pile_dir = dir.path().join("pile").to_string_lossy().into_owned();
+        std::fs::create_dir_all(format!("{pile_dir}/00000")).unwrap();
+        std::fs::create_dir_all(format!("{pile_dir}/00001")).unwrap();
+        let sink = OutputSink::Local {
+            pile_dir: pile_dir.clone(),
+        };
+        sink.put("00000/0000.tif", vec![1]).await.unwrap();
+        sink.put("00001/0003.tif", vec![2]).await.unwrap();
+        // Stray non-.tif file must be excluded.
+        std::fs::write(format!("{pile_dir}/00000/notes.txt"), b"x").unwrap();
+
+        let keys = sink.existing_keys().await.unwrap();
+        assert_eq!(
+            keys,
+            HashSet::from(["00000/0000.tif".to_string(), "00001/0003.tif".to_string()])
+        );
+    }
+
+    #[tokio::test]
+    async fn existing_keys_empty_destination() {
+        let store: Arc<dyn ObjectStore> = Arc::new(InMemory::new());
+        let s3 = OutputSink::S3 {
+            client: store,
+            prefix: "out/pile".to_string(),
+        };
+        assert!(s3.existing_keys().await.unwrap().is_empty());
+
+        let dir = tempfile::tempdir().unwrap();
+        let local = OutputSink::Local {
+            pile_dir: dir.path().join("pile").to_string_lossy().into_owned(),
+        };
+        assert!(local.existing_keys().await.unwrap().is_empty());
+    }
+
+    // ---- work list + manifest + resume filter ----
+
+    #[test]
+    fn work_and_manifest_cover_all_pairs() {
+        let fps = [footprint(0), footprint(1)];
+        let (work, manifest) = build_work_and_manifest(&fps, &tier(3), &tiny_cog_config());
+        assert_eq!(work.len(), 6);
+        assert_eq!(manifest.len(), 6);
+        let keys: HashSet<_> = work.iter().map(|w| w.key.clone()).collect();
+        for fp in 0..2 {
+            for cog in 0..3 {
+                assert!(keys.contains(&format!("{fp:05}/{cog:04}.tif")));
+            }
+        }
+    }
+
+    #[test]
+    fn filter_pending_drops_existing_only() {
+        let fps = [footprint(0)];
+        let (work, _) = build_work_and_manifest(&fps, &tier(4), &tiny_cog_config());
+        let existing = HashSet::from(["00000/0000.tif".to_string(), "00000/0002.tif".to_string()]);
+        let pending = filter_pending(work, &existing);
+        assert_eq!(pending.len(), 2);
+        assert!(pending.iter().all(|w| !existing.contains(&w.key)));
+    }
+
+    // ---- run_raster end-to-end (local) ----
+
+    #[tokio::test]
+    async fn run_raster_local_generates_then_resumes() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().to_string_lossy().into_owned();
+        let fps = [footprint(0), footprint(1)];
+        let tier = tier(2);
+        let cfg = tiny_cog_config();
+
+        let args = |resume| RunRasterArgs {
+            footprints: &fps,
+            tier: &tier,
+            cog_config: &cfg,
+            output_dir: &out,
+            num_threads: 2,
+            resume,
+            upload_concurrency: None,
+            memory_budget_bytes: None,
+        };
+
+        let manifest = run_raster(args(false)).await.unwrap();
+        assert_eq!(manifest.len(), 4);
+        let pile = dir.path().join("pile");
+        let count_tifs = || {
+            let mut n = 0;
+            for fp in std::fs::read_dir(&pile).unwrap() {
+                for cog in std::fs::read_dir(fp.unwrap().path()).unwrap() {
+                    if cog.unwrap().file_name().to_string_lossy().ends_with(".tif") {
+                        n += 1;
+                    }
+                }
+            }
+            n
+        };
+        assert_eq!(count_tifs(), 4);
+
+        // Resume: manifest still full, files still present (skipped).
+        let manifest2 = run_raster(args(true)).await.unwrap();
+        assert_eq!(manifest2.len(), 4);
+        assert_eq!(count_tifs(), 4);
+    }
+
+    // ---- run_pipeline: backpressure + error propagation ----
+
+    fn pipeline_items(n: u32) -> Vec<CogWorkItem> {
+        let cfg = tiny_cog_config();
+        let (work, _) = build_work_and_manifest(&[footprint(0)], &tier(n), &cfg);
+        work
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn pipeline_upload_stage_is_bounded() {
+        // Slow uploads + many items: the upload stage must never exceed its
+        // configured concurrency, regardless of how many items exist. This is
+        // the memory-safety invariant (output buffers live in the upload stage).
+        let inflight = Arc::new(AtomicUsize::new(0));
+        let max_inflight = Arc::new(AtomicUsize::new(0));
+        let put_count = Arc::new(AtomicU64::new(0));
+        let sink = Arc::new(OutputSink::Test {
+            inflight: Arc::clone(&inflight),
+            max_inflight: Arc::clone(&max_inflight),
+            put_count: Arc::clone(&put_count),
+            fail_at: None,
+            delay_ms: 5,
+        });
+        let conc = RasterConcurrency {
+            gen: 4,
+            upload: 3,
+        };
+        let items = pipeline_items(60);
+        run_pipeline(sink, items, conc, 60).await.unwrap();
+
+        assert_eq!(put_count.load(Ordering::SeqCst), 60);
+        assert!(
+            max_inflight.load(Ordering::SeqCst) <= conc.upload,
+            "upload in-flight {} exceeded limit {}",
+            max_inflight.load(Ordering::SeqCst),
+            conc.upload
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn pipeline_propagates_put_error() {
+        let sink = Arc::new(OutputSink::Test {
+            inflight: Arc::new(AtomicUsize::new(0)),
+            max_inflight: Arc::new(AtomicUsize::new(0)),
+            put_count: Arc::new(AtomicU64::new(0)),
+            fail_at: Some(3),
+            delay_ms: 0,
+        });
+        let conc = RasterConcurrency {
+            gen: 2,
+            upload: 2,
+        };
+        let err = run_pipeline(sink, pipeline_items(20), conc, 20)
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("injected put failure"));
+    }
 }

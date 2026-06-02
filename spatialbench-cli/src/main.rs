@@ -148,6 +148,23 @@ struct Cli {
     /// Maximum number of raster footprints to generate (limits output size for fast iteration).
     #[arg(long)]
     max_footprints: Option<u32>,
+
+    /// Skip raster COGs already present at the output destination (and skip
+    /// re-uploading them). Assumes existing COGs were generated with the same
+    /// configuration (frequency/dtype/dimensions) — changing config and
+    /// resuming will keep stale COGs. Default: off (overwrite).
+    #[arg(long, default_value_t = false)]
+    resume: bool,
+
+    /// Max concurrent raster output operations (S3 PUTs / file writes).
+    /// Defaults to an auto-derived value from --raster-memory-budget-mb.
+    #[arg(long)]
+    raster_upload_concurrency: Option<usize>,
+
+    /// Memory budget (MiB) for in-flight raster COG buffers; controls the
+    /// auto-derived upload concurrency. Default: 8192.
+    #[arg(long)]
+    raster_memory_budget_mb: Option<u64>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -428,13 +445,16 @@ impl Cli {
                     .to_string_lossy()
                     .into_owned()
             };
-            let manifest = raster_runner::run_raster(
-                &footprints,
+            let manifest = raster_runner::run_raster(raster_runner::RunRasterArgs {
+                footprints: &footprints,
                 tier,
-                &cog_config,
-                &raster_dir,
-                self.num_threads,
-            )
+                cog_config: &cog_config,
+                output_dir: &raster_dir,
+                num_threads: self.num_threads,
+                resume: self.resume,
+                upload_concurrency: self.raster_upload_concurrency,
+                memory_budget_bytes: self.raster_memory_budget_mb.map(|mb| mb * 1024 * 1024),
+            })
             .await?;
 
             info!("generated {} manifest entries", manifest.len());
