@@ -117,12 +117,17 @@ pub struct RasterConfig {
     /// Internal COG tile size (pixels per side).
     #[serde(default = "default_tile_size")]
     pub tile_size: u32,
-    /// Perlin noise frequency.
+    /// Perlin noise frequency. Primary knob for compression ratio: higher
+    /// frequency = higher entropy = lower ratio. At 10980² UInt16, ~128 yields
+    /// the ~2× ratio typical of real Sentinel-2 L2A 10m bands.
     #[serde(default = "default_noise_frequency")]
     pub noise_frequency: f32,
     /// Pixel data type: "uint8", "uint16", "float32".
     #[serde(default = "default_dtype")]
     pub dtype: String,
+    /// ZSTD compression level (1=fastest .. 22). See [`CogConfig::zstd_level`].
+    #[serde(default = "default_zstd_level")]
+    pub zstd_level: i32,
     /// Continent for spatial coverage. Valid values:
     /// "south_north_america" (default), "north_north_america", "europe",
     /// "africa", "south_asia", "north_asia", "oceania", "south_america".
@@ -144,6 +149,9 @@ fn default_tile_size() -> u32 {
 }
 fn default_noise_frequency() -> f32 {
     8.0
+}
+fn default_zstd_level() -> i32 {
+    6
 }
 fn default_dtype() -> String {
     "uint8".to_string()
@@ -195,6 +203,7 @@ impl Default for RasterConfig {
             tile_size: default_tile_size(),
             noise_frequency: default_noise_frequency(),
             dtype: default_dtype(),
+            zstd_level: default_zstd_level(),
             continent: default_continent(),
         }
     }
@@ -213,6 +222,7 @@ impl RasterConfig {
             tile_size: self.tile_size,
             noise_frequency: self.noise_frequency,
             dtype,
+            zstd_level: self.zstd_level,
         })
     }
 }

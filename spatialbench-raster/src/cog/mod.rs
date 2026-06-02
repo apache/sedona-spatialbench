@@ -102,10 +102,19 @@ pub struct CogConfig {
     pub raster: FootprintConfig,
     /// Internal tile size (pixels per side).
     pub tile_size: u32,
-    /// Perlin noise frequency (controls spatial detail per tile).
+    /// Perlin noise frequency. Higher values raise spatial detail (entropy),
+    /// which lowers the achievable compression ratio. This is the primary
+    /// knob for matching real-world raster compression ratios: at 10980×10980
+    /// UInt16, ~128 yields ~2× (typical Sentinel-2 L2A 10m), whereas low
+    /// values like 8–16 produce unrealistically compressible (~8×) data.
     pub noise_frequency: f32,
     /// Pixel data type.
     pub dtype: RasterDtype,
+    /// ZSTD compression level (1=fastest .. 22). Controls generation speed and,
+    /// secondarily, ratio. Once data entropy is realistic (high frequency),
+    /// higher levels buy little ratio for significant time, so 6 is a good
+    /// default; raise toward 9 only if squeezing the last few percent matters.
+    pub zstd_level: i32,
 }
 
 impl Default for CogConfig {
@@ -115,6 +124,7 @@ impl Default for CogConfig {
             tile_size: 256,
             noise_frequency: 8.0,
             dtype: RasterDtype::default(),
+            zstd_level: 6,
         }
     }
 }
@@ -542,15 +552,14 @@ fn write_geotiff_tags(
     Ok(())
 }
 
-/// ZSTD compression level matching GDAL's COG driver default.
-const ZSTD_LEVEL: i32 = 9;
-
 /// Compress and write all tiles, returning offset and byte count arrays.
 ///
-/// Applies horizontal differencing predictor before ZSTD compression
-/// for integer types (Predictor=2) and floating-point predictor for
-/// float types (Predictor=3). This matches GDAL best practices and
-/// improves compression 20-40% for spatially correlated data.
+/// Compression uses ZSTD (TIFF tag 50000) at `config.zstd_level` with a
+/// horizontal differencing predictor (Predictor=2 for integers, 3 for floats).
+/// Note this is more aggressive than GDAL's COG defaults (LZW, no predictor);
+/// ZSTD + predictor better mimics analysis-ready imagery pipelines. The
+/// achievable ratio is governed by data entropy (`noise_frequency`), not the
+/// level — see [`CogConfig::noise_frequency`].
 fn write_tiles(
     dir: &mut tiff::encoder::DirectoryEncoder<&mut Cursor<Vec<u8>>, TiffKindStandard>,
     config: &CogConfig,
@@ -570,7 +579,7 @@ fn write_tiles(
     // Pre-allocate tile buffer and ZSTD compressor (reused across all tiles)
     let tile_byte_len = ts as usize * ts as usize * bpp;
     let mut tile_buf = vec![0u8; tile_byte_len];
-    let mut compressor = zstd::bulk::Compressor::new(ZSTD_LEVEL)
+    let mut compressor = zstd::bulk::Compressor::new(config.zstd_level)
         .map_err(|e| io::Error::other(format!("ZSTD compressor init failed: {e}")))?;
 
     for ty in 0..tiles_down {

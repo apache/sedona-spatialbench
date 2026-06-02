@@ -43,3 +43,15 @@ building:
     pareto_xm_city: 1.0
     pareto_alpha_sub: 1.00
     pareto_xm_sub: 1.0
+
+raster:
+  resolution: 10
+  cog_width: 10980
+  cog_height: 10980
+  tile_size: 512
+  # Tuned so compression ratio (~2x) matches real Sentinel-2 L2A 10m bands,
+  # giving realistic per-COG byte volume / decompression load for the engine.
+  noise_frequency: 128.0
+  zstd_level: 6
+  dtype: uint16
+  continent: south_north_america
