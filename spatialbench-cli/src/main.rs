@@ -468,8 +468,9 @@ impl Cli {
                         topo.dir_name()
                     );
                     let path = object_store::path::Path::from(key.as_str());
-                    let rt = tokio::runtime::Handle::current();
-                    rt.block_on(client.put(&path, buf.into()))
+                    client
+                        .put(&path, buf.into())
+                        .await
                         .map_err(|e| io::Error::other(format!("S3 upload failed: {e}")))?;
                     info!("wrote STAC catalog: s3://{}/{}", bucket, key);
                 }
