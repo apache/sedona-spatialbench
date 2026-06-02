@@ -117,9 +117,10 @@ pub struct RasterConfig {
     /// Internal COG tile size (pixels per side).
     #[serde(default = "default_tile_size")]
     pub tile_size: u32,
-    /// Perlin noise frequency. Primary knob for compression ratio: higher
-    /// frequency = higher entropy = lower ratio. At 10980² UInt16, ~128 yields
-    /// the ~2× ratio typical of real Sentinel-2 L2A 10m bands.
+    /// Perlin noise frequency. Low-level knob for compression ratio: higher
+    /// frequency = higher entropy = lower ratio. Dimension- and dtype-specific
+    /// (e.g. ~112 yields ~2× only at 10980² UInt16). Ignored when
+    /// `target_compression_ratio` is set.
     #[serde(default = "default_noise_frequency")]
     pub noise_frequency: f32,
     /// Pixel data type: "uint8", "uint16", "float32".
@@ -128,6 +129,13 @@ pub struct RasterConfig {
     /// ZSTD compression level (1=fastest .. 22). See [`CogConfig::zstd_level`].
     #[serde(default = "default_zstd_level")]
     pub zstd_level: i32,
+    /// Optional target compression ratio (raw / compressed, e.g. 2.0). When set,
+    /// `noise_frequency` is calibrated at startup to hit this ratio for the
+    /// configured dtype/dimensions/zstd_level, and the configured/default
+    /// `noise_frequency` is ignored. Must be > 1.0. Prefer this over hand-tuning
+    /// `noise_frequency`, which is dimension- and dtype-specific.
+    #[serde(default)]
+    pub target_compression_ratio: Option<f32>,
     /// Continent for spatial coverage. Valid values:
     /// "south_north_america" (default), "north_north_america", "europe",
     /// "africa", "south_asia", "north_asia", "oceania", "south_america".
@@ -204,6 +212,7 @@ impl Default for RasterConfig {
             noise_frequency: default_noise_frequency(),
             dtype: default_dtype(),
             zstd_level: default_zstd_level(),
+            target_compression_ratio: None,
             continent: default_continent(),
         }
     }
@@ -211,8 +220,20 @@ impl Default for RasterConfig {
 
 impl RasterConfig {
     /// Convert to [`CogConfig`], parsing the dtype string.
+    ///
+    /// Note: `target_compression_ratio` is validated here but applied by the
+    /// caller (it requires a calibration pass over sample tiles), so this
+    /// conversion stays pure. `noise_frequency` is passed through as-is.
     pub fn to_cog_config(&self) -> io::Result<CogConfig> {
         let dtype = parse_dtype(&self.dtype)?;
+        if let Some(r) = self.target_compression_ratio {
+            if !(r.is_finite() && r > 1.0) {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    format!("target_compression_ratio must be a finite value > 1.0, got {r}"),
+                ));
+            }
+        }
         Ok(CogConfig {
             raster: FootprintConfig {
                 cog_width: self.cog_width,
@@ -403,5 +424,32 @@ raster:
         let yaml = "trip:\n  dist_type: uniform\n  geom_type: point\n  dim: 2\n  seed: 42\n  width: 1.0\n  height: 1.0\n  maxseg: 5\n  polysize: 0.5\n  params:\n    type: none";
         let cfg = parse_yaml(yaml).unwrap();
         assert!(cfg.raster.is_none());
+    }
+
+    #[test]
+    fn target_ratio_parses_when_present() {
+        let raster = parse_yaml("raster:\n  target_compression_ratio: 2.5")
+            .unwrap()
+            .raster
+            .unwrap();
+        assert_eq!(raster.target_compression_ratio, Some(2.5));
+    }
+
+    #[test]
+    fn target_ratio_absent_is_none() {
+        let raster = parse_yaml("raster: {}").unwrap().raster.unwrap();
+        assert_eq!(raster.target_compression_ratio, None);
+    }
+
+    #[test]
+    fn target_ratio_invalid_rejected() {
+        for bad in ["1.0", "0.5", ".nan"] {
+            let raster = parse_yaml(&format!("raster:\n  target_compression_ratio: {bad}"))
+                .unwrap()
+                .raster
+                .unwrap();
+            let err = raster.to_cog_config().unwrap_err();
+            assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+        }
     }
 }

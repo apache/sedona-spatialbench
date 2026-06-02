@@ -508,6 +508,144 @@ fn write_geotiff_tags(
     Ok(())
 }
 
+/// Frequency search domain for ratio calibration.
+const CALIB_FREQ_MIN: f32 = 2.0;
+const CALIB_FREQ_MAX: f32 = 2048.0;
+/// Geometric step for the coarse sweep that maps the descending arm.
+const CALIB_SWEEP_STEP: f32 = 1.3;
+/// Sample an N×N block of full interior tiles per probe (cheap, representative).
+const CALIB_TILES: u32 = 4;
+/// Bisection iterations to refine within the bracketed sub-interval.
+const CALIB_ITERS: usize = 12;
+
+/// Result of calibrating `noise_frequency` to a target compression ratio.
+#[derive(Debug, Clone, Copy)]
+pub struct CalibrationResult {
+    /// Resolved frequency to use for generation.
+    pub frequency: f32,
+    /// Ratio actually achieved by the sample at `frequency`.
+    pub achieved_ratio: f32,
+    /// True if `target_ratio` was outside the achievable range and `frequency`
+    /// was clamped to the nearest end of the achievable (smooth-noise) arm.
+    pub clamped: bool,
+}
+
+/// Resolve the `noise_frequency` that yields ~`target_ratio` for this config's
+/// dtype, dimensions, tile size, and zstd level.
+///
+/// Ratio vs frequency is **not globally monotonic**: it falls as smooth-gradient
+/// detail rises, reaches a minimum, then rises again once the frequency is high
+/// enough that aliasing/periodicity sets in (and collapses entirely at
+/// integer-lattice frequencies, where Perlin is 0). Only the initial *descending
+/// arm* is genuine smooth-noise — the realistic regime. So we walk that arm with
+/// a coarse geometric sweep, stop when the ratio turns back up, and bisect within
+/// it. At realistic dimensions (e.g. 10980²) the arm spans the whole useful
+/// range (~1.1×–6×); small images have a shorter arm (higher minimum ratio), in
+/// which case an out-of-range target clamps to the arm end.
+///
+/// Deterministic: fixed seed (0), fixed sample tiles, fixed sweep/bisection —
+/// the same `(config, target_ratio)` always yields the same frequency. The
+/// caller should log the result. Cost is a few dozen small-tile compressions
+/// (sub-second), negligible vs a real run.
+///
+/// # Errors
+///
+/// Returns `io::Error` if ZSTD compression fails during a probe.
+pub fn calibrate_frequency(
+    config: &CogConfig,
+    target_ratio: f32,
+) -> io::Result<CalibrationResult> {
+    // Coarse geometric sweep along the descending arm, stopping as soon as we
+    // bracket the target (or leave the smooth arm / hit the cap). Stopping early
+    // keeps both startup and tests cheap.
+    let mut prev: Option<(f32, f32)> = None;
+    let mut freq = CALIB_FREQ_MIN;
+    loop {
+        let r = measure_ratio(config, freq)?;
+        match prev {
+            // First probe: if the target is already at/above the highest ratio,
+            // the lowest frequency is the best we can do.
+            None => {
+                if target_ratio >= r {
+                    return Ok(CalibrationResult { frequency: freq, achieved_ratio: r, clamped: true });
+                }
+            }
+            Some((pf, pr)) => {
+                if r >= pr {
+                    // Ratio turned back up → end of the smooth arm at `prev`, and
+                    // the target is below the arm's minimum → clamp to the arm end.
+                    return Ok(CalibrationResult { frequency: pf, achieved_ratio: pr, clamped: true });
+                }
+                if r <= target_ratio {
+                    // Bracketed: ratio(pf) > target >= ratio(freq). Bisect within
+                    // [pf, freq] — monotonic on the arm, so this is well-defined.
+                    let (mut lo, mut hi) = (pf, freq);
+                    let (mut mid, mut mid_ratio) = (freq, r);
+                    for _ in 0..CALIB_ITERS {
+                        mid = 0.5 * (lo + hi);
+                        mid_ratio = measure_ratio(config, mid)?;
+                        if mid_ratio > target_ratio {
+                            lo = mid; // ratio too high → need more frequency
+                        } else {
+                            hi = mid; // ratio too low → back off frequency
+                        }
+                    }
+                    return Ok(CalibrationResult { frequency: mid, achieved_ratio: mid_ratio, clamped: false });
+                }
+            }
+        }
+        if freq >= CALIB_FREQ_MAX {
+            // Hit the cap with ratio still above target → clamp to the cap.
+            return Ok(CalibrationResult { frequency: freq, achieved_ratio: r, clamped: true });
+        }
+        prev = Some((freq, r));
+        freq = (freq * CALIB_SWEEP_STEP).min(CALIB_FREQ_MAX);
+    }
+}
+
+/// Average compression ratio (raw / compressed) over a small block of full
+/// interior tiles, using the exact per-tile pipeline as [`write_tiles`]
+/// (noise → predictor → ZSTD). The Perlin field is statistically homogeneous,
+/// so a fixed seed and any interior tiles are representative.
+fn measure_ratio(config: &CogConfig, freq: f32) -> io::Result<f32> {
+    let noise = PerlinNoise::new(0);
+    let (w, h, ts) = (
+        config.raster.cog_width,
+        config.raster.cog_height,
+        config.tile_size,
+    );
+    let bpp = config.dtype.bytes_per_pixel();
+    // Clamp the sample block to the available grid (tiny configs / tests).
+    let nx = CALIB_TILES.min(w.div_ceil(ts));
+    let ny = CALIB_TILES.min(h.div_ceil(ts));
+    let mut tile_buf = vec![0u8; ts as usize * ts as usize * bpp];
+    let mut compressor = zstd::bulk::Compressor::new(config.zstd_level)
+        .map_err(|e| io::Error::other(format!("ZSTD compressor init failed: {e}")))?;
+    let (mut raw, mut comp) = (0usize, 0usize);
+    for ty in 0..ny {
+        for tx in 0..nx {
+            match config.dtype {
+                RasterDtype::UInt8 => {
+                    noise.generate_tile_u8_into(w, h, freq, ts, tx, ty, &mut tile_buf)
+                }
+                RasterDtype::UInt16 => {
+                    noise.generate_tile_u16_into(w, h, freq, ts, tx, ty, &mut tile_buf)
+                }
+                RasterDtype::Float32 => {
+                    noise.generate_tile_f32_into(w, h, freq, ts, tx, ty, &mut tile_buf)
+                }
+            }
+            apply_predictor(&mut tile_buf, ts as usize, ts as usize, config.dtype);
+            let c = compressor
+                .compress(&tile_buf)
+                .map_err(|e| io::Error::other(format!("ZSTD compression failed: {e}")))?;
+            raw += tile_buf.len();
+            comp += c.len();
+        }
+    }
+    Ok(raw as f32 / comp.max(1) as f32)
+}
+
 /// Compress and write all tiles, returning offset and byte count arrays.
 ///
 /// Compression uses ZSTD (TIFF tag 50000) at `config.zstd_level` with a
@@ -757,6 +895,87 @@ mod tests {
         }
     }
 
+    fn calib_config(dtype: RasterDtype) -> CogConfig {
+        // 2048×2048 / tile 512 → a 4×4 block of full interior tiles; fast.
+        CogConfig {
+            // Real Sentinel-2-sized image: the descending (smooth-noise) arm
+            // spans the whole realistic ratio range here. measure_ratio samples
+            // a fixed 4×4 tile block regardless of dimensions, so this is fast.
+            raster: FootprintConfig {
+                cog_width: 10980,
+                cog_height: 10980,
+                resolution: 10,
+            },
+            tile_size: 512,
+            noise_frequency: 8.0, // ignored by calibration
+            dtype,
+            zstd_level: 3,
+        }
+    }
+
+    #[test]
+    fn calibrate_hits_target() {
+        let cal = calibrate_frequency(&calib_config(RasterDtype::UInt16), 2.0).unwrap();
+        assert!(!cal.clamped, "2.0x should be reachable at 10980²");
+        assert!(
+            (cal.achieved_ratio - 2.0).abs() / 2.0 < 0.10,
+            "achieved {} not within 10% of 2.0",
+            cal.achieved_ratio
+        );
+        assert!(
+            cal.frequency > CALIB_FREQ_MIN && cal.frequency < CALIB_FREQ_MAX,
+            "frequency {} should be interior",
+            cal.frequency
+        );
+    }
+
+    #[test]
+    fn calibrate_is_deterministic() {
+        let cfg = calib_config(RasterDtype::UInt16);
+        let a = calibrate_frequency(&cfg, 2.0).unwrap();
+        let b = calibrate_frequency(&cfg, 2.0).unwrap();
+        assert_eq!(a.frequency.to_bits(), b.frequency.to_bits());
+    }
+
+    #[test]
+    fn calibrate_clamps_unreachable_high() {
+        // No frequency makes smooth Perlin compress 100x → clamp to the arm
+        // start (lowest frequency, highest ratio).
+        let cal = calibrate_frequency(&calib_config(RasterDtype::UInt16), 100.0).unwrap();
+        assert!(cal.clamped);
+        assert_eq!(cal.frequency.to_bits(), CALIB_FREQ_MIN.to_bits());
+    }
+
+    #[test]
+    fn calibrate_clamps_unreachable_low() {
+        // ~1.02x is below the arm's minimum ratio → clamp to the arm end
+        // (highest frequency reached). Achieved ratio stays above the target.
+        let cal = calibrate_frequency(&calib_config(RasterDtype::UInt16), 1.02).unwrap();
+        assert!(cal.clamped);
+        assert!(cal.frequency > CALIB_FREQ_MIN, "should clamp to the high end");
+        assert!(cal.achieved_ratio > 1.02);
+    }
+
+    #[test]
+    fn calibrate_dtype_dependent() {
+        // Same target, different dtype → different resolved frequency. This is
+        // the footgun fix: a fixed noise_frequency is not portable across dtypes.
+        let u8_freq = calibrate_frequency(&calib_config(RasterDtype::UInt8), 2.0)
+            .unwrap()
+            .frequency;
+        let f32_freq = calibrate_frequency(&calib_config(RasterDtype::Float32), 2.0)
+            .unwrap()
+            .frequency;
+        assert_ne!(u8_freq.to_bits(), f32_freq.to_bits());
+    }
+
+    #[test]
+    fn measure_ratio_decreases_in_smooth_regime() {
+        // On the descending arm, more frequency = more detail = lower ratio.
+        let cfg = calib_config(RasterDtype::UInt16);
+        assert!(measure_ratio(&cfg, 16.0).unwrap() > measure_ratio(&cfg, 256.0).unwrap());
+    }
+
     /// Test with dimensions that aren't a multiple of tile_size.
     /// Default: 1830×1830 with 256 tiles → 8×8 tiles, last column/row
     /// extends past the image (8×256 = 2048 > 1830).
@@ -918,3 +1137,4 @@ mod tests {
         assert!(pixels.iter().all(|&v| (0.0..=1.0).contains(&v)));
     }
 }
+

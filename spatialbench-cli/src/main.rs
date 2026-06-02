@@ -411,11 +411,36 @@ impl Cli {
 
             let raster_config = parsed_config.as_ref().and_then(|c| c.raster.as_ref());
 
-            let cog_config = if let Some(rc) = raster_config {
+            let mut cog_config = if let Some(rc) = raster_config {
                 rc.to_cog_config()?
             } else {
                 CogConfig::default()
             };
+
+            // If a target compression ratio is requested, calibrate the noise
+            // frequency to hit it (dtype/dimension-aware), overriding the
+            // configured/default noise_frequency.
+            if let Some(target) = raster_config.and_then(|rc| rc.target_compression_ratio) {
+                let cal = spatialbench_raster::cog::calibrate_frequency(&cog_config, target)?;
+                if cal.clamped {
+                    log::warn!(
+                        "target_compression_ratio={target} unreachable for dtype={:?} at {}x{}; \
+                         clamped noise_frequency={:.2} (achieved ~{:.2}x)",
+                        cog_config.dtype,
+                        cog_config.raster.cog_width,
+                        cog_config.raster.cog_height,
+                        cal.frequency,
+                        cal.achieved_ratio,
+                    );
+                } else {
+                    info!(
+                        "calibrated noise_frequency={:.2} for target_compression_ratio={target} \
+                         (achieved ~{:.2}x)",
+                        cal.frequency, cal.achieved_ratio,
+                    );
+                }
+                cog_config.noise_frequency = cal.frequency;
+            }
 
             let continent_name = raster_config
                 .map(|rc| rc.continent.as_str())
