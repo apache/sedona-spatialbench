@@ -29,9 +29,10 @@ use bytes::Bytes;
 use log::{debug, info};
 use object_store::aws::AmazonS3Builder;
 use object_store::path::Path as ObjectPath;
-use object_store::ObjectStore;
+use object_store::{BackoffConfig, ObjectStore, RetryConfig};
 use std::io::{self, Write};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use url::Url;
@@ -71,8 +72,24 @@ pub fn parse_s3_uri(uri: &str) -> Result<(String, String), io::Error> {
 /// `AWS_DEFAULT_REGION`, `AWS_REGION`, `AWS_SESSION_TOKEN`, `AWS_ENDPOINT`, etc.
 pub fn build_s3_client(bucket: &str) -> Result<Arc<dyn ObjectStore>, io::Error> {
     debug!("Building S3 client for bucket: {}", bucket);
+
+    // Retry transient errors (5xx, SlowDown, timeouts) with exponential backoff
+    // and jitter. Important for long multi-TB raster runs at high upload
+    // concurrency, where S3 throttling is expected. retry_timeout stays under
+    // 5 min per object_store's credential/payload validity guidance.
+    let retry = RetryConfig {
+        backoff: BackoffConfig {
+            init_backoff: Duration::from_millis(200),
+            max_backoff: Duration::from_secs(20),
+            base: 2.0,
+        },
+        max_retries: 10,
+        retry_timeout: Duration::from_secs(180),
+    };
+
     let client = AmazonS3Builder::from_env()
         .with_bucket_name(bucket)
+        .with_retry(retry)
         .build()
         .map_err(|e| io::Error::other(format!("Failed to create S3 client: {}", e)))?;
     info!("S3 client created successfully for bucket: {}", bucket);
