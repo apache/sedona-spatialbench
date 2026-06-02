@@ -41,7 +41,7 @@ fn raster_end_to_end_sf1_max2() {
         .timeout(std::time::Duration::from_secs(300))
         .assert()
         .success()
-        .stderr(predicate::str::contains("COGs (complete)"));
+        .stderr(predicate::str::contains("raster complete:"));
 
     // Verify pile structure
     let pile_dir = dir.path().join("raster/pile");
