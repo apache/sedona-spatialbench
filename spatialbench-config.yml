@@ -51,7 +51,9 @@ raster:
   tile_size: 512
   # Tuned so compression ratio (~2x) matches real Sentinel-2 L2A 10m bands,
   # giving realistic per-COG byte volume / decompression load for the engine.
-  noise_frequency: 128.0
-  zstd_level: 6
+  # freq 112 + zstd 3 hits the same ~1.96x ratio as freq 128 + zstd 9, but
+  # generates ~1.65x faster (zstd level is the cost; frequency is ~free).
+  noise_frequency: 112.0
+  zstd_level: 3
   dtype: uint16
   continent: south_north_america
