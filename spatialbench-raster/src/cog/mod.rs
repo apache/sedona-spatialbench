@@ -551,10 +551,7 @@ pub struct CalibrationResult {
 /// # Errors
 ///
 /// Returns `io::Error` if ZSTD compression fails during a probe.
-pub fn calibrate_frequency(
-    config: &CogConfig,
-    target_ratio: f32,
-) -> io::Result<CalibrationResult> {
+pub fn calibrate_frequency(config: &CogConfig, target_ratio: f32) -> io::Result<CalibrationResult> {
     // Coarse geometric sweep along the descending arm, stopping as soon as we
     // bracket the target (or leave the smooth arm / hit the cap). Stopping early
     // keeps both startup and tests cheap.
@@ -567,14 +564,22 @@ pub fn calibrate_frequency(
             // the lowest frequency is the best we can do.
             None => {
                 if target_ratio >= r {
-                    return Ok(CalibrationResult { frequency: freq, achieved_ratio: r, clamped: true });
+                    return Ok(CalibrationResult {
+                        frequency: freq,
+                        achieved_ratio: r,
+                        clamped: true,
+                    });
                 }
             }
             Some((pf, pr)) => {
                 if r >= pr {
                     // Ratio turned back up → end of the smooth arm at `prev`, and
                     // the target is below the arm's minimum → clamp to the arm end.
-                    return Ok(CalibrationResult { frequency: pf, achieved_ratio: pr, clamped: true });
+                    return Ok(CalibrationResult {
+                        frequency: pf,
+                        achieved_ratio: pr,
+                        clamped: true,
+                    });
                 }
                 if r <= target_ratio {
                     // Bracketed: ratio(pf) > target >= ratio(freq). Bisect within
@@ -590,13 +595,21 @@ pub fn calibrate_frequency(
                             hi = mid; // ratio too low → back off frequency
                         }
                     }
-                    return Ok(CalibrationResult { frequency: mid, achieved_ratio: mid_ratio, clamped: false });
+                    return Ok(CalibrationResult {
+                        frequency: mid,
+                        achieved_ratio: mid_ratio,
+                        clamped: false,
+                    });
                 }
             }
         }
         if freq >= CALIB_FREQ_MAX {
             // Hit the cap with ratio still above target → clamp to the cap.
-            return Ok(CalibrationResult { frequency: freq, achieved_ratio: r, clamped: true });
+            return Ok(CalibrationResult {
+                frequency: freq,
+                achieved_ratio: r,
+                clamped: true,
+            });
         }
         prev = Some((freq, r));
         freq = (freq * CALIB_SWEEP_STEP).min(CALIB_FREQ_MAX);
@@ -952,7 +965,10 @@ mod tests {
         // (highest frequency reached). Achieved ratio stays above the target.
         let cal = calibrate_frequency(&calib_config(RasterDtype::UInt16), 1.02).unwrap();
         assert!(cal.clamped);
-        assert!(cal.frequency > CALIB_FREQ_MIN, "should clamp to the high end");
+        assert!(
+            cal.frequency > CALIB_FREQ_MIN,
+            "should clamp to the high end"
+        );
         assert!(cal.achieved_ratio > 1.02);
     }
 
@@ -1137,4 +1153,3 @@ mod tests {
         assert!(pixels.iter().all(|&v| (0.0..=1.0).contains(&v)));
     }
 }
-

@@ -271,9 +271,7 @@ impl RasterConcurrency {
 
 /// Raw bytes of one COG's pixel buffer — the dominant in-flight memory unit.
 fn est_cog_bytes(cog: &CogConfig) -> u64 {
-    cog.raster.cog_width as u64
-        * cog.raster.cog_height as u64
-        * cog.dtype.bytes_per_pixel() as u64
+    cog.raster.cog_width as u64 * cog.raster.cog_height as u64 * cog.dtype.bytes_per_pixel() as u64
 }
 
 /// Build the full work list and the full deterministic manifest.
@@ -739,10 +737,7 @@ mod tests {
             fail_at: None,
             delay_ms: 5,
         });
-        let conc = RasterConcurrency {
-            gen: 4,
-            upload: 3,
-        };
+        let conc = RasterConcurrency { gen: 4, upload: 3 };
         let items = pipeline_items(60);
         run_pipeline(sink, items, conc, 60).await.unwrap();
 
@@ -764,10 +759,7 @@ mod tests {
             fail_at: Some(3),
             delay_ms: 0,
         });
-        let conc = RasterConcurrency {
-            gen: 2,
-            upload: 2,
-        };
+        let conc = RasterConcurrency { gen: 2, upload: 2 };
         let err = run_pipeline(sink, pipeline_items(20), conc, 20)
             .await
             .unwrap_err();
