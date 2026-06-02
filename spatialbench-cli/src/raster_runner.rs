@@ -40,16 +40,21 @@ use bytes::Bytes;
 use futures::stream::{StreamExt, TryStreamExt};
 use log::info;
 use object_store::path::Path as ObjectPath;
-use object_store::ObjectStore;
+use object_store::{MultipartUpload, ObjectStore};
 
 use std::collections::HashSet;
 use std::io;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::time::Instant;
 
 /// Default memory budget for in-flight COG buffers when none is supplied: 8 GiB.
 const DEFAULT_RASTER_MEMORY_BUDGET_BYTES: u64 = 8 * 1024 * 1024 * 1024;
+
+/// Multipart part size for S3 uploads (matches the parquet path's 32 MiB chunk).
+/// COGs larger than this upload as multipart; smaller ones use a single PUT.
+const COG_UPLOAD_PART_SIZE: usize = 32 * 1024 * 1024;
 
 /// A single unit of work: generate one COG.
 #[derive(Clone)]
@@ -97,11 +102,7 @@ impl OutputSink {
             }
             OutputSink::S3 { client, prefix } => {
                 let path = ObjectPath::from(format!("{prefix}/{key}"));
-                client
-                    .put(&path, Bytes::from(bytes).into())
-                    .await
-                    .map(|_| ())
-                    .map_err(|e| io::Error::other(format!("S3 PUT failed: {e}")))
+                upload_s3(client, &path, Bytes::from(bytes)).await
             }
             #[cfg(test)]
             OutputSink::Test {
@@ -159,6 +160,47 @@ async fn s3_existing_keys(
     Ok(keys)
 }
 
+/// Upload one COG to S3. Objects larger than [`COG_UPLOAD_PART_SIZE`] use a
+/// multipart upload with sequential parts, so each request is small enough to
+/// complete under the per-request retry timeout and is independently
+/// retryable — the same resilience the parquet table path gets from `S3Writer`.
+/// A single 124 MB PUT, by contrast, fails as a whole on a slow/contended link.
+async fn upload_s3(
+    client: &Arc<dyn ObjectStore>,
+    path: &ObjectPath,
+    data: Bytes,
+) -> io::Result<()> {
+    if data.len() <= COG_UPLOAD_PART_SIZE {
+        return client
+            .put(path, data.into())
+            .await
+            .map(|_| ())
+            .map_err(|e| io::Error::other(format!("S3 PUT failed: {e}")));
+    }
+
+    let mut upload = client
+        .put_multipart(path)
+        .await
+        .map_err(|e| io::Error::other(format!("S3 multipart init failed: {e}")))?;
+
+    let mut offset = 0;
+    while offset < data.len() {
+        let end = (offset + COG_UPLOAD_PART_SIZE).min(data.len());
+        let part = data.slice(offset..end);
+        if let Err(e) = upload.put_part(part.into()).await {
+            // Abort so the incomplete upload doesn't accrue storage cost.
+            let _ = upload.abort().await;
+            return Err(io::Error::other(format!("S3 part upload failed: {e}")));
+        }
+        offset = end;
+    }
+    upload
+        .complete()
+        .await
+        .map(|_| ())
+        .map_err(|e| io::Error::other(format!("S3 multipart complete failed: {e}")))
+}
+
 /// Walk a local pile directory (`pile/{fp}/{cog}.tif`) collecting existing
 /// pile-relative keys. A missing pile directory yields an empty set.
 fn local_existing_keys(pile_dir: &str) -> io::Result<HashSet<String>> {
@@ -202,6 +244,13 @@ impl RasterConcurrency {
     /// - `upload` = `clamp(memory_budget / est_cog_bytes, gen, 4 * gen)`,
     ///   unless `upload_override` is `Some`, which wins (clamped to `>= 1`).
     ///
+    /// Upload concurrency is governed by the memory budget rather than a fixed
+    /// network cap: multipart upload (see [`upload_s3`]) keeps each request
+    /// small, so many concurrent uploads no longer risk per-request timeouts on
+    /// a slow link — the binding constraint reverts to in-flight memory. The
+    /// `4 * gen` ceiling is plenty to saturate an in-region EC2→S3 pipe;
+    /// bandwidth-limited hosts can lower it via `--raster-upload-concurrency`.
+    ///
     /// `est_cog_bytes` is the conservative per-in-flight-COG memory unit (raw
     /// pixel size); raw ≥ compressed output, so this keeps peak memory under
     /// budget even for incompressible data.
@@ -214,10 +263,7 @@ impl RasterConcurrency {
         let gen = num_threads.max(1);
         let upload = match upload_override {
             Some(u) => u.max(1),
-            None => {
-                let by_budget = (memory_budget_bytes / est_cog_bytes.max(1)) as usize;
-                by_budget.clamp(gen, gen * 4)
-            }
+            None => ((memory_budget_bytes / est_cog_bytes.max(1)) as usize).clamp(gen, gen * 4),
         };
         Self { gen, upload }
     }
@@ -281,13 +327,21 @@ fn generate_cog(item: CogWorkItem) -> io::Result<(Vec<u8>, String)> {
 /// writes at most `conc.upload` concurrently. Because the stages are chained,
 /// the CPU stage cannot run more than ~`conc.gen` ahead of the I/O stage, so
 /// peak in-flight COGs ≈ `gen + upload` — independent of `items.len()`.
+/// Bytes written by [`run_pipeline`], for throughput reporting.
+#[derive(Debug)]
+struct UploadStats {
+    cogs: u64,
+    bytes: u64,
+}
+
 async fn run_pipeline(
     sink: Arc<OutputSink>,
     items: Vec<CogWorkItem>,
     conc: RasterConcurrency,
     total_cogs: u64,
-) -> io::Result<()> {
+) -> io::Result<UploadStats> {
     let counter = Arc::new(AtomicU64::new(0));
+    let bytes_total = Arc::new(AtomicU64::new(0));
 
     futures::stream::iter(items.into_iter())
         // Stage 1 (CPU): generate bytes off the async runtime.
@@ -301,11 +355,14 @@ async fn run_pipeline(
         .map(|res: io::Result<(Vec<u8>, String)>| {
             let sink = Arc::clone(&sink);
             let counter = Arc::clone(&counter);
+            let bytes_total = Arc::clone(&bytes_total);
             async move {
                 let (bytes, key) = res?;
+                let len = bytes.len() as u64;
                 sink.put(&key, bytes).await?;
+                bytes_total.fetch_add(len, Ordering::Relaxed);
                 let n = counter.fetch_add(1, Ordering::Relaxed) + 1;
-                if n.is_multiple_of(100) {
+                if n.is_multiple_of(16) {
                     info!("generated {n}/{total_cogs} COGs");
                 }
                 Ok::<(), io::Error>(())
@@ -313,7 +370,12 @@ async fn run_pipeline(
         })
         .buffer_unordered(conc.upload)
         .try_for_each(|()| async { Ok(()) })
-        .await
+        .await?;
+
+    Ok(UploadStats {
+        cogs: counter.load(Ordering::Relaxed),
+        bytes: bytes_total.load(Ordering::Relaxed),
+    })
 }
 
 /// Parameters for [`run_raster`].
@@ -348,7 +410,8 @@ pub async fn run_raster(args: RunRasterArgs<'_>) -> io::Result<Vec<ManifestEntry
     } = args;
 
     // Build the output sink.
-    let sink = if output_dir.starts_with("s3://") {
+    let is_s3 = output_dir.starts_with("s3://");
+    let sink = if is_s3 {
         let (bucket, prefix) = parse_s3_uri(output_dir.trim_end_matches('/'))?;
         let client = build_s3_client(&bucket)?;
         OutputSink::S3 {
@@ -402,9 +465,20 @@ pub async fn run_raster(args: RunRasterArgs<'_>) -> io::Result<Vec<ManifestEntry
         pending.len()
     );
 
-    run_pipeline(Arc::new(sink), pending, conc, total_cogs).await?;
+    let start = Instant::now();
+    let stats = run_pipeline(Arc::new(sink), pending, conc, total_cogs).await?;
+    let elapsed = start.elapsed();
 
-    info!("generated {} COGs (complete)", total_cogs);
+    // End-of-run throughput summary — the headline metric for S3 generation.
+    let secs = elapsed.as_secs_f64().max(1e-9);
+    info!(
+        "raster complete: {} COGs, {:.1} GB in {:.0?} — {:.1} COGs/s, {:.0} MB/s",
+        stats.cogs,
+        stats.bytes as f64 / 1e9,
+        elapsed,
+        stats.cogs as f64 / secs,
+        stats.bytes as f64 / 1e6 / secs,
+    );
     Ok(manifest)
 }
 
@@ -510,6 +584,30 @@ mod tests {
 
         let keys = sink.existing_keys().await.unwrap();
         assert_eq!(keys, HashSet::from(["00000/0000.tif".to_string()]));
+    }
+
+    /// Objects larger than the part size take the multipart path; verify the
+    /// reassembled object matches byte-for-byte.
+    #[tokio::test]
+    async fn s3_multipart_roundtrip() {
+        let store: Arc<dyn ObjectStore> = Arc::new(InMemory::new());
+        let sink = OutputSink::S3 {
+            client: Arc::clone(&store),
+            prefix: "out/pile".to_string(),
+        };
+        // 40 MB > 32 MB part size → multipart (32 MB + 8 MB).
+        let data: Vec<u8> = (0..40 * 1024 * 1024).map(|i| (i % 251) as u8).collect();
+        sink.put("00000/0000.tif", data.clone()).await.unwrap();
+
+        let got = store
+            .get(&ObjectPath::from("out/pile/00000/0000.tif"))
+            .await
+            .unwrap()
+            .bytes()
+            .await
+            .unwrap();
+        assert_eq!(got.len(), data.len());
+        assert_eq!(got.as_ref(), data.as_slice());
     }
 
     #[tokio::test]
