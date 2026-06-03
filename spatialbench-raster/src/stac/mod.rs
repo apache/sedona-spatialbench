@@ -20,7 +20,7 @@
 //! Generates a STAC-compliant geoparquet file with one row per **item**
 //! (not per COG). Each item contains a nested `assets` map with M entries,
 //! where M is determined by the topology's factoring. The topologies differ
-//! in row count: Narrow produces `T × A` rows with few assets each, while
+//! in row count: Temporal produces `T × A` rows with few assets each, while
 //! Balanced produces fewer rows with more assets each.
 
 use crate::scaling::ScalingTier;
@@ -93,7 +93,7 @@ struct AssetEntry {
 
 /// An assembled STAC item, ready to write as one row.
 struct StacItem {
-    /// Item ID (e.g., "NRW_00000_t0000").
+    /// Item ID (e.g., "TMP_00000_t0000").
     id: String,
     /// Footprint ID.
     footprint_id: u32,
@@ -410,28 +410,28 @@ mod tests {
     }
 
     #[test]
-    fn narrow_has_more_items_than_balanced() {
+    fn temporal_has_more_items_than_balanced() {
         let manifest = sample_manifest();
         let tier = scaling_tier(1).unwrap();
 
-        // Narrow: M=2, T=8 → 8 items per footprint × 2 footprints = 16 items
-        let narrow_items = assemble_items(&manifest, 2, Topology::Narrow, TEST_PILE_HREF);
+        // Temporal: M=2, T=8 → 8 items per footprint × 2 footprints = 16 items
+        let temporal_items = assemble_items(&manifest, 2, Topology::Temporal, TEST_PILE_HREF);
         // Balanced: M=4, T=4 → 4 items per footprint × 2 footprints = 8 items
         let balanced_items = assemble_items(&manifest, 4, Topology::Balanced, TEST_PILE_HREF);
 
-        assert_eq!(narrow_items.len(), 16); // T=8 × 2 footprints
+        assert_eq!(temporal_items.len(), 16); // T=8 × 2 footprints
         assert_eq!(balanced_items.len(), 8); // T=4 × 2 footprints
-        assert!(narrow_items.len() > balanced_items.len());
+        assert!(temporal_items.len() > balanced_items.len());
 
-        // Narrow items have 2 assets each, balanced have 4
-        assert!(narrow_items.iter().all(|i| i.assets.len() == 2));
+        // Temporal items have 2 assets each, balanced have 4
+        assert!(temporal_items.iter().all(|i| i.assets.len() == 2));
         assert!(balanced_items.iter().all(|i| i.assets.len() == 4));
     }
 
     #[test]
-    fn narrow_asset_labels_are_climate_vars() {
+    fn temporal_asset_labels_are_climate_vars() {
         let manifest = sample_manifest();
-        let items = assemble_items(&manifest, 2, Topology::Narrow, TEST_PILE_HREF);
+        let items = assemble_items(&manifest, 2, Topology::Temporal, TEST_PILE_HREF);
         let labels: Vec<&str> = items[0].assets.iter().map(|a| a.role.as_str()).collect();
         assert_eq!(labels, &["tasmax", "tasmin"]);
     }
@@ -448,9 +448,9 @@ mod tests {
     #[test]
     fn item_id_format() {
         let manifest = sample_manifest();
-        let items = assemble_items(&manifest, 2, Topology::Narrow, TEST_PILE_HREF);
-        assert_eq!(items[0].id, "NRW_F00000_t0000");
-        assert_eq!(items[1].id, "NRW_F00000_t0001");
+        let items = assemble_items(&manifest, 2, Topology::Temporal, TEST_PILE_HREF);
+        assert_eq!(items[0].id, "TMP_F00000_t0000");
+        assert_eq!(items[1].id, "TMP_F00000_t0001");
     }
 
     #[test]
@@ -478,16 +478,16 @@ mod tests {
     }
 
     #[test]
-    fn write_and_read_narrow() {
+    fn write_and_read_temporal() {
         let manifest = sample_manifest();
         let tier = scaling_tier(1).unwrap();
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("narrow.parquet");
+        let path = dir.path().join("temporal.parquet");
 
         write_stac_geoparquet(
             &manifest,
             tier,
-            Topology::Narrow,
+            Topology::Temporal,
             std::fs::File::create(&path).unwrap(),
             TEST_PILE_HREF,
         )
@@ -558,9 +558,9 @@ mod tests {
             row_counts.push(count);
         }
 
-        // Narrow (16) != Balanced (8)
+        // Temporal (16) != Balanced (8)
         assert_ne!(row_counts[0], row_counts[1]);
-        assert!(row_counts[0] > row_counts[1]); // Narrow has more items
+        assert!(row_counts[0] > row_counts[1]); // Temporal has more items
     }
 
     #[test]
@@ -568,12 +568,12 @@ mod tests {
         let manifest = sample_manifest();
         let tier = scaling_tier(1).unwrap();
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("narrow.parquet");
+        let path = dir.path().join("temporal.parquet");
 
         write_stac_geoparquet(
             &manifest,
             tier,
-            Topology::Narrow,
+            Topology::Temporal,
             std::fs::File::create(&path).unwrap(),
             TEST_PILE_HREF,
         )
@@ -590,7 +590,7 @@ mod tests {
         let assets_col = batch.column(batch.schema().index_of("assets").unwrap());
         let map_array = assets_col.as_any().downcast_ref::<MapArray>().unwrap();
 
-        // First item should have 2 assets (M=2 for Narrow)
+        // First item should have 2 assets (M=2 for Temporal)
         let first_item_len = map_array.value_length(0);
         assert_eq!(first_item_len, 2);
     }

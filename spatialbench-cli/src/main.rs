@@ -499,7 +499,7 @@ impl Cli {
                     .into_owned()
             };
 
-            // Write STAC geoparquet catalogs (Narrow + Balanced; Wide uses multi-band COGs)
+            // Write STAC geoparquet catalogs (Temporal + Balanced; Wide uses multi-band COGs)
             let is_s3 = raster_dir.starts_with("s3://");
             if is_s3 {
                 let (bucket, prefix) = crate::s3_writer::parse_s3_uri(&raster_dir)?;

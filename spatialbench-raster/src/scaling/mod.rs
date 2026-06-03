@@ -29,8 +29,8 @@ pub struct ScalingTier {
     pub sf: u32,
     /// Total COGs per footprint (N). Each topology factors this as M × T.
     pub scenes_per_footprint: u32,
-    /// Narrow topology (M, T) factoring.
-    pub narrow: (u32, u32),
+    /// Temporal topology (M, T) factoring.
+    pub temporal: (u32, u32),
     /// Balanced topology (M, T) factoring.
     pub balanced: (u32, u32),
     /// Wide topology (M, T) factoring.
@@ -38,33 +38,33 @@ pub struct ScalingTier {
 }
 
 /// The scaling ladder. Invariant: for every tier,
-/// `narrow.0 * narrow.1 == balanced.0 * balanced.1 == wide.0 * wide.1 == scenes_per_footprint`.
+/// `temporal.0 * temporal.1 == balanced.0 * balanced.1 == wide.0 * wide.1 == scenes_per_footprint`.
 pub const SCALING_TABLE: &[ScalingTier] = &[
     ScalingTier {
         sf: 1,
         scenes_per_footprint: 16,
-        narrow: (2, 8),
+        temporal: (2, 8),
         balanced: (4, 4),
         wide: (8, 2),
     },
     ScalingTier {
         sf: 10,
         scenes_per_footprint: 64,
-        narrow: (2, 32),
+        temporal: (2, 32),
         balanced: (8, 8),
         wide: (32, 2),
     },
     ScalingTier {
         sf: 100,
         scenes_per_footprint: 384,
-        narrow: (2, 192),
+        temporal: (2, 192),
         balanced: (12, 32),
         wide: (96, 4),
     },
     ScalingTier {
         sf: 1000,
         scenes_per_footprint: 1_152,
-        narrow: (2, 576),
+        temporal: (2, 576),
         balanced: (12, 96),
         wide: (192, 6),
     },
@@ -88,9 +88,9 @@ mod tests {
     fn scaling_table_invariants() {
         for tier in SCALING_TABLE {
             assert_eq!(
-                tier.narrow.0 * tier.narrow.1,
+                tier.temporal.0 * tier.temporal.1,
                 tier.scenes_per_footprint,
-                "Narrow M*T != N at SF={}",
+                "Temporal M*T != N at SF={}",
                 tier.sf
             );
             assert_eq!(

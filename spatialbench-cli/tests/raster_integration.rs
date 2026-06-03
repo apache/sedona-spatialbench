@@ -61,10 +61,10 @@ fn raster_end_to_end_sf1_max2() {
         .count();
     assert_eq!(cog_count, 16, "expected 16 COGs per footprint");
 
-    // Verify STAC catalogs (Narrow + Balanced; Wide is deferred)
+    // Verify STAC catalogs (Temporal + Balanced; Wide is deferred)
     let stac_dir = dir.path().join("raster/stac");
     assert!(stac_dir.exists(), "stac directory missing");
-    for name in ["narrow", "balanced"] {
+    for name in ["temporal", "balanced"] {
         let path = stac_dir.join(format!("{name}.parquet"));
         assert!(path.exists(), "STAC {name}.parquet missing");
         let meta = std::fs::metadata(&path).unwrap();
@@ -97,5 +97,5 @@ fn raster_without_vector() {
     // Raster output exists
     assert!(dir.path().join("raster/pile/00000/0000.tif").exists());
     // STAC exists
-    assert!(dir.path().join("raster/stac/narrow.parquet").exists());
+    assert!(dir.path().join("raster/stac/temporal.parquet").exists());
 }

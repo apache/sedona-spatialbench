@@ -23,7 +23,7 @@ use crate::scaling::ScalingTier;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Topology {
     /// T-heavy: many items × few channels. Stresses item enumeration.
-    Narrow,
+    Temporal,
     /// Balanced: moderate items × moderate channels. Stresses asset pruning.
     Balanced,
     /// M-heavy: few items × wide channels. Stresses bulk per-item read.
@@ -32,15 +32,15 @@ pub enum Topology {
 
 impl Topology {
     /// All three topologies.
-    pub const ALL: [Topology; 3] = [Topology::Narrow, Topology::Balanced, Topology::Wide];
+    pub const ALL: [Topology; 3] = [Topology::Temporal, Topology::Balanced, Topology::Wide];
 
     /// Topologies that share the single-band COG pile (Wide uses multi-band COGs).
-    pub const SHARED_PILE: [Topology; 2] = [Topology::Narrow, Topology::Balanced];
+    pub const SHARED_PILE: [Topology; 2] = [Topology::Temporal, Topology::Balanced];
 
     /// Return the (M, T) factoring for this topology from a scaling tier.
     pub fn factor(&self, tier: &ScalingTier) -> (u32, u32) {
         match self {
-            Topology::Narrow => tier.narrow,
+            Topology::Temporal => tier.temporal,
             Topology::Balanced => tier.balanced,
             Topology::Wide => tier.wide,
         }
@@ -49,7 +49,7 @@ impl Topology {
     /// Directory name for output paths.
     pub fn dir_name(&self) -> &'static str {
         match self {
-            Topology::Narrow => "narrow",
+            Topology::Temporal => "temporal",
             Topology::Balanced => "balanced",
             Topology::Wide => "wide",
         }
@@ -58,7 +58,7 @@ impl Topology {
     /// Item ID prefix for STAC catalogs.
     pub fn item_prefix(&self) -> &'static str {
         match self {
-            Topology::Narrow => "NRW",
+            Topology::Temporal => "TMP",
             Topology::Balanced => "BAL",
             Topology::Wide => "WDE",
         }
@@ -71,7 +71,7 @@ impl Topology {
     /// the base label set.
     pub fn asset_labels(&self) -> &'static [&'static str] {
         match self {
-            Topology::Narrow => &["tasmax", "tasmin"],
+            Topology::Temporal => &["tasmax", "tasmin"],
             Topology::Balanced => &[
                 "red", "green", "blue", "nir", "swir1", "swir2", "coastal", "rededge1", "rededge2",
                 "rededge3", "cirrus", "tir",
@@ -82,7 +82,7 @@ impl Topology {
 
     /// Get the asset role label for a given mosaic index within this topology.
     ///
-    /// For Narrow (M=2): cycles through `["tasmax", "tasmin"]`.
+    /// For Temporal (M=2): cycles through `["tasmax", "tasmin"]`.
     /// For Balanced: cycles through spectral band names.
     /// For Wide: `"dim_NNN"` but Wide is not used with shared pile.
     pub fn asset_label_for(&self, mosaic_id: u32) -> String {
@@ -124,13 +124,13 @@ mod tests {
     #[test]
     fn factor_sf1() {
         let tier = &SCALING_TABLE[0];
-        assert_eq!(Topology::Narrow.factor(tier), (2, 8));
+        assert_eq!(Topology::Temporal.factor(tier), (2, 8));
         assert_eq!(Topology::Balanced.factor(tier), (4, 4));
         assert_eq!(Topology::Wide.factor(tier), (8, 2));
     }
 
     #[test]
-    fn scene_assignment_narrow() {
+    fn scene_assignment_temporal() {
         // M=2: cog 0 → (0,0), cog 1 → (1,0), cog 2 → (0,1), cog 3 → (1,1)
         assert_eq!(
             assign_scene(0, 2),
@@ -207,7 +207,7 @@ mod tests {
 
     #[test]
     fn dir_names() {
-        assert_eq!(Topology::Narrow.dir_name(), "narrow");
+        assert_eq!(Topology::Temporal.dir_name(), "temporal");
         assert_eq!(Topology::Balanced.dir_name(), "balanced");
         assert_eq!(Topology::Wide.dir_name(), "wide");
     }

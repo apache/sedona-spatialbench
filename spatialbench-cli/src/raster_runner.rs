@@ -515,7 +515,7 @@ mod tests {
         ScalingTier {
             sf: 1,
             scenes_per_footprint: scenes,
-            narrow: (1, scenes),
+            temporal: (1, scenes),
             balanced: (1, scenes),
             wide: (1, scenes),
         }
