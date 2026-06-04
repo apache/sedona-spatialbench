@@ -149,6 +149,11 @@ struct Cli {
     #[arg(long)]
     max_footprints: Option<u32>,
 
+    /// Print the raster generation plan (footprint count, total COGs, estimated
+    /// size) and exit without generating anything.
+    #[arg(long, default_value_t = false)]
+    dry_run: bool,
+
     /// Skip raster COGs already present at the output destination (and skip
     /// re-uploading them). Assumes existing COGs were generated with the same
     /// configuration (frequency/dtype/dimensions) — changing config and
@@ -460,6 +465,33 @@ impl Cli {
                 footprints.len() as u64 * tier.scenes_per_footprint as u64,
                 cog_config.dtype,
             );
+
+            // Dry run: report the plan + estimated size, then exit without generating.
+            if self.dry_run {
+                let total_cogs = footprints.len() as u64 * tier.scenes_per_footprint as u64;
+                let raw_per_cog = cog_config.raster.cog_width as u64
+                    * cog_config.raster.cog_height as u64
+                    * cog_config.dtype.bytes_per_pixel() as u64;
+                // Sample the actual ratio at the (calibrated or configured) frequency.
+                let ratio = spatialbench_raster::cog::sample_compression_ratio(&cog_config)?;
+                let comp_total = (raw_per_cog * total_cogs) as f64 / ratio as f64;
+                info!(
+                    "DRY RUN — no data generated\n  \
+                     continent={continent_name}, {} footprints × {} COGs/footprint = {total_cogs} COGs\n  \
+                     per COG: {:.0} MB raw → ~{:.0} MB compressed (~{:.2}× sampled, dtype={:?}, {}×{})\n  \
+                     estimated total: ~{:.2} TB",
+                    footprints.len(),
+                    tier.scenes_per_footprint,
+                    raw_per_cog as f64 / 1e6,
+                    raw_per_cog as f64 / ratio as f64 / 1e6,
+                    ratio,
+                    cog_config.dtype,
+                    cog_config.raster.cog_width,
+                    cog_config.raster.cog_height,
+                    comp_total / 1e12,
+                );
+                return Ok(());
+            }
 
             let output_str = self.output_dir.to_string_lossy();
             let raster_dir = if output_str.starts_with("s3://") {

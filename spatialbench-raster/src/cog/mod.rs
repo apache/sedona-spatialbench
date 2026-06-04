@@ -616,6 +616,19 @@ pub fn calibrate_frequency(config: &CogConfig, target_ratio: f32) -> io::Result<
     }
 }
 
+/// Sample the compression ratio this config would achieve at its configured
+/// `noise_frequency`, by compressing a small block of representative tiles.
+///
+/// Used for size estimation (`--dry-run`) without generating the full dataset.
+/// Sub-second; deterministic.
+///
+/// # Errors
+///
+/// Returns `io::Error` if ZSTD compression fails.
+pub fn sample_compression_ratio(config: &CogConfig) -> io::Result<f32> {
+    measure_ratio(config, config.noise_frequency)
+}
+
 /// Average compression ratio (raw / compressed) over a small block of full
 /// interior tiles, using the exact per-tile pipeline as [`write_tiles`]
 /// (noise → predictor → ZSTD). The Perlin field is statistically homogeneous,
