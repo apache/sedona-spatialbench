@@ -475,7 +475,9 @@ impl Cli {
                 // Sample the actual ratio at the (calibrated or configured) frequency.
                 let ratio = spatialbench_raster::cog::sample_compression_ratio(&cog_config)?;
                 let comp_total = (raw_per_cog * total_cogs) as f64 / ratio as f64;
-                info!(
+                // Print to stdout (not the logger) so it always shows, with or
+                // without --verbose — the whole point of --dry-run is to see this.
+                println!(
                     "DRY RUN — no data generated\n  \
                      continent={continent_name}, {} footprints × {} COGs/footprint = {total_cogs} COGs\n  \
                      per COG: {:.0} MB raw → ~{:.0} MB compressed (~{:.2}× sampled, dtype={:?}, {}×{})\n  \
