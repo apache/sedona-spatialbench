@@ -35,9 +35,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # @stable
         with:
           components: rustfmt, clippy
+          toolchain: stable
       - uses: Swatinem/rust-cache@v2
         with:
           # Update this key to force a new cache
@@ -54,7 +55,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # @stable
+        with:
+          toolchain: stable
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "rust-test-tests-spatialbench-v1"
@@ -65,7 +68,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # @stable
+        with:
+          toolchain: stable
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "rust-test-doc-spatialbench-v1"
@@ -76,7 +81,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # @stable
+        with:
+          toolchain: stable
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "rust-test-all-spatialbench-arrow-v1"
@@ -87,7 +94,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # @stable
+        with:
+          toolchain: stable
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "rust-test-all-spatialbench-cli-v1"
@@ -99,7 +108,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # @stable
+        with:
+          toolchain: stable
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "rust-docs-v1"
@@ -155,7 +166,9 @@ jobs:
           mc alias set local http://localhost:9000 minioadmin minioadmin
           mc mb local/spatialbench-test
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # @stable
+        with:
+          toolchain: stable
         if: steps.changes.outputs.s3 == 'true'
 
       - uses: Swatinem/rust-cache@v2
