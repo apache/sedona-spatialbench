@@ -89,6 +89,9 @@ repos:
       - id: forbid-submodules
         name: run forbid-submodules
         description: forbids any submodules in the repository
+      - id: mixed-line-ending
+        name: run mixed-line-ending
+        description: replaces or checks mixed line ending
       - id: trailing-whitespace
         name: run trailing-whitespace
         description: trims trailing whitespace
