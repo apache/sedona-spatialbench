@@ -1,129 +1,129 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
     <url>
-        <loc>None./</loc>
+        <loc>https://sedona.apache.org/spatialbench/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="None"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/"/>
     </url>
     <url>
-        <loc>Nonecontributors-guide/</loc>
+        <loc>https://sedona.apache.org/spatialbench/contributors-guide/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="Nonecontributors-guide/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/contributors-guide/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/contributors-guide/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/contributors-guide/"/>
     </url>
     <url>
-        <loc>Nonedatasets-generators/</loc>
+        <loc>https://sedona.apache.org/spatialbench/datasets-generators/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="Nonedatasets-generators/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/datasets-generators/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/datasets-generators/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/datasets-generators/"/>
     </url>
     <url>
-        <loc>Noneoverview-methodology/</loc>
+        <loc>https://sedona.apache.org/spatialbench/overview-methodology/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="Noneoverview-methodology/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/overview-methodology/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/overview-methodology/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/overview-methodology/"/>
     </url>
     <url>
-        <loc>Nonequeries/</loc>
+        <loc>https://sedona.apache.org/spatialbench/queries/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="Nonequeries/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/queries/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/queries/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/queries/"/>
     </url>
     <url>
-        <loc>Nonequickstart/</loc>
+        <loc>https://sedona.apache.org/spatialbench/quickstart/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="Nonequickstart/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/quickstart/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/quickstart/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/quickstart/"/>
     </url>
     <url>
-        <loc>Nonerelease-notes/</loc>
+        <loc>https://sedona.apache.org/spatialbench/release-notes/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="Nonerelease-notes/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/release-notes/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/release-notes/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/release-notes/"/>
     </url>
     <url>
-        <loc>Nonesingle-node-benchmarks/</loc>
+        <loc>https://sedona.apache.org/spatialbench/single-node-benchmarks/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="Nonesingle-node-benchmarks/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/single-node-benchmarks/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/single-node-benchmarks/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/single-node-benchmarks/"/>
     </url>
     <url>
-        <loc>Nonespatialbench-distributions/</loc>
+        <loc>https://sedona.apache.org/spatialbench/spatialbench-distributions/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="Nonespatialbench-distributions/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/spatialbench-distributions/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/spatialbench-distributions/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/spatialbench-distributions/"/>
     </url>
     <url>
-        <loc>Nonezh/</loc>
+        <loc>https://sedona.apache.org/spatialbench/zh/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="None"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/"/>
     </url>
     <url>
-        <loc>Nonezh/contributors-guide/</loc>
+        <loc>https://sedona.apache.org/spatialbench/zh/contributors-guide/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/contributors-guide/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="Nonecontributors-guide/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/contributors-guide/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/contributors-guide/"/>
     </url>
     <url>
-        <loc>Nonezh/datasets-generators/</loc>
+        <loc>https://sedona.apache.org/spatialbench/zh/datasets-generators/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/datasets-generators/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="Nonedatasets-generators/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/datasets-generators/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/datasets-generators/"/>
     </url>
     <url>
-        <loc>Nonezh/overview-methodology/</loc>
+        <loc>https://sedona.apache.org/spatialbench/zh/overview-methodology/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/overview-methodology/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="Noneoverview-methodology/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/overview-methodology/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/overview-methodology/"/>
     </url>
     <url>
-        <loc>Nonezh/queries/</loc>
+        <loc>https://sedona.apache.org/spatialbench/zh/queries/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/queries/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="Nonequeries/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/queries/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/queries/"/>
     </url>
     <url>
-        <loc>Nonezh/quickstart/</loc>
+        <loc>https://sedona.apache.org/spatialbench/zh/quickstart/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/quickstart/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="Nonequickstart/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/quickstart/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/quickstart/"/>
     </url>
     <url>
-        <loc>Nonezh/release-notes/</loc>
+        <loc>https://sedona.apache.org/spatialbench/zh/release-notes/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/release-notes/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="Nonerelease-notes/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/release-notes/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/release-notes/"/>
     </url>
     <url>
-        <loc>Nonezh/single-node-benchmarks/</loc>
+        <loc>https://sedona.apache.org/spatialbench/zh/single-node-benchmarks/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/single-node-benchmarks/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="Nonesingle-node-benchmarks/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/single-node-benchmarks/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/single-node-benchmarks/"/>
     </url>
     <url>
-        <loc>Nonezh/spatialbench-distributions/</loc>
+        <loc>https://sedona.apache.org/spatialbench/zh/spatialbench-distributions/</loc>
         <lastmod>2026-06-11</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="Nonezh/spatialbench-distributions/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="Nonespatialbench-distributions/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/spatialbench-distributions/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/spatialbench-distributions/"/>
     </url>
 </urlset>
