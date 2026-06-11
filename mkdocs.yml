@@ -38,6 +38,7 @@ extra:
 
 
 site_name: SpatialBench
+site_url: https://sedona.apache.org/spatialbench/
 site_description: SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems
 # Define a reusable block of links with a YAML anchor (&)
 
