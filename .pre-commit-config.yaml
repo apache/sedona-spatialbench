@@ -89,6 +89,10 @@ repos:
       - id: forbid-submodules
         name: run forbid-submodules
         description: forbids any submodules in the repository
+      - id: requirements-txt-fixer
+        name: run requirements-txt-fixer
+        description: sorts entries in the Python requirements files and removes incorrect entry for pkg-resources==0.0.0
+        files: ^docs/requirements\.txt$
       - id: trailing-whitespace
         name: run trailing-whitespace
         description: trims trailing whitespace
