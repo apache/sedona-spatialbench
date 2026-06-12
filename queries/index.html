@@ -1,868 +1,2166 @@
-{
- "cells": [
-  {
-   "cell_type": "markdown",
-   "id": "cf23cfd2-c45c-4ca3-9dcb-70541f3cc47d",
-   "metadata": {},
-   "source": [
-    "# Run the SpatialBench Queries"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "a8438568",
-   "metadata": {},
-   "source": [
-    "This notebook contains the queries that make up the SpatialBench benchmark.\n",
-    "\n",
-    "SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems. The queries represent common, real-world geospatial analytics tasks and are designed to test a wide range of spatial functions and join conditions.\n",
-    "\n",
-    "The benchmark uses a realistic but synthetic, transportation-themed dataset to ensure the queries reflect practical use cases. By running these queries, you can evaluate and compare the relative performance of different spatial query engines in a consistent and unbiased manner."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "09929a96",
-   "metadata": {},
-   "source": [
-    "## Before you start\n",
-    "Before running this notebook, ensure that you have installed the packages in the `requirements.txt` file: "
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "dbf738f1",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "%pip install -r ~/sedona-spatialbench/docs/requirements.txt"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "93369f9a",
-   "metadata": {},
-   "source": [
-    "Additionally, install the SpatialBench CLI and generate the synthetic data on your machine:\n",
-    "\n",
-    "```\n",
-    "# SpatialBench CLI\n",
-    "cargo install --path ./spatialbench-cli\n",
-    "# Generate the benchmarking data to the sf1-parquet directory\n",
-    "spatialbench-cli -s 1 --format=parquet --output-dir sf1-parquet\n",
-    "```"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 34,
-   "id": "e6b1f354",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "import sedona.db"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 35,
-   "id": "96cf6ad5-e106-48f7-9097-9f3f740e9e7f",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "sd = sedona.db.connect()"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 36,
-   "id": "16a147f4-4a12-4050-a1bb-934834b4a6bc",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "sd.read_parquet(f\"../sf1-parquet/building.parquet\").to_view(\"building\")\n",
-    "sd.read_parquet(f\"../sf1-parquet/customer.parquet\").to_view(\"customer\")\n",
-    "sd.read_parquet(f\"../sf1-parquet/driver.parquet\").to_view(\"driver\")\n",
-    "sd.read_parquet(f\"../sf1-parquet/trip.parquet\").to_view(\"trip\")\n",
-    "sd.read_parquet(f\"../sf1-parquet/vehicle.parquet\").to_view(\"vehicle\")\n",
-    "sd.read_parquet(f\"../sf1-parquet/zone.parquet\").to_view(\"zone\")"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "5e243bca-ca97-4f72-bc72-46ace7495019",
-   "metadata": {},
-   "source": [
-    "## Q1: Find trips starting within 50km of Sedona city center, ordered by distance\n",
-    "\n",
-    "**Real-life scenario:** Identify and rank trips by proximity to a city center for urban planning and transportation analysis.\n",
-    "\n",
-    "This query finds all taxi or rideshare trips that started within 50 kilometers of downtown Sedona, Arizona. For each qualifying trip, it shows the trip ID, pickup coordinates, pickup time, and calculates the exact distance from the pickup location to Sedona's city center. The results are sorted to show the trips that picked up closest to downtown Sedona first, making it easy to see which rides originated nearest to the city center.\n",
-    "\n",
-    "**Spatial query characteristics tested:**\n",
-    "\n",
-    "1. Distance-based spatial filtering (ST_DWithin)\n",
-    "2. Distance calculation to a fixed point\n",
-    "3. Coordinate extraction (ST_X, ST_Y)\n",
-    "4. Ordering by spatial distance"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 37,
-   "id": "f121f799-08f9-4679-a772-fb5f5470986f",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "┌───────────┬────────────────┬──────────────┬─────────────────────┬──────────────────────┐\n",
-      "│ t_tripkey ┆   pickup_lon   ┆  pickup_lat  ┆     t_pickuptime    ┆  distance_to_center  │\n",
-      "│   int64   ┆     float64    ┆    float64   ┆      timestamp      ┆        float64       │\n",
-      "╞═══════════╪════════════════╪══════════════╪═════════════════════╪══════════════════════╡\n",
-      "│   1451371 ┆ -111.791052127 ┆ 34.826733457 ┆ 1998-08-12T06:47:01 ┆  0.05243333056935387 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│   2047835 ┆ -111.706967009 ┆ 34.883889472 ┆ 1992-04-08T07:36:09 ┆ 0.055865062714050374 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│   3936870 ┆ -111.827619221 ┆ 34.882950924 ┆ 1998-11-10T13:32:07 ┆  0.06792427838042854 │\n",
-      "└───────────┴────────────────┴──────────────┴─────────────────────┴──────────────────────┘\n"
-     ]
-    }
-   ],
-   "source": [
-    "sd.sql(\"\"\"\n",
-    "SELECT\n",
-    "    t.t_tripkey,\n",
-    "    ST_X(ST_GeomFromWKB(t.t_pickuploc)) AS pickup_lon,\n",
-    "    ST_Y(ST_GeomFromWKB(t.t_pickuploc)) AS pickup_lat,\n",
-    "    t.t_pickuptime,\n",
-    "    ST_Distance(\n",
-    "        ST_GeomFromWKB(t.t_pickuploc),\n",
-    "        ST_GeomFromText('POINT (-111.7610 34.8697)')\n",
-    "    ) AS distance_to_center\n",
-    "FROM trip t\n",
-    "WHERE ST_DWithin(\n",
-    "    ST_GeomFromWKB(t.t_pickuploc),\n",
-    "    ST_GeomFromText('POINT (-111.7610 34.8697)'),\n",
-    "    0.45 -- 50km radius around Sedona center in degrees\n",
-    ")\n",
-    "ORDER BY distance_to_center ASC, t.t_tripkey ASC\n",
-    "\"\"\").show(3)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "d1e2a458-fc72-4a21-889e-9099f9ad6fb7",
-   "metadata": {},
-   "source": [
-    "## Q2: Count trips starting within Coconino County (Arizona) zone\n",
-    "\n",
-    "**Real-life scenario:** Count all trips originating within a specific administrative boundary (county) for regional transportation statistics.\n",
-    "\n",
-    "This query counts how many taxi or rideshare trips started within Coconino County, Arizona. It does this by checking if each trip's pickup location falls inside the county's geographic boundaries. The result is a simple count showing the total number of trips that originated anywhere within Coconino County.\n",
-    "\n",
-    "**Spatial query characteristics tested:**\n",
-    "\n",
-    "1. Point-in-polygon spatial filtering (ST_Intersects)\n",
-    "2. Subquery with spatial geometry selection\n",
-    "3. Simple aggregation on spatially filtered data"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 38,
-   "id": "cc219172-0cfb-4f60-a728-e4ec5cc5c21e",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "┌───────────────────────────────┐\n",
-      "│ trip_count_in_coconino_county │\n",
-      "│             int64             │\n",
-      "╞═══════════════════════════════╡\n",
-      "│                           541 │\n",
-      "└───────────────────────────────┘\n"
-     ]
-    }
-   ],
-   "source": [
-    "sd.sql(\"\"\"\n",
-    "SELECT COUNT(*) AS trip_count_in_coconino_county\n",
-    "FROM trip t\n",
-    "WHERE ST_Intersects(\n",
-    "    ST_GeomFromWKB(t.t_pickuploc),\n",
-    "    (\n",
-    "        SELECT ST_GeomFromWKB(z.z_boundary)\n",
-    "        FROM zone z\n",
-    "        WHERE z.z_name = 'Coconino County'\n",
-    "        LIMIT 1\n",
-    "    )\n",
-    ")\n",
-    "\"\"\").show(3)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "998daae7-31e4-4e93-823d-70d4cee00605",
-   "metadata": {},
-   "source": [
-    "## Q3: Monthly trip statistics within a 15km radius of the Sedona city center\n",
-    "\n",
-    "**Real-life scenario:** Track monthly travel trends and performance metrics in a metropolitan area with seasonal analysis.\n",
-    "\n",
-    "This query analyzes taxi and rideshare trip patterns around Sedona, Arizona, by grouping trips into monthly summaries. It looks at all trips that started within a 15-kilometer area around Sedona (a 10km box plus 5km buffer) and calculates key statistics for each month, including total number of trips, average trip distance, average trip duration, and average fare. The results are organized chronologically by month, allowing you to see seasonal trends and changes in ride patterns over time in the Sedona area.\n",
-    "\n",
-    "**Spatial query characteristics tested:**\n",
-    "\n",
-    "1. Distance-based spatial filtering (ST_DWithin) with buffer\n",
-    "2. Temporal grouping (monthly aggregation)\n",
-    "3. Multiple statistical aggregations on spatially filtered data"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 39,
-   "id": "eb5d6347-47dd-48af-adb5-929838954ac4",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "┌─────────────────────┬─────────────┬──────────────┬─────────────────────────────────┬─────────────┐\n",
-      "│     pickup_month    ┆ total_trips ┆ avg_distance ┆           avg_duration          ┆   avg_fare  │\n",
-      "│      timestamp      ┆    int64    ┆  decimal128  ┆             duration            ┆  decimal128 │\n",
-      "╞═════════════════════╪═════════════╪══════════════╪═════════════════════════════════╪═════════════╡\n",
-      "│ 1992-04-01T00:00:00 ┆           2 ┆  0.000020000 ┆ 0 days 1 hours 23 mins 47.000 … ┆ 0.000075000 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│ 1992-07-01T00:00:00 ┆           1 ┆  0.000010000 ┆ 0 days 0 hours 58 mins 58.000 … ┆ 0.000040000 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│ 1994-02-01T00:00:00 ┆           2 ┆  0.000020000 ┆ 0 days 1 hours 23 mins 50.000 … ┆ 0.000050000 │\n",
-      "└─────────────────────┴─────────────┴──────────────┴─────────────────────────────────┴─────────────┘\n"
-     ]
-    }
-   ],
-   "source": [
-    "sd.sql(\"\"\"\n",
-    "SELECT\n",
-    "    DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,\n",
-    "    COUNT(t.t_tripkey) AS total_trips,\n",
-    "    AVG(t.t_distance) AS avg_distance,\n",
-    "    AVG(t.t_dropofftime - t.t_pickuptime) AS avg_duration,\n",
-    "    AVG(t.t_fare) AS avg_fare\n",
-    "FROM trip t\n",
-    "WHERE ST_DWithin(\n",
-    "    ST_GeomFromWKB(t.t_pickuploc),\n",
-    "    ST_GeomFromText('POLYGON((\n",
-    "        -111.9060 34.7347, -111.6160 34.7347,\n",
-    "        -111.6160 35.0047, -111.9060 35.0047,\n",
-    "        -111.9060 34.7347\n",
-    "    ))'), -- Bounding box around Sedona\n",
-    "    0.045 -- Additional 5km buffer in degrees\n",
-    ")\n",
-    "GROUP BY pickup_month\n",
-    "ORDER BY pickup_month\n",
-    "\"\"\").show(3)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "b516ed52-8cf2-4c17-bc33-00002e22b287",
-   "metadata": {},
-   "source": [
-    "## Q4: Zone distribution of top 1000 trips by tip amount\n",
-    "\n",
-    "**Real-life scenario:** Analyze the geographic distribution of high-value trips (by tip amount) to understand premium service areas.\n",
-    "\n",
-    "This query identifies which neighborhoods or zones produced the most generous tippers by analyzing the top 1000 highest-tipping trips. It first finds the 1000 trips with the largest tips, then determines which geographic zones or neighborhoods those pickup locations fall within, and counts how many of these high-tip trips originated from each area. The results show a ranking of zones by the number of big tippers they produced, helping identify the most lucrative pickup areas for drivers seeking high-tip rides.\n",
-    "\n",
-    "**Spatial query characteristics tested:**\n",
-    "\n",
-    "1. Subquery with ordering and limiting\n",
-    "2. Point-in-polygon spatial join (ST_Within)\n",
-    "3. Aggregation on spatially joined results\n",
-    "4. Multi-step query with spatial filtering and grouping"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 40,
-   "id": "f8dcf328-a7f2-49be-9383-afa11766f871",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "┌───────────┬─────────────────────────────────┬────────────┐\n",
-      "│ z_zonekey ┆              z_name             ┆ trip_count │\n",
-      "│   int64   ┆               utf8              ┆    int64   │\n",
-      "╞═══════════╪═════════════════════════════════╪════════════╡\n",
-      "│     65008 ┆ Ndélé                           ┆         35 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│    147530 ┆ 乐山市                          ┆         27 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│    150276 ┆ 锡林郭勒盟 ᠰᠢᠯᠢ ᠶᠢᠨ ᠭᠣᠣᠯ ᠠᠶᠢᠮᠠᠭ ┆         19 │\n",
-      "└───────────┴─────────────────────────────────┴────────────┘\n"
-     ]
-    }
-   ],
-   "source": [
-    "sd.sql(\"\"\"\n",
-    "SELECT\n",
-    "    z.z_zonekey,\n",
-    "    z.z_name,\n",
-    "    COUNT(*) AS trip_count\n",
-    "FROM\n",
-    "    zone z\n",
-    "    JOIN (\n",
-    "        SELECT t.t_pickuploc\n",
-    "        FROM trip t\n",
-    "        ORDER BY t.t_tip DESC, t.t_tripkey ASC\n",
-    "        LIMIT 1000\n",
-    "    ) top_trips\n",
-    "    ON ST_Within(\n",
-    "        ST_GeomFromWKB(top_trips.t_pickuploc),\n",
-    "        ST_GeomFromWKB(z.z_boundary)\n",
-    "    )\n",
-    "GROUP BY z.z_zonekey, z.z_name\n",
-    "ORDER BY trip_count DESC, z.z_zonekey ASC\n",
-    "\"\"\").show(3)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "ad294223-742c-4b6b-a9ec-036723e67a1f",
-   "metadata": {},
-   "source": [
-    "## Q5: Monthly travel patterns for repeat customers (convex hull of dropoff locations)\n",
-    "\n",
-    "**Real-life scenario:** Analyze the geographic spread of travel patterns for frequent customers to understand their mobility behavior.  \n",
-    "\n",
-    "This query analyzes the monthly travel patterns of frequent customers by measuring how much geographic area they cover with their trips. For each customer who took more than five trips in a month, it calculates the size of the \"travel hull\" - the area enclosed by connecting all their dropoff locations that month. The results reveal which customers have the most expansive travel patterns, helping to identify power users who cover large geographic areas versus those who stick to smaller, local areas.\n",
-    "\n",
-    "**Spatial query characteristics tested:**\n",
-    "\n",
-    "1. Spatial aggregation (ST_Collect/ARRAY_AGG)\n",
-    "2. Convex hull computation (ST_ConvexHull)\n",
-    "3. Area calculation on complex geometries\n",
-    "4. Temporal and customer-based grouping with spatial operations"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 41,
-   "id": "8c446f9a-3734-4a8d-87a8-0d9d6d34fd5c",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "┌───────────┬────────────────────┬─────────────────────┬────────────────────┬───────────────┐\n",
-      "│ c_custkey ┆    customer_name   ┆     pickup_month    ┆ monthly_travel_hul ┆ dropoff_count │\n",
-      "│   int64   ┆        utf8        ┆      timestamp      ┆       l_area…      ┆     int64     │\n",
-      "╞═══════════╪════════════════════╪═════════════════════╪════════════════════╪═══════════════╡\n",
-      "│     25975 ┆ Customer#000025975 ┆ 1992-02-01T00:00:00 ┆ 34941.303419053635 ┆            10 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│     12061 ┆ Customer#000012061 ┆ 1997-03-01T00:00:00 ┆  34607.53871953154 ┆            14 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│     21418 ┆ Customer#000021418 ┆ 1993-08-01T00:00:00 ┆  34465.32323910264 ┆             9 │\n",
-      "└───────────┴────────────────────┴─────────────────────┴────────────────────┴───────────────┘\n"
-     ]
-    }
-   ],
-   "source": [
-    "sd.sql(\"\"\"\n",
-    "SELECT\n",
-    "    c.c_custkey,\n",
-    "    c.c_name AS customer_name,\n",
-    "    DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,\n",
-    "    ST_Area(\n",
-    "        ST_ConvexHull(ST_Collect(ST_GeomFromWKB(t.t_dropoffloc)))\n",
-    "    ) AS monthly_travel_hull_area,\n",
-    "    COUNT(*) as dropoff_count\n",
-    "FROM trip t\n",
-    "JOIN customer c\n",
-    "    ON t.t_custkey = c.c_custkey\n",
-    "GROUP BY c.c_custkey, c.c_name, pickup_month\n",
-    "HAVING dropoff_count > 5 -- Only include repeat customers\n",
-    "ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC\n",
-    "\"\"\").show(3)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "8501daf5-5e4a-46d5-86c0-c3f6ea8673ee",
-   "metadata": {},
-   "source": [
-    "## Q6: Zone statistics for trips within a 50km radius of the Sedona city center\n",
-    "\n",
-    "**Real-life scenario:** Analyze trip patterns in zones within a metropolitan area around a specific city center.\n",
-    "\n",
-    "This query analyzes ride activity across all neighborhoods and zones within a 50-kilometer area around Sedona, Arizona. It identifies which zones had the most pickup activity by counting total trips that started in each region. Also, it calculates the average trip cost and duration for rides originating from each zone. The results are ranked by pickup volume, showing which neighborhoods or areas generate the most ride demand and their typical trip characteristics within the greater Sedona region.\n",
-    "\n",
-    "**Spatial query characteristics tested:**\n",
-    "\n",
-    "1. Polygon containment check (ST_Contains) with bounding box\n",
-    "2. Point-in-polygon spatial join (ST_Within)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 42,
-   "id": "f168c302-5187-45f9-8d87-427bbd68c942",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "┌───────────┬─────────────────┬───────────────┬──────────────┬────────────────────────────────────┐\n",
-      "│ z_zonekey ┆      z_name     ┆ total_pickups ┆ avg_distance ┆            avg_duration            │\n",
-      "│   int64   ┆       utf8      ┆     int64     ┆  decimal128  ┆              duration              │\n",
-      "╞═══════════╪═════════════════╪═══════════════╪══════════════╪════════════════════════════════════╡\n",
-      "│     30084 ┆ Coconino County ┆           541 ┆  0.000030406 ┆ 0 days 1 hours 45 mins 16.591 secs │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│     30083 ┆ Yavapai County  ┆           292 ┆  0.000027157 ┆ 0 days 1 hours 36 mins 43.647 secs │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│     29488 ┆ Gila County     ┆            39 ┆  0.000021282 ┆ 0 days 1 hours 16 mins 59.769 secs │\n",
-      "└───────────┴─────────────────┴───────────────┴──────────────┴────────────────────────────────────┘\n"
-     ]
-    }
-   ],
-   "source": [
-    "sd.sql(\"\"\"\n",
-    "SELECT\n",
-    "    z.z_zonekey,\n",
-    "    z.z_name,\n",
-    "    COUNT(t.t_tripkey) AS total_pickups,\n",
-    "    AVG(t.t_distance) AS avg_distance, -- Corrected from t_totalamount\n",
-    "    AVG(t.t_dropofftime - t.t_pickuptime) AS avg_duration\n",
-    "FROM trip t, zone z\n",
-    "WHERE ST_Intersects(\n",
-    "    ST_GeomFromText('POLYGON((\n",
-    "        -112.2110 34.4197, -111.3110 34.4197,\n",
-    "        -111.3110 35.3197, -112.2110 35.3197,\n",
-    "        -112.2110 34.4197\n",
-    "    ))'), -- Bounding box around Sedona\n",
-    "    ST_GeomFromWKB(z.z_boundary)\n",
-    "  )\n",
-    "  AND ST_Within(\n",
-    "    ST_GeomFromWKB(t.t_pickuploc),\n",
-    "    ST_GeomFromWKB(z.z_boundary)\n",
-    "  )\n",
-    "GROUP BY z.z_zonekey, z.z_name\n",
-    "ORDER BY total_pickups DESC, z.z_zonekey ASC\n",
-    "\"\"\").show(3)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "fe58f65b-1403-4f91-81a3-e81784bfd3b4",
-   "metadata": {},
-   "source": [
-    "## Q7: Detect potential route detours by comparing reported vs. geometric distances\n",
-    "\n",
-    "**Real-life scenario:** Identify suspicious trips where the reported distance significantly exceeds the straight-line distance, potentially indicating fare manipulation.\n",
-    "\n",
-    "This query analyzes how much taxi and rideshare trips deviate from the most direct route by comparing the actual reported trip distance to the straight-line distance between pickup and dropoff points. It calculates a \"detour ratio\" that shows how much longer the actual route was compared to flying in a straight line.  For example, a ratio of 1.5 means the trip was 50% longer than the direct path. The results are sorted to show the trips with the highest detour ratios first, helping identify routes that took significant detours due to traffic, road layouts, or other factors.\n",
-    "\n",
-    "**Spatial query characteristics tested:**\n",
-    "\n",
-    "1. Line geometry creation (ST_MakeLine)\n",
-    "2. Length calculation (ST_Length)\n",
-    "3. Coordinate system conversion and distance calculations\n",
-    "4. Ratio-based filtering on geometric vs. reported measurements"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 43,
-   "id": "3a8cddde-c04b-49d4-ab69-3d75d9a535ff",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "┌───────────┬─────────────────────┬────────────────────┬──────────────────────┐\n",
-      "│ t_tripkey ┆ reported_distance_m ┆   line_distance_m  ┆     detour_ratio     │\n",
-      "│   int64   ┆      decimal128     ┆       float64      ┆        float64       │\n",
-      "╞═══════════╪═════════════════════╪════════════════════╪══════════════════════╡\n",
-      "│   4688563 ┆             0.00010 ┆ 11111.114941555596 ┆ 8.999996897341038e-9 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│   2380123 ┆             0.00010 ┆ 11111.114983939786 ┆ 8.999996863009868e-9 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│   3077131 ┆             0.00010 ┆ 11111.115027455284 ┆ 8.999996827762339e-9 │\n",
-      "└───────────┴─────────────────────┴────────────────────┴──────────────────────┘\n"
-     ]
-    }
-   ],
-   "source": [
-    "sd.sql(\"\"\"\n",
-    "WITH trip_lengths AS (\n",
-    "    SELECT\n",
-    "        t.t_tripkey,\n",
-    "        t.t_distance AS reported_distance_m,\n",
-    "        ST_Length(\n",
-    "            ST_MakeLine(\n",
-    "                ST_GeomFromWKB(t.t_pickuploc),\n",
-    "                ST_GeomFromWKB(t.t_dropoffloc)\n",
-    "            )\n",
-    "        ) * 111111 AS line_distance_m -- Approx. meters per degree\n",
-    "    FROM trip t\n",
-    ")\n",
-    "SELECT\n",
-    "    t.t_tripkey,\n",
-    "    t.reported_distance_m,\n",
-    "    t.line_distance_m,\n",
-    "    t.reported_distance_m / NULLIF(t.line_distance_m, 0) AS detour_ratio\n",
-    "FROM trip_lengths t\n",
-    "ORDER BY\n",
-    "    detour_ratio DESC NULLS LAST,\n",
-    "    reported_distance_m DESC,\n",
-    "    t_tripkey ASC\n",
-    "\"\"\").show(3)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "3040b853-100b-4c9d-8447-5b9bf4c4a895",
-   "metadata": {},
-   "source": [
-    "## Q8: Count nearby pickups for each building within a 500m radius\n",
-    "\n",
-    "**Real-life scenario:** Count how many trips start within 500 meters of each building.\n",
-    "\n",
-    "This query identifies which buildings generate the most taxi and rideshare pickup activity by counting trips that started within 500 meters of each building. It analyzes the relationship between specific buildings (like hotels, shopping centers, airports, or office buildings) and ride demand in their immediate vicinity. The results are ranked to show which buildings are the biggest trip generators, helping identify key pickup hotspots and understand how different types of buildings drive transportation demand.\n",
-    "\n",
-    "**Spatial query characteristics tested:**\n",
-    "\n",
-    "1. Distance spatial join between points and polygons\n",
-    "2. Aggregation on spatial join result"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 44,
-   "id": "58ac6e6a-2e3d-4dd7-bb03-1b16f55fc186",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "┌───────────────┬────────┬─────────────────────┐\n",
-      "│ b_buildingkey ┆ b_name ┆ nearby_pickup_count │\n",
-      "│     int64     ┆  utf8  ┆        int64        │\n",
-      "╞═══════════════╪════════╪═════════════════════╡\n",
-      "│          3779 ┆ linen  ┆                  42 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│         19135 ┆ misty  ┆                  36 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│          4416 ┆ sienna ┆                  26 │\n",
-      "└───────────────┴────────┴─────────────────────┘\n"
-     ]
-    }
-   ],
-   "source": [
-    "sd.sql(\"\"\"\n",
-    "SELECT b.b_buildingkey, b.b_name, COUNT(*) AS nearby_pickup_count\n",
-    "FROM trip t\n",
-    "JOIN building b\n",
-    "ON ST_DWithin(ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(b.b_boundary), 0.0045) -- ~500m\n",
-    "GROUP BY b.b_buildingkey, b.b_name\n",
-    "ORDER BY nearby_pickup_count DESC, b.b_buildingkey ASC\n",
-    "\"\"\").show(3)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "eee8c5bc-1af6-484c-af91-b6c266ecb7c1",
-   "metadata": {},
-   "source": [
-    "## Q9: Building Conflation (duplicate/overlap detection via IoU)\n",
-    "\n",
-    "**Real-life scenario:** Detect duplicate or overlapping building footprints in GIS datasets to identify data quality issues.\n",
-    "\n",
-    "This query identifies overlapping buildings by calculating how much their footprints intersect with each other. For every pair of buildings that touch or overlap, it measures the total area of each building and the area where they overlap, then calculates an \"Intersection over Union\" (IoU) score that ranges from 0 to 1. The results are sorted by IoU score to show the most significantly overlapping building pairs first, which could help identify data quality issues, adjacent structures, or buildings that share common areas like courtyards or parking lots.\n",
-    "\n",
-    "**Spatial query characteristics tested:**\n",
-    "\n",
-    "1. Self-join with spatial intersection (ST_Intersects)\n",
-    "2. Area calculations (ST_Area)\n",
-    "3. Geometric intersection operations (ST_Intersection)\n",
-    "4. Complex geometric ratio calculations (IoU - Intersection over Union)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 45,
-   "id": "baae3710-6008-47cf-a31f-db2813f9fca3",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "┌────────────┬────────────┬───┬───────────────────────┬────────────────────┐\n",
-      "│ building_1 ┆ building_2 ┆ … ┆      overlap_area     ┆         iou        │\n",
-      "│    int64   ┆    int64   ┆   ┆        float64        ┆       float64      │\n",
-      "╞════════════╪════════════╪═══╪═══════════════════════╪════════════════════╡\n",
-      "│       2285 ┆      15719 ┆ … ┆ 2.3709162946727276e-6 ┆ 0.9056816071717889 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│       7562 ┆      18534 ┆ … ┆  5.855106543747764e-6 ┆ 0.8450437137796769 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│       2285 ┆      13658 ┆ … ┆ 1.9770693222933237e-6 ┆  0.737899157380637 │\n",
-      "└────────────┴────────────┴───┴───────────────────────┴────────────────────┘\n"
-     ]
-    }
-   ],
-   "source": [
-    "sd.sql(\"\"\"\n",
-    "WITH b1 AS (\n",
-    "   SELECT b_buildingkey AS id, ST_GeomFromWKB(b_boundary) AS geom\n",
-    "   FROM building\n",
-    "),\n",
-    "b2 AS (\n",
-    "    SELECT b_buildingkey AS id, ST_GeomFromWKB(b_boundary) AS geom\n",
-    "    FROM building\n",
-    "),\n",
-    "pairs AS (\n",
-    "    SELECT\n",
-    "        b1.id AS building_1,\n",
-    "        b2.id AS building_2,\n",
-    "        ST_Area(b1.geom) AS area1,\n",
-    "        ST_Area(b2.geom) AS area2,\n",
-    "        ST_Area(ST_Intersection(b1.geom, b2.geom)) AS overlap_area\n",
-    "    FROM b1\n",
-    "    JOIN b2 ON b1.id < b2.id AND ST_Intersects(b1.geom, b2.geom)\n",
-    ")\n",
-    "SELECT\n",
-    "   building_1,\n",
-    "   building_2,\n",
-    "   area1,\n",
-    "   area2,\n",
-    "   overlap_area,\n",
-    "   CASE\n",
-    "       WHEN (area1 + area2 - overlap_area) = 0 THEN 1.0\n",
-    "       ELSE overlap_area / (area1 + area2 - overlap_area)\n",
-    "   END AS iou\n",
-    "FROM pairs\n",
-    "ORDER BY iou DESC, building_1 ASC, building_2 ASC\n",
-    "\"\"\").show(3)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "5ba7497e-cff3-47f6-9834-3beed648fd68",
-   "metadata": {},
-   "source": [
-    "## Q10: Zone statistics for trips starting within each zone\n",
-    "\n",
-    "**Real-life scenario:** Analyze trip patterns and performance metrics for each administrative zone (like city districts or neighborhoods).\n",
-    "\n",
-    "This query analyzes trip patterns across all geographic zones by calculating average trip duration, distance, and volume for rides originating from each area. It uses a left join to include all zones in the results, even those with no pickup activity, showing which neighborhoods generate longer trips on average versus shorter local rides. The results are sorted by average trip duration to identify zones where people tend to take longer journeys, which could indicate more isolated areas, have limited local amenities, or serve as departure points for longer-distance travel.\n",
-    "\n",
-    "**Spatial query characteristics tested:**\n",
-    "\n",
-    "1. Point-in-polygon spatial join (ST_Within)\n",
-    "2. Aggregation with multiple metrics (average duration, distance, count)\n",
-    "3. LEFT JOIN to include zones with no trips"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 46,
-   "id": "bd264220-b2dd-49a1-a8f9-0267ffb1371c",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "┌───────────┬────────────────┬────────────────────────────────────┬──────────────┬───────────┐\n",
-      "│ z_zonekey ┆   pickup_zone  ┆            avg_duration            ┆ avg_distance ┆ num_trips │\n",
-      "│   int64   ┆      utf8      ┆              duration              ┆  decimal128  ┆   int64   │\n",
-      "╞═══════════╪════════════════╪════════════════════════════════════╪══════════════╪═══════════╡\n",
-      "│     31558 ┆ Benewah County ┆ 4 days 13 hours 3 mins 34.000 secs ┆  0.002180000 ┆         2 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│    119540 ┆ Kreis Unna     ┆ 2 days 4 hours 52 mins 44.000 secs ┆  0.001050000 ┆         1 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│     59928 ┆ Ndhiwa         ┆ 2 days 4 hours 19 mins 39.000 secs ┆  0.001040000 ┆         1 │\n",
-      "└───────────┴────────────────┴────────────────────────────────────┴──────────────┴───────────┘\n"
-     ]
-    }
-   ],
-   "source": [
-    "sd.sql(\"\"\"\n",
-    "SELECT\n",
-    "    z.z_zonekey,\n",
-    "    z.z_name AS pickup_zone,\n",
-    "    AVG(t.t_dropofftime - t.t_pickuptime) AS avg_duration,\n",
-    "    AVG(t.t_distance) AS avg_distance,\n",
-    "    COUNT(t.t_tripkey) AS num_trips\n",
-    "FROM\n",
-    "    zone z\n",
-    "    LEFT JOIN trip t\n",
-    "    ON ST_Within(\n",
-    "        ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(z.z_boundary)\n",
-    "    )\n",
-    "GROUP BY z.z_zonekey, z.z_name\n",
-    "ORDER BY avg_duration DESC NULLS LAST, z.z_zonekey ASC\n",
-    "\"\"\").show(3)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "cf6050f4-3968-4fd9-a701-1c43d81fa4f5",
-   "metadata": {},
-   "source": [
-    "## Q11: Count trips that cross between different zones\n",
-    "\n",
-    "**Real-life scenario:** Identify inter-district or inter-city trips to understand cross-boundary travel patterns.\n",
-    "\n",
-    "This query counts how many trips crossed zone boundaries by starting in one geographic zone and ending in a different zone. It identifies each trip's pickup and dropoff zones, then filters to only include trips where the pickup zone is different from the dropoff zone. The result shows the total number of inter-zone trips, helping measure how much travel occurs between different neighborhoods, districts, or areas rather than staying within the same local zone.\n",
-    "\n",
-    "**Spatial query characteristics tested:**\n",
-    "\n",
-    "1. Multiple point-in-polygon spatial joins\n",
-    "2. Filtering based on spatial relationship results"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 47,
-   "id": "64bf9632-b4ca-4862-9443-41e90b82bee4",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "┌───────────────────────┐\n",
-      "│ cross_zone_trip_count │\n",
-      "│         int64         │\n",
-      "╞═══════════════════════╡\n",
-      "│                176391 │\n",
-      "└───────────────────────┘\n"
-     ]
-    }
-   ],
-   "source": [
-    "sd.sql(\"\"\"\n",
-    "SELECT COUNT(*) AS cross_zone_trip_count\n",
-    "FROM\n",
-    "    trip t\n",
-    "    JOIN zone pickup_zone\n",
-    "        ON ST_Within(\n",
-    "            ST_GeomFromWKB(t.t_pickuploc),\n",
-    "            ST_GeomFromWKB(pickup_zone.z_boundary)\n",
-    "        )\n",
-    "    JOIN zone dropoff_zone\n",
-    "        ON ST_Within(\n",
-    "            ST_GeomFromWKB(t.t_dropoffloc),\n",
-    "            ST_GeomFromWKB(dropoff_zone.z_boundary)\n",
-    "        )\n",
-    "WHERE pickup_zone.z_zonekey != dropoff_zone.z_zonekey\n",
-    "\"\"\").show(3)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "386e6a72-c825-4341-ab4a-8ea59b7a9439",
-   "metadata": {},
-   "source": [
-    "## Q12: Find five nearest buildings to each trip pickup location using KNN join\n",
-    "**Real-life scenario:** Identify the closest landmarks or buildings to each trip start point for location context and navigation.\n",
-    "\n",
-    "This query finds the 5 closest buildings to each trip pickup location using spatial nearest neighbor analysis. For every trip, it identifies the five buildings that are geographically closest to where the passenger was picked up and calculates the exact distance to each of those buildings. The results show which buildings are most commonly near pickup points, helping understand the relationship between trip origins and nearby landmarks, businesses, or residential structures that might influence ride demand patterns.\n",
-    "\n",
-    "**Spatial query characteristics tested:**\n",
-    "\n",
-    "1. K-nearest neighbor (KNN) spatial join\n",
-    "2. Distance calculations between points and polygons\n",
-    "3. Ranking and limiting results based on spatial proximity"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 48,
-   "id": "0878af06-c518-44f3-9b45-83651cc37d04",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "┌───────────┬─────────────────────────────────┬───────────────┬───────────────┬────────────────────┐\n",
-      "│ t_tripkey ┆           t_pickuploc           ┆ b_buildingkey ┆ building_name ┆ distance_to_buildi │\n",
-      "│   int64   ┆              binary             ┆     int64     ┆      utf8     ┆         ng…        │\n",
-      "╞═══════════╪═════════════════════════════════╪═══════════════╪═══════════════╪════════════════════╡\n",
-      "│         1 ┆ 01010000009f3c318dd43735405930… ┆         15870 ┆ purple        ┆  0.984633987957188 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│         1 ┆ 01010000009f3c318dd43735405930… ┆          6800 ┆ ghost         ┆  1.205725156670704 │\n",
-      "├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n",
-      "│         1 ┆ 01010000009f3c318dd43735405930… ┆          8384 ┆ lavender      ┆ 1.4195012994942622 │\n",
-      "└───────────┴─────────────────────────────────┴───────────────┴───────────────┴────────────────────┘\n"
-     ]
-    }
-   ],
-   "source": [
-    "sd.sql(\"\"\"\n",
-    "WITH trip_with_geom AS (\n",
-    "    SELECT\n",
-    "        t_tripkey,\n",
-    "        t_pickuploc,\n",
-    "        ST_GeomFromWKB(t_pickuploc) as pickup_geom\n",
-    "    FROM trip\n",
-    "),\n",
-    "building_with_geom AS (\n",
-    "    SELECT\n",
-    "        b_buildingkey,\n",
-    "        b_name,\n",
-    "        b_boundary,\n",
-    "        ST_GeomFromWKB(b_boundary) as boundary_geom\n",
-    "    FROM building\n",
-    ")\n",
-    "SELECT\n",
-    "    t.t_tripkey,\n",
-    "    t.t_pickuploc,\n",
-    "    b.b_buildingkey,\n",
-    "    b.b_name AS building_name,\n",
-    "    ST_Distance(t.pickup_geom, b.boundary_geom) AS distance_to_building\n",
-    "FROM trip_with_geom t\n",
-    "JOIN building_with_geom b\n",
-    "    ON ST_KNN(t.pickup_geom, b.boundary_geom, 5, FALSE)\n",
-    "ORDER BY t.t_tripkey ASC, distance_to_building ASC, b.b_buildingkey ASC\n",
-    "\"\"\").show(3)"
-   ]
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": ".venv (3.13.3)",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.13.3"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems">
+      
+      
+      
+        <link rel="canonical" href="https://sedona.apache.org/spatialbench/queries/">
+      
+      
+        <link rel="prev" href="../overview-methodology/">
+      
+      
+        <link rel="next" href="../datasets-generators/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../zh/queries/" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../image/sedona_logo_symbol.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Queries - SpatialBench</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .glightbox-clean .gslide-media { -webkit-box-shadow: none; box-shadow: none; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="green">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#run-the-spatialbench-queries" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+  <div id="announcement-bar"></div>
+  
+      <!--
+  Copyright (c) 2016-2025 Martin Donath <martin.donath@squidfunk.com>
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to
+  deal in the Software without restriction, including without limitation the
+  rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+  sell copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+  IN THE SOFTWARE.
+-->
+
+<!-- Determine classes -->
+
+
+
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+    <nav class="md-header__inner md-grid container" aria-label="Header">
+      <div class="left-part">
+
+        <!-- Button to open drawer -->
+        <label class="md-header__button md-icon" for="__drawer">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+        </label>
+
+        <!-- Link to home -->
+        <a href=".." title="SpatialBench" class="header-logo" aria-label="SpatialBench" data-md-component="logo">
+          
+  <img src="../image/logo.svg" alt="logo">
+
+        </a>
+
+        <!-- Header title -->
+        <div class="md-header__title" data-md-component="header-title">
+          <div class="md-header__ellipsis">
+            <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SpatialBench
+          </span>
+            </div>
+            <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Queries
+            
+          </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Color palette toggle -->
+        
+        
+        
+
+        <!-- User preference: color palette -->
+        
+
+        <!-- Site language selector -->
+        
+        <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"></path></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../zh/queries/" hreflang="zh" class="md-select__link">
+              中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+        
+      </div>
+      <div class="right-part">
+
+        <!-- Button to open search modal -->
+        
+        
+
+        <!-- Check if search is actually enabled - see https://t.ly/DT_0V -->
+        
+        <label class="md-header__button md-icon btn-search" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+
+        <!-- Search interface -->
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required="">
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard="" data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"></path></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix="">
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+        
+        
+
+        <!-- Repository information -->
+        
+        <div class="md-header__source">
+          <a href="https://github.com/apache/sedona-spatialbench/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    apache/sedona-spatialbench
+  </div>
+</a>
+        </div>
+        
+      </div>
+    </nav>
+
+    <!-- Navigation tabs (sticky) -->
+    
+    
+    
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://sedona.apache.org/latest/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://sedona.apache.org/sedonadb/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  SedonaDB
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://sedona.apache.org/latest/sedonaspark/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  SedonaSpark
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://sedona.apache.org/latest/sedonaflink/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  SedonaFlink
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://sedona.apache.org/latest/sedonasnow/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  SedonaSnow
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+  SpatialBench
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://sedona.apache.org/latest/blog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Blog
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://sedona.apache.org/latest/community/contact/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Community
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://sedona.apache.org/latest/asf/asf/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Apache Software Foundation
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+    
+</header>
+    
+  <script>
+    (function () {
+      // Fetch the main Sedona site and extract its announcement bar
+      fetch("https://sedona.apache.org/latest/")
+        .then(function (res) {
+          if (!res.ok) throw new Error("Failed to fetch");
+          return res.text();
+        })
+        .then(function (html) {
+          var parser = new DOMParser();
+          var doc = parser.parseFromString(html, "text/html");
+          // The announcement bar is the first div inside <body> before the header,
+          // styled with inline background: #CA463A
+          var candidates = doc.querySelectorAll("body > div, header > div, .md-header ~ div, body > .md-banner");
+          var announcement = null;
+
+          // Strategy 1: Look for a div with the Sedona red background color
+          for (var i = 0; i < candidates.length; i++) {
+            var style = candidates[i].getAttribute("style") || "";
+            if (style.indexOf("CA463A") !== -1 || style.indexOf("ca463a") !== -1) {
+              announcement = candidates[i];
+              break;
+            }
+          }
+
+          // Strategy 2: Check for Material's built-in announcement banner
+          if (!announcement) {
+            announcement = doc.querySelector(".md-banner");
+          }
+
+          // Strategy 3: Check first child of body if it's a div with a link
+          if (!announcement) {
+            var first = doc.body.firstElementChild;
+            if (first && first.tagName === "DIV" && first.querySelector("a")) {
+              var bg = first.style.backgroundColor || first.getAttribute("style") || "";
+              if (bg && first.textContent.trim().length > 0) {
+                announcement = first;
+              }
+            }
+          }
+
+          if (announcement) {
+            var bar = document.getElementById("announcement-bar");
+            // Fix relative links to point to the main site
+            var links = announcement.querySelectorAll("a");
+            for (var j = 0; j < links.length; j++) {
+              var href = links[j].getAttribute("href");
+              if (href && !href.startsWith("http") && !href.startsWith("//")) {
+                links[j].setAttribute("href", "/latest/" + href.replace(/^\//, ""));
+              }
+            }
+            bar.innerHTML = announcement.outerHTML;
+          }
+        })
+        .catch(function () {
+          // Silently fail — no announcement bar shown
+        });
+    })();
+  </script>
+
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+
+
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="SpatialBench" class="logo-link" aria-label="SpatialBench" data-md-component="logo">
+      <img src="../image/header/logo-mobile.svg" alt="" class="logo">
+    </a>
+  </label>
+
+  
+  <div class="md-nav__source">
+    <a href="https://github.com/apache/sedona-spatialbench/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    apache/sedona-spatialbench
+  </div>
+</a>
+  </div>
+  
+
+  <ul class="md-nav__list" data-md-scrollfix="">
+    
+    
+    
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sedona.apache.org/latest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+    
+    
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sedona.apache.org/sedonadb/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SedonaDB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+    
+    
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sedona.apache.org/latest/sedonaspark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SedonaSpark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+    
+    
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sedona.apache.org/latest/sedonaflink/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SedonaFlink
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+    
+    
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sedona.apache.org/latest/sedonasnow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SedonaSnow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+    
+    
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked="">
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SpatialBench
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    SpatialBench
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix="">
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview-methodology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Queries
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Queries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+      
+        <li class="md-nav__item">
+  <a href="#before-you-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Before you start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q1-find-trips-starting-within-50km-of-sedona-city-center-ordered-by-distance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q1: Find trips starting within 50km of Sedona city center, ordered by distance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q2-count-trips-starting-within-coconino-county-arizona-zone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q2: Count trips starting within Coconino County (Arizona) zone
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q3-monthly-trip-statistics-within-a-15km-radius-of-the-sedona-city-center" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q3: Monthly trip statistics within a 15km radius of the Sedona city center
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q4-zone-distribution-of-top-1000-trips-by-tip-amount" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q4: Zone distribution of top 1000 trips by tip amount
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q5-monthly-travel-patterns-for-repeat-customers-convex-hull-of-dropoff-locations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q5: Monthly travel patterns for repeat customers (convex hull of dropoff locations)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q6-zone-statistics-for-trips-within-a-50km-radius-of-the-sedona-city-center" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q6: Zone statistics for trips within a 50km radius of the Sedona city center
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q7-detect-potential-route-detours-by-comparing-reported-vs-geometric-distances" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q7: Detect potential route detours by comparing reported vs. geometric distances
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q8-count-nearby-pickups-for-each-building-within-a-500m-radius" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q8: Count nearby pickups for each building within a 500m radius
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q9-building-conflation-duplicateoverlap-detection-via-iou" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q9: Building Conflation (duplicate/overlap detection via IoU)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q10-zone-statistics-for-trips-starting-within-each-zone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q10: Zone statistics for trips starting within each zone
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q11-count-trips-that-cross-between-different-zones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q11: Count trips that cross between different zones
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q12-find-five-nearest-buildings-to-each-trip-pickup-location-using-knn-join" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q12: Find five nearest buildings to each trip pickup location using KNN join
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../datasets-generators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datasets &amp; Generators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spatialbench-distributions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Distributions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../single-node-benchmarks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Single Node Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributors-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributors Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+    
+    
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sedona.apache.org/latest/blog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+    
+    
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sedona.apache.org/latest/community/contact/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Community
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+    
+    
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://sedona.apache.org/latest/asf/asf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Apache Software Foundation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+
+    <li class="btn-group">
+      <a href="#" class="btn btn-red">
+        Get started
+      </a>
+    </li>
+
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+      
+        <li class="md-nav__item">
+  <a href="#before-you-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Before you start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q1-find-trips-starting-within-50km-of-sedona-city-center-ordered-by-distance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q1: Find trips starting within 50km of Sedona city center, ordered by distance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q2-count-trips-starting-within-coconino-county-arizona-zone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q2: Count trips starting within Coconino County (Arizona) zone
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q3-monthly-trip-statistics-within-a-15km-radius-of-the-sedona-city-center" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q3: Monthly trip statistics within a 15km radius of the Sedona city center
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q4-zone-distribution-of-top-1000-trips-by-tip-amount" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q4: Zone distribution of top 1000 trips by tip amount
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q5-monthly-travel-patterns-for-repeat-customers-convex-hull-of-dropoff-locations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q5: Monthly travel patterns for repeat customers (convex hull of dropoff locations)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q6-zone-statistics-for-trips-within-a-50km-radius-of-the-sedona-city-center" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q6: Zone statistics for trips within a 50km radius of the Sedona city center
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q7-detect-potential-route-detours-by-comparing-reported-vs-geometric-distances" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q7: Detect potential route detours by comparing reported vs. geometric distances
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q8-count-nearby-pickups-for-each-building-within-a-500m-radius" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q8: Count nearby pickups for each building within a 500m radius
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q9-building-conflation-duplicateoverlap-detection-via-iou" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q9: Building Conflation (duplicate/overlap detection via IoU)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q10-zone-statistics-for-trips-starting-within-each-zone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q10: Zone statistics for trips starting within each zone
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q11-count-trips-that-cross-between-different-zones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q11: Count trips that cross between different zones
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q12-find-five-nearest-buildings-to-each-trip-pickup-location-using-knn-join" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q12: Find five nearest buildings to each trip pickup location using KNN join
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/apache/sedona-spatialbench/blob/main/docs/queries.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
+    </a>
+  
+  
+
+
+<h1 id="run-the-spatialbench-queries">Run the SpatialBench Queries<a class="headerlink" href="#run-the-spatialbench-queries" title="Permanent link">¶</a></h1>
+<p>This notebook contains the queries that make up the SpatialBench benchmark.</p>
+<p>SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems. The queries represent common, real-world geospatial analytics tasks and are designed to test a wide range of spatial functions and join conditions.</p>
+<p>The benchmark uses a realistic but synthetic, transportation-themed dataset to ensure the queries reflect practical use cases. By running these queries, you can evaluate and compare the relative performance of different spatial query engines in a consistent and unbiased manner.</p>
+<h2 id="before-you-start">Before you start<a class="headerlink" href="#before-you-start" title="Permanent link">¶</a></h2>
+<p>Before running this notebook, ensure that you have installed the packages in the <code>requirements.txt</code> file:</p>
+<div class="highlight"><pre><span></span><code><span class="o">%</span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">r</span> <span class="o">~/</span><span class="n">sedona</span><span class="o">-</span><span class="n">spatialbench</span><span class="o">/</span><span class="n">docs</span><span class="o">/</span><span class="n">requirements</span><span class="o">.</span><span class="n">txt</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code><span class="o">...</span>
+<span class="o">...</span>
+<span class="nx">Note</span><span class="p">:</span><span class="w"> </span><span class="nx">you</span><span class="w"> </span><span class="nx">may</span><span class="w"> </span><span class="nx">need</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">restart</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">kernel</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">use</span><span class="w"> </span><span class="nx">updated</span><span class="w"> </span><span class="nx">packages</span><span class="p">.</span>
+</code></pre></div>
+
+<p>Additionally, install the SpatialBench CLI and generate the synthetic data on your machine:</p>
+<div class="highlight"><pre><span></span><code># SpatialBench CLI
+cargo install --path ./spatialbench-cli
+# Generate the benchmarking data to the sf1-parquet directory
+spatialbench-cli -s 1 --format=parquet --output-dir sf1-parquet
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">sedona.db</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">sd</span> <span class="o">=</span> <span class="n">sedona</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="sa">f</span><span class="s2">"../sf1-parquet/building.parquet"</span><span class="p">)</span><span class="o">.</span><span class="n">to_view</span><span class="p">(</span><span class="s2">"building"</span><span class="p">)</span>
+<span class="n">sd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="sa">f</span><span class="s2">"../sf1-parquet/customer.parquet"</span><span class="p">)</span><span class="o">.</span><span class="n">to_view</span><span class="p">(</span><span class="s2">"customer"</span><span class="p">)</span>
+<span class="n">sd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="sa">f</span><span class="s2">"../sf1-parquet/driver.parquet"</span><span class="p">)</span><span class="o">.</span><span class="n">to_view</span><span class="p">(</span><span class="s2">"driver"</span><span class="p">)</span>
+<span class="n">sd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="sa">f</span><span class="s2">"../sf1-parquet/trip.parquet"</span><span class="p">)</span><span class="o">.</span><span class="n">to_view</span><span class="p">(</span><span class="s2">"trip"</span><span class="p">)</span>
+<span class="n">sd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="sa">f</span><span class="s2">"../sf1-parquet/vehicle.parquet"</span><span class="p">)</span><span class="o">.</span><span class="n">to_view</span><span class="p">(</span><span class="s2">"vehicle"</span><span class="p">)</span>
+<span class="n">sd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="sa">f</span><span class="s2">"../sf1-parquet/zone.parquet"</span><span class="p">)</span><span class="o">.</span><span class="n">to_view</span><span class="p">(</span><span class="s2">"zone"</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="q1-find-trips-starting-within-50km-of-sedona-city-center-ordered-by-distance">Q1: Find trips starting within 50km of Sedona city center, ordered by distance<a class="headerlink" href="#q1-find-trips-starting-within-50km-of-sedona-city-center-ordered-by-distance" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Identify and rank trips by proximity to a city center for urban planning and transportation analysis.</p>
+<p>This query finds all taxi or rideshare trips that started within 50 kilometers of downtown Sedona, Arizona. For each qualifying trip, it shows the trip ID, pickup coordinates, pickup time, and calculates the exact distance from the pickup location to Sedona's city center. The results are sorted to show the trips that picked up closest to downtown Sedona first, making it easy to see which rides originated nearest to the city center.</p>
+<p><strong>Spatial query characteristics tested:</strong></p>
+<ol>
+<li>Distance-based spatial filtering (ST_DWithin)</li>
+<li>Distance calculation to a fixed point</li>
+<li>Coordinate extraction (ST_X, ST_Y)</li>
+<li>Ordering by spatial distance</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">SELECT</span>
+<span class="s2">    t.t_tripkey,</span>
+<span class="s2">    ST_X(ST_GeomFromWKB(t.t_pickuploc)) AS pickup_lon,</span>
+<span class="s2">    ST_Y(ST_GeomFromWKB(t.t_pickuploc)) AS pickup_lat,</span>
+<span class="s2">    t.t_pickuptime,</span>
+<span class="s2">    ST_Distance(</span>
+<span class="s2">        ST_GeomFromWKB(t.t_pickuploc),</span>
+<span class="s2">        ST_GeomFromText('POINT (-111.7610 34.8697)')</span>
+<span class="s2">    ) AS distance_to_center</span>
+<span class="s2">FROM trip t</span>
+<span class="s2">WHERE ST_DWithin(</span>
+<span class="s2">    ST_GeomFromWKB(t.t_pickuploc),</span>
+<span class="s2">    ST_GeomFromText('POINT (-111.7610 34.8697)'),</span>
+<span class="s2">    0.45 -- 50km radius around Sedona center in degrees</span>
+<span class="s2">)</span>
+<span class="s2">ORDER BY distance_to_center ASC, t.t_tripkey ASC</span>
+<span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>┌───────────┬────────────────┬──────────────┬─────────────────────┬──────────────────────┐
+│ t_tripkey ┆   pickup_lon   ┆  pickup_lat  ┆     t_pickuptime    ┆  distance_to_center  │
+│   int64   ┆     float64    ┆    float64   ┆      timestamp      ┆        float64       │
+╞═══════════╪════════════════╪══════════════╪═════════════════════╪══════════════════════╡
+│   1451371 ┆ -111.791052127 ┆ 34.826733457 ┆ 1998-08-12T06:47:01 ┆  0.05243333056935387 │
+├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│   2047835 ┆ -111.706967009 ┆ 34.883889472 ┆ 1992-04-08T07:36:09 ┆ 0.055865062714050374 │
+├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│   3936870 ┆ -111.827619221 ┆ 34.882950924 ┆ 1998-11-10T13:32:07 ┆  0.06792427838042854 │
+└───────────┴────────────────┴──────────────┴─────────────────────┴──────────────────────┘
+</code></pre></div>
+
+<h2 id="q2-count-trips-starting-within-coconino-county-arizona-zone">Q2: Count trips starting within Coconino County (Arizona) zone<a class="headerlink" href="#q2-count-trips-starting-within-coconino-county-arizona-zone" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Count all trips originating within a specific administrative boundary (county) for regional transportation statistics.</p>
+<p>This query counts how many taxi or rideshare trips started within Coconino County, Arizona. It does this by checking if each trip's pickup location falls inside the county's geographic boundaries. The result is a simple count showing the total number of trips that originated anywhere within Coconino County.</p>
+<p><strong>Spatial query characteristics tested:</strong></p>
+<ol>
+<li>Point-in-polygon spatial filtering (ST_Intersects)</li>
+<li>Subquery with spatial geometry selection</li>
+<li>Simple aggregation on spatially filtered data</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">SELECT COUNT(*) AS trip_count_in_coconino_county</span>
+<span class="s2">FROM trip t</span>
+<span class="s2">WHERE ST_Intersects(</span>
+<span class="s2">    ST_GeomFromWKB(t.t_pickuploc),</span>
+<span class="s2">    (</span>
+<span class="s2">        SELECT ST_GeomFromWKB(z.z_boundary)</span>
+<span class="s2">        FROM zone z</span>
+<span class="s2">        WHERE z.z_name = 'Coconino County'</span>
+<span class="s2">        LIMIT 1</span>
+<span class="s2">    )</span>
+<span class="s2">)</span>
+<span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>┌───────────────────────────────┐
+│ trip_count_in_coconino_county │
+│             int64             │
+╞═══════════════════════════════╡
+│                           541 │
+└───────────────────────────────┘
+</code></pre></div>
+
+<h2 id="q3-monthly-trip-statistics-within-a-15km-radius-of-the-sedona-city-center">Q3: Monthly trip statistics within a 15km radius of the Sedona city center<a class="headerlink" href="#q3-monthly-trip-statistics-within-a-15km-radius-of-the-sedona-city-center" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Track monthly travel trends and performance metrics in a metropolitan area with seasonal analysis.</p>
+<p>This query analyzes taxi and rideshare trip patterns around Sedona, Arizona, by grouping trips into monthly summaries. It looks at all trips that started within a 15-kilometer area around Sedona (a 10km box plus 5km buffer) and calculates key statistics for each month, including total number of trips, average trip distance, average trip duration, and average fare. The results are organized chronologically by month, allowing you to see seasonal trends and changes in ride patterns over time in the Sedona area.</p>
+<p><strong>Spatial query characteristics tested:</strong></p>
+<ol>
+<li>Distance-based spatial filtering (ST_DWithin) with buffer</li>
+<li>Temporal grouping (monthly aggregation)</li>
+<li>Multiple statistical aggregations on spatially filtered data</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">SELECT</span>
+<span class="s2">    DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,</span>
+<span class="s2">    COUNT(t.t_tripkey) AS total_trips,</span>
+<span class="s2">    AVG(t.t_distance) AS avg_distance,</span>
+<span class="s2">    AVG(t.t_dropofftime - t.t_pickuptime) AS avg_duration,</span>
+<span class="s2">    AVG(t.t_fare) AS avg_fare</span>
+<span class="s2">FROM trip t</span>
+<span class="s2">WHERE ST_DWithin(</span>
+<span class="s2">    ST_GeomFromWKB(t.t_pickuploc),</span>
+<span class="s2">    ST_GeomFromText('POLYGON((</span>
+<span class="s2">        -111.9060 34.7347, -111.6160 34.7347,</span>
+<span class="s2">        -111.6160 35.0047, -111.9060 35.0047,</span>
+<span class="s2">        -111.9060 34.7347</span>
+<span class="s2">    ))'), -- Bounding box around Sedona</span>
+<span class="s2">    0.045 -- Additional 5km buffer in degrees</span>
+<span class="s2">)</span>
+<span class="s2">GROUP BY pickup_month</span>
+<span class="s2">ORDER BY pickup_month</span>
+<span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>┌─────────────────────┬─────────────┬──────────────┬─────────────────────────────────┬─────────────┐
+│     pickup_month    ┆ total_trips ┆ avg_distance ┆           avg_duration          ┆   avg_fare  │
+│      timestamp      ┆    int64    ┆  decimal128  ┆             duration            ┆  decimal128 │
+╞═════════════════════╪═════════════╪══════════════╪═════════════════════════════════╪═════════════╡
+│ 1992-04-01T00:00:00 ┆           2 ┆  0.000020000 ┆ 0 days 1 hours 23 mins 47.000 … ┆ 0.000075000 │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 1992-07-01T00:00:00 ┆           1 ┆  0.000010000 ┆ 0 days 0 hours 58 mins 58.000 … ┆ 0.000040000 │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 1994-02-01T00:00:00 ┆           2 ┆  0.000020000 ┆ 0 days 1 hours 23 mins 50.000 … ┆ 0.000050000 │
+└─────────────────────┴─────────────┴──────────────┴─────────────────────────────────┴─────────────┘
+</code></pre></div>
+
+<h2 id="q4-zone-distribution-of-top-1000-trips-by-tip-amount">Q4: Zone distribution of top 1000 trips by tip amount<a class="headerlink" href="#q4-zone-distribution-of-top-1000-trips-by-tip-amount" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Analyze the geographic distribution of high-value trips (by tip amount) to understand premium service areas.</p>
+<p>This query identifies which neighborhoods or zones produced the most generous tippers by analyzing the top 1000 highest-tipping trips. It first finds the 1000 trips with the largest tips, then determines which geographic zones or neighborhoods those pickup locations fall within, and counts how many of these high-tip trips originated from each area. The results show a ranking of zones by the number of big tippers they produced, helping identify the most lucrative pickup areas for drivers seeking high-tip rides.</p>
+<p><strong>Spatial query characteristics tested:</strong></p>
+<ol>
+<li>Subquery with ordering and limiting</li>
+<li>Point-in-polygon spatial join (ST_Within)</li>
+<li>Aggregation on spatially joined results</li>
+<li>Multi-step query with spatial filtering and grouping</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">SELECT</span>
+<span class="s2">    z.z_zonekey,</span>
+<span class="s2">    z.z_name,</span>
+<span class="s2">    COUNT(*) AS trip_count</span>
+<span class="s2">FROM</span>
+<span class="s2">    zone z</span>
+<span class="s2">    JOIN (</span>
+<span class="s2">        SELECT t.t_pickuploc</span>
+<span class="s2">        FROM trip t</span>
+<span class="s2">        ORDER BY t.t_tip DESC, t.t_tripkey ASC</span>
+<span class="s2">        LIMIT 1000</span>
+<span class="s2">    ) top_trips</span>
+<span class="s2">    ON ST_Within(</span>
+<span class="s2">        ST_GeomFromWKB(top_trips.t_pickuploc),</span>
+<span class="s2">        ST_GeomFromWKB(z.z_boundary)</span>
+<span class="s2">    )</span>
+<span class="s2">GROUP BY z.z_zonekey, z.z_name</span>
+<span class="s2">ORDER BY trip_count DESC, z.z_zonekey ASC</span>
+<span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>┌───────────┬─────────────────────────────────┬────────────┐
+│ z_zonekey ┆              z_name             ┆ trip_count │
+│   int64   ┆               utf8              ┆    int64   │
+╞═══════════╪═════════════════════════════════╪════════════╡
+│     65008 ┆ Ndélé                           ┆         35 │
+├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
+│    147530 ┆ 乐山市                          ┆         27 │
+├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
+│    150276 ┆ 锡林郭勒盟 ᠰᠢᠯᠢ ᠶᠢᠨ ᠭᠣᠣᠯ ᠠᠶᠢᠮᠠᠭ ┆         19 │
+└───────────┴─────────────────────────────────┴────────────┘
+</code></pre></div>
+
+<h2 id="q5-monthly-travel-patterns-for-repeat-customers-convex-hull-of-dropoff-locations">Q5: Monthly travel patterns for repeat customers (convex hull of dropoff locations)<a class="headerlink" href="#q5-monthly-travel-patterns-for-repeat-customers-convex-hull-of-dropoff-locations" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Analyze the geographic spread of travel patterns for frequent customers to understand their mobility behavior.</p>
+<p>This query analyzes the monthly travel patterns of frequent customers by measuring how much geographic area they cover with their trips. For each customer who took more than five trips in a month, it calculates the size of the "travel hull" - the area enclosed by connecting all their dropoff locations that month. The results reveal which customers have the most expansive travel patterns, helping to identify power users who cover large geographic areas versus those who stick to smaller, local areas.</p>
+<p><strong>Spatial query characteristics tested:</strong></p>
+<ol>
+<li>Spatial aggregation (ST_Collect/ARRAY_AGG)</li>
+<li>Convex hull computation (ST_ConvexHull)</li>
+<li>Area calculation on complex geometries</li>
+<li>Temporal and customer-based grouping with spatial operations</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">SELECT</span>
+<span class="s2">    c.c_custkey,</span>
+<span class="s2">    c.c_name AS customer_name,</span>
+<span class="s2">    DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,</span>
+<span class="s2">    ST_Area(</span>
+<span class="s2">        ST_ConvexHull(ST_Collect(ST_GeomFromWKB(t.t_dropoffloc)))</span>
+<span class="s2">    ) AS monthly_travel_hull_area,</span>
+<span class="s2">    COUNT(*) as dropoff_count</span>
+<span class="s2">FROM trip t</span>
+<span class="s2">JOIN customer c</span>
+<span class="s2">    ON t.t_custkey = c.c_custkey</span>
+<span class="s2">GROUP BY c.c_custkey, c.c_name, pickup_month</span>
+<span class="s2">HAVING dropoff_count &gt; 5 -- Only include repeat customers</span>
+<span class="s2">ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC</span>
+<span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>┌───────────┬────────────────────┬─────────────────────┬────────────────────┬───────────────┐
+│ c_custkey ┆    customer_name   ┆     pickup_month    ┆ monthly_travel_hul ┆ dropoff_count │
+│   int64   ┆        utf8        ┆      timestamp      ┆       l_area…      ┆     int64     │
+╞═══════════╪════════════════════╪═════════════════════╪════════════════════╪═══════════════╡
+│     25975 ┆ Customer#000025975 ┆ 1992-02-01T00:00:00 ┆ 34941.303419053635 ┆            10 │
+├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│     12061 ┆ Customer#000012061 ┆ 1997-03-01T00:00:00 ┆  34607.53871953154 ┆            14 │
+├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│     21418 ┆ Customer#000021418 ┆ 1993-08-01T00:00:00 ┆  34465.32323910264 ┆             9 │
+└───────────┴────────────────────┴─────────────────────┴────────────────────┴───────────────┘
+</code></pre></div>
+
+<h2 id="q6-zone-statistics-for-trips-within-a-50km-radius-of-the-sedona-city-center">Q6: Zone statistics for trips within a 50km radius of the Sedona city center<a class="headerlink" href="#q6-zone-statistics-for-trips-within-a-50km-radius-of-the-sedona-city-center" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Analyze trip patterns in zones within a metropolitan area around a specific city center.</p>
+<p>This query analyzes ride activity across all neighborhoods and zones within a 50-kilometer area around Sedona, Arizona. It identifies which zones had the most pickup activity by counting total trips that started in each region. Also, it calculates the average trip cost and duration for rides originating from each zone. The results are ranked by pickup volume, showing which neighborhoods or areas generate the most ride demand and their typical trip characteristics within the greater Sedona region.</p>
+<p><strong>Spatial query characteristics tested:</strong></p>
+<ol>
+<li>Polygon containment check (ST_Contains) with bounding box</li>
+<li>Point-in-polygon spatial join (ST_Within)</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">SELECT</span>
+<span class="s2">    z.z_zonekey,</span>
+<span class="s2">    z.z_name,</span>
+<span class="s2">    COUNT(t.t_tripkey) AS total_pickups,</span>
+<span class="s2">    AVG(t.t_distance) AS avg_distance, -- Corrected from t_totalamount</span>
+<span class="s2">    AVG(t.t_dropofftime - t.t_pickuptime) AS avg_duration</span>
+<span class="s2">FROM trip t, zone z</span>
+<span class="s2">WHERE ST_Intersects(</span>
+<span class="s2">    ST_GeomFromText('POLYGON((</span>
+<span class="s2">        -112.2110 34.4197, -111.3110 34.4197,</span>
+<span class="s2">        -111.3110 35.3197, -112.2110 35.3197,</span>
+<span class="s2">        -112.2110 34.4197</span>
+<span class="s2">    ))'), -- Bounding box around Sedona</span>
+<span class="s2">    ST_GeomFromWKB(z.z_boundary)</span>
+<span class="s2">  )</span>
+<span class="s2">  AND ST_Within(</span>
+<span class="s2">    ST_GeomFromWKB(t.t_pickuploc),</span>
+<span class="s2">    ST_GeomFromWKB(z.z_boundary)</span>
+<span class="s2">  )</span>
+<span class="s2">GROUP BY z.z_zonekey, z.z_name</span>
+<span class="s2">ORDER BY total_pickups DESC, z.z_zonekey ASC</span>
+<span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>┌───────────┬─────────────────┬───────────────┬──────────────┬────────────────────────────────────┐
+│ z_zonekey ┆      z_name     ┆ total_pickups ┆ avg_distance ┆            avg_duration            │
+│   int64   ┆       utf8      ┆     int64     ┆  decimal128  ┆              duration              │
+╞═══════════╪═════════════════╪═══════════════╪══════════════╪════════════════════════════════════╡
+│     30084 ┆ Coconino County ┆           541 ┆  0.000030406 ┆ 0 days 1 hours 45 mins 16.591 secs │
+├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│     30083 ┆ Yavapai County  ┆           292 ┆  0.000027157 ┆ 0 days 1 hours 36 mins 43.647 secs │
+├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│     29488 ┆ Gila County     ┆            39 ┆  0.000021282 ┆ 0 days 1 hours 16 mins 59.769 secs │
+└───────────┴─────────────────┴───────────────┴──────────────┴────────────────────────────────────┘
+</code></pre></div>
+
+<h2 id="q7-detect-potential-route-detours-by-comparing-reported-vs-geometric-distances">Q7: Detect potential route detours by comparing reported vs. geometric distances<a class="headerlink" href="#q7-detect-potential-route-detours-by-comparing-reported-vs-geometric-distances" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Identify suspicious trips where the reported distance significantly exceeds the straight-line distance, potentially indicating fare manipulation.</p>
+<p>This query analyzes how much taxi and rideshare trips deviate from the most direct route by comparing the actual reported trip distance to the straight-line distance between pickup and dropoff points. It calculates a "detour ratio" that shows how much longer the actual route was compared to flying in a straight line.  For example, a ratio of 1.5 means the trip was 50% longer than the direct path. The results are sorted to show the trips with the highest detour ratios first, helping identify routes that took significant detours due to traffic, road layouts, or other factors.</p>
+<p><strong>Spatial query characteristics tested:</strong></p>
+<ol>
+<li>Line geometry creation (ST_MakeLine)</li>
+<li>Length calculation (ST_Length)</li>
+<li>Coordinate system conversion and distance calculations</li>
+<li>Ratio-based filtering on geometric vs. reported measurements</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">WITH trip_lengths AS (</span>
+<span class="s2">    SELECT</span>
+<span class="s2">        t.t_tripkey,</span>
+<span class="s2">        t.t_distance AS reported_distance_m,</span>
+<span class="s2">        ST_Length(</span>
+<span class="s2">            ST_MakeLine(</span>
+<span class="s2">                ST_GeomFromWKB(t.t_pickuploc),</span>
+<span class="s2">                ST_GeomFromWKB(t.t_dropoffloc)</span>
+<span class="s2">            )</span>
+<span class="s2">        ) * 111111 AS line_distance_m -- Approx. meters per degree</span>
+<span class="s2">    FROM trip t</span>
+<span class="s2">)</span>
+<span class="s2">SELECT</span>
+<span class="s2">    t.t_tripkey,</span>
+<span class="s2">    t.reported_distance_m,</span>
+<span class="s2">    t.line_distance_m,</span>
+<span class="s2">    t.reported_distance_m / NULLIF(t.line_distance_m, 0) AS detour_ratio</span>
+<span class="s2">FROM trip_lengths t</span>
+<span class="s2">ORDER BY</span>
+<span class="s2">    detour_ratio DESC NULLS LAST,</span>
+<span class="s2">    reported_distance_m DESC,</span>
+<span class="s2">    t_tripkey ASC</span>
+<span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>┌───────────┬─────────────────────┬────────────────────┬──────────────────────┐
+│ t_tripkey ┆ reported_distance_m ┆   line_distance_m  ┆     detour_ratio     │
+│   int64   ┆      decimal128     ┆       float64      ┆        float64       │
+╞═══════════╪═════════════════════╪════════════════════╪══════════════════════╡
+│   4688563 ┆             0.00010 ┆ 11111.114941555596 ┆ 8.999996897341038e-9 │
+├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│   2380123 ┆             0.00010 ┆ 11111.114983939786 ┆ 8.999996863009868e-9 │
+├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│   3077131 ┆             0.00010 ┆ 11111.115027455284 ┆ 8.999996827762339e-9 │
+└───────────┴─────────────────────┴────────────────────┴──────────────────────┘
+</code></pre></div>
+
+<h2 id="q8-count-nearby-pickups-for-each-building-within-a-500m-radius">Q8: Count nearby pickups for each building within a 500m radius<a class="headerlink" href="#q8-count-nearby-pickups-for-each-building-within-a-500m-radius" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Count how many trips start within 500 meters of each building.</p>
+<p>This query identifies which buildings generate the most taxi and rideshare pickup activity by counting trips that started within 500 meters of each building. It analyzes the relationship between specific buildings (like hotels, shopping centers, airports, or office buildings) and ride demand in their immediate vicinity. The results are ranked to show which buildings are the biggest trip generators, helping identify key pickup hotspots and understand how different types of buildings drive transportation demand.</p>
+<p><strong>Spatial query characteristics tested:</strong></p>
+<ol>
+<li>Distance spatial join between points and polygons</li>
+<li>Aggregation on spatial join result</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">SELECT b.b_buildingkey, b.b_name, COUNT(*) AS nearby_pickup_count</span>
+<span class="s2">FROM trip t</span>
+<span class="s2">JOIN building b</span>
+<span class="s2">ON ST_DWithin(ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(b.b_boundary), 0.0045) -- ~500m</span>
+<span class="s2">GROUP BY b.b_buildingkey, b.b_name</span>
+<span class="s2">ORDER BY nearby_pickup_count DESC, b.b_buildingkey ASC</span>
+<span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>┌───────────────┬────────┬─────────────────────┐
+│ b_buildingkey ┆ b_name ┆ nearby_pickup_count │
+│     int64     ┆  utf8  ┆        int64        │
+╞═══════════════╪════════╪═════════════════════╡
+│          3779 ┆ linen  ┆                  42 │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│         19135 ┆ misty  ┆                  36 │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│          4416 ┆ sienna ┆                  26 │
+└───────────────┴────────┴─────────────────────┘
+</code></pre></div>
+
+<h2 id="q9-building-conflation-duplicateoverlap-detection-via-iou">Q9: Building Conflation (duplicate/overlap detection via IoU)<a class="headerlink" href="#q9-building-conflation-duplicateoverlap-detection-via-iou" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Detect duplicate or overlapping building footprints in GIS datasets to identify data quality issues.</p>
+<p>This query identifies overlapping buildings by calculating how much their footprints intersect with each other. For every pair of buildings that touch or overlap, it measures the total area of each building and the area where they overlap, then calculates an "Intersection over Union" (IoU) score that ranges from 0 to 1. The results are sorted by IoU score to show the most significantly overlapping building pairs first, which could help identify data quality issues, adjacent structures, or buildings that share common areas like courtyards or parking lots.</p>
+<p><strong>Spatial query characteristics tested:</strong></p>
+<ol>
+<li>Self-join with spatial intersection (ST_Intersects)</li>
+<li>Area calculations (ST_Area)</li>
+<li>Geometric intersection operations (ST_Intersection)</li>
+<li>Complex geometric ratio calculations (IoU - Intersection over Union)</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">WITH b1 AS (</span>
+<span class="s2">   SELECT b_buildingkey AS id, ST_GeomFromWKB(b_boundary) AS geom</span>
+<span class="s2">   FROM building</span>
+<span class="s2">),</span>
+<span class="s2">b2 AS (</span>
+<span class="s2">    SELECT b_buildingkey AS id, ST_GeomFromWKB(b_boundary) AS geom</span>
+<span class="s2">    FROM building</span>
+<span class="s2">),</span>
+<span class="s2">pairs AS (</span>
+<span class="s2">    SELECT</span>
+<span class="s2">        b1.id AS building_1,</span>
+<span class="s2">        b2.id AS building_2,</span>
+<span class="s2">        ST_Area(b1.geom) AS area1,</span>
+<span class="s2">        ST_Area(b2.geom) AS area2,</span>
+<span class="s2">        ST_Area(ST_Intersection(b1.geom, b2.geom)) AS overlap_area</span>
+<span class="s2">    FROM b1</span>
+<span class="s2">    JOIN b2 ON b1.id &lt; b2.id AND ST_Intersects(b1.geom, b2.geom)</span>
+<span class="s2">)</span>
+<span class="s2">SELECT</span>
+<span class="s2">   building_1,</span>
+<span class="s2">   building_2,</span>
+<span class="s2">   area1,</span>
+<span class="s2">   area2,</span>
+<span class="s2">   overlap_area,</span>
+<span class="s2">   CASE</span>
+<span class="s2">       WHEN (area1 + area2 - overlap_area) = 0 THEN 1.0</span>
+<span class="s2">       ELSE overlap_area / (area1 + area2 - overlap_area)</span>
+<span class="s2">   END AS iou</span>
+<span class="s2">FROM pairs</span>
+<span class="s2">ORDER BY iou DESC, building_1 ASC, building_2 ASC</span>
+<span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>┌────────────┬────────────┬───┬───────────────────────┬────────────────────┐
+│ building_1 ┆ building_2 ┆ … ┆      overlap_area     ┆         iou        │
+│    int64   ┆    int64   ┆   ┆        float64        ┆       float64      │
+╞════════════╪════════════╪═══╪═══════════════════════╪════════════════════╡
+│       2285 ┆      15719 ┆ … ┆ 2.3709162946727276e-6 ┆ 0.9056816071717889 │
+├╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│       7562 ┆      18534 ┆ … ┆  5.855106543747764e-6 ┆ 0.8450437137796769 │
+├╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│       2285 ┆      13658 ┆ … ┆ 1.9770693222933237e-6 ┆  0.737899157380637 │
+└────────────┴────────────┴───┴───────────────────────┴────────────────────┘
+</code></pre></div>
+
+<h2 id="q10-zone-statistics-for-trips-starting-within-each-zone">Q10: Zone statistics for trips starting within each zone<a class="headerlink" href="#q10-zone-statistics-for-trips-starting-within-each-zone" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Analyze trip patterns and performance metrics for each administrative zone (like city districts or neighborhoods).</p>
+<p>This query analyzes trip patterns across all geographic zones by calculating average trip duration, distance, and volume for rides originating from each area. It uses a left join to include all zones in the results, even those with no pickup activity, showing which neighborhoods generate longer trips on average versus shorter local rides. The results are sorted by average trip duration to identify zones where people tend to take longer journeys, which could indicate more isolated areas, have limited local amenities, or serve as departure points for longer-distance travel.</p>
+<p><strong>Spatial query characteristics tested:</strong></p>
+<ol>
+<li>Point-in-polygon spatial join (ST_Within)</li>
+<li>Aggregation with multiple metrics (average duration, distance, count)</li>
+<li>LEFT JOIN to include zones with no trips</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">SELECT</span>
+<span class="s2">    z.z_zonekey,</span>
+<span class="s2">    z.z_name AS pickup_zone,</span>
+<span class="s2">    AVG(t.t_dropofftime - t.t_pickuptime) AS avg_duration,</span>
+<span class="s2">    AVG(t.t_distance) AS avg_distance,</span>
+<span class="s2">    COUNT(t.t_tripkey) AS num_trips</span>
+<span class="s2">FROM</span>
+<span class="s2">    zone z</span>
+<span class="s2">    LEFT JOIN trip t</span>
+<span class="s2">    ON ST_Within(</span>
+<span class="s2">        ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(z.z_boundary)</span>
+<span class="s2">    )</span>
+<span class="s2">GROUP BY z.z_zonekey, z.z_name</span>
+<span class="s2">ORDER BY avg_duration DESC NULLS LAST, z.z_zonekey ASC</span>
+<span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>┌───────────┬────────────────┬────────────────────────────────────┬──────────────┬───────────┐
+│ z_zonekey ┆   pickup_zone  ┆            avg_duration            ┆ avg_distance ┆ num_trips │
+│   int64   ┆      utf8      ┆              duration              ┆  decimal128  ┆   int64   │
+╞═══════════╪════════════════╪════════════════════════════════════╪══════════════╪═══════════╡
+│     31558 ┆ Benewah County ┆ 4 days 13 hours 3 mins 34.000 secs ┆  0.002180000 ┆         2 │
+├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+│    119540 ┆ Kreis Unna     ┆ 2 days 4 hours 52 mins 44.000 secs ┆  0.001050000 ┆         1 │
+├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+│     59928 ┆ Ndhiwa         ┆ 2 days 4 hours 19 mins 39.000 secs ┆  0.001040000 ┆         1 │
+└───────────┴────────────────┴────────────────────────────────────┴──────────────┴───────────┘
+</code></pre></div>
+
+<h2 id="q11-count-trips-that-cross-between-different-zones">Q11: Count trips that cross between different zones<a class="headerlink" href="#q11-count-trips-that-cross-between-different-zones" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Identify inter-district or inter-city trips to understand cross-boundary travel patterns.</p>
+<p>This query counts how many trips crossed zone boundaries by starting in one geographic zone and ending in a different zone. It identifies each trip's pickup and dropoff zones, then filters to only include trips where the pickup zone is different from the dropoff zone. The result shows the total number of inter-zone trips, helping measure how much travel occurs between different neighborhoods, districts, or areas rather than staying within the same local zone.</p>
+<p><strong>Spatial query characteristics tested:</strong></p>
+<ol>
+<li>Multiple point-in-polygon spatial joins</li>
+<li>Filtering based on spatial relationship results</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">SELECT COUNT(*) AS cross_zone_trip_count</span>
+<span class="s2">FROM</span>
+<span class="s2">    trip t</span>
+<span class="s2">    JOIN zone pickup_zone</span>
+<span class="s2">        ON ST_Within(</span>
+<span class="s2">            ST_GeomFromWKB(t.t_pickuploc),</span>
+<span class="s2">            ST_GeomFromWKB(pickup_zone.z_boundary)</span>
+<span class="s2">        )</span>
+<span class="s2">    JOIN zone dropoff_zone</span>
+<span class="s2">        ON ST_Within(</span>
+<span class="s2">            ST_GeomFromWKB(t.t_dropoffloc),</span>
+<span class="s2">            ST_GeomFromWKB(dropoff_zone.z_boundary)</span>
+<span class="s2">        )</span>
+<span class="s2">WHERE pickup_zone.z_zonekey != dropoff_zone.z_zonekey</span>
+<span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>┌───────────────────────┐
+│ cross_zone_trip_count │
+│         int64         │
+╞═══════════════════════╡
+│                176391 │
+└───────────────────────┘
+</code></pre></div>
+
+<h2 id="q12-find-five-nearest-buildings-to-each-trip-pickup-location-using-knn-join">Q12: Find five nearest buildings to each trip pickup location using KNN join<a class="headerlink" href="#q12-find-five-nearest-buildings-to-each-trip-pickup-location-using-knn-join" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Identify the closest landmarks or buildings to each trip start point for location context and navigation.</p>
+<p>This query finds the 5 closest buildings to each trip pickup location using spatial nearest neighbor analysis. For every trip, it identifies the five buildings that are geographically closest to where the passenger was picked up and calculates the exact distance to each of those buildings. The results show which buildings are most commonly near pickup points, helping understand the relationship between trip origins and nearby landmarks, businesses, or residential structures that might influence ride demand patterns.</p>
+<p><strong>Spatial query characteristics tested:</strong></p>
+<ol>
+<li>K-nearest neighbor (KNN) spatial join</li>
+<li>Distance calculations between points and polygons</li>
+<li>Ranking and limiting results based on spatial proximity</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">WITH trip_with_geom AS (</span>
+<span class="s2">    SELECT</span>
+<span class="s2">        t_tripkey,</span>
+<span class="s2">        t_pickuploc,</span>
+<span class="s2">        ST_GeomFromWKB(t_pickuploc) as pickup_geom</span>
+<span class="s2">    FROM trip</span>
+<span class="s2">),</span>
+<span class="s2">building_with_geom AS (</span>
+<span class="s2">    SELECT</span>
+<span class="s2">        b_buildingkey,</span>
+<span class="s2">        b_name,</span>
+<span class="s2">        b_boundary,</span>
+<span class="s2">        ST_GeomFromWKB(b_boundary) as boundary_geom</span>
+<span class="s2">    FROM building</span>
+<span class="s2">)</span>
+<span class="s2">SELECT</span>
+<span class="s2">    t.t_tripkey,</span>
+<span class="s2">    t.t_pickuploc,</span>
+<span class="s2">    b.b_buildingkey,</span>
+<span class="s2">    b.b_name AS building_name,</span>
+<span class="s2">    ST_Distance(t.pickup_geom, b.boundary_geom) AS distance_to_building</span>
+<span class="s2">FROM trip_with_geom t</span>
+<span class="s2">JOIN building_with_geom b</span>
+<span class="s2">    ON ST_KNN(t.pickup_geom, b.boundary_geom, 5, FALSE)</span>
+<span class="s2">ORDER BY t.t_tripkey ASC, distance_to_building ASC, b.b_buildingkey ASC</span>
+<span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+<div class="codehilite"><pre><span></span><code>┌───────────┬─────────────────────────────────┬───────────────┬───────────────┬────────────────────┐
+│ t_tripkey ┆           t_pickuploc           ┆ b_buildingkey ┆ building_name ┆ distance_to_buildi │
+│   int64   ┆              binary             ┆     int64     ┆      utf8     ┆         ng…        │
+╞═══════════╪═════════════════════════════════╪═══════════════╪═══════════════╪════════════════════╡
+│         1 ┆ 01010000009f3c318dd43735405930… ┆         15870 ┆ purple        ┆  0.984633987957188 │
+├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│         1 ┆ 01010000009f3c318dd43735405930… ┆          6800 ┆ ghost         ┆  1.205725156670704 │
+├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│         1 ┆ 01010000009f3c318dd43735405930… ┆          8384 ┆ lavender      ┆ 1.4195012994942622 │
+└───────────┴─────────────────────────────────┴───────────────┴───────────────┴────────────────────┘
+</code></pre></div>
+
+
+
+
+
+
+
+  
+    
+  
+  
+
+
+  <aside class="md-source-file">
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Last update">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="June 12, 2026 18:28:01 UTC">June 12, 2026 18:28:01</span>
+  </span>
+
+    
+    
+    
+    
+  </aside>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden="">
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="footer md-footer">
+  <div class="container">
+
+    <div class="footer__top">
+
+      <div class="col-left">
+        <img src="../image/footer/logo-footer.svg" alt="" class="footer-logo">
+      </div>
+
+      <div class="col-right">
+        
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/apache/spatialbench" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://twitter.com/ApacheSedona" target="_blank" rel="noopener" title="twitter.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M459.4 151.7c.3 4.5.3 9.1.3 13.6 0 138.7-105.6 298.6-298.6 298.6-59.5 0-114.7-17.2-161.1-47.1 8.4 1 16.6 1.3 25.3 1.3 49.1 0 94.2-16.6 130.3-44.8-46.1-1-84.8-31.2-98.1-72.8 6.5 1 13 1.6 19.8 1.6 9.4 0 18.8-1.3 27.6-3.6-48.1-9.7-84.1-52-84.1-103v-1.3c14 7.8 30.2 12.7 47.4 13.3-28.3-18.8-46.8-51-46.8-87.4 0-19.5 5.2-37.4 14.3-53C87.4 130.8 165 172.4 252.1 176.9c-1.6-7.8-2.6-15.9-2.6-24C249.5 95.1 296.3 48 354.4 48c30.2 0 57.5 12.7 76.7 33.1 23.7-4.5 46.5-13.3 66.6-25.3-7.8 24.4-24.4 44.8-46.1 57.8 21.1-2.3 41.6-8.1 60.4-16.2-14.3 20.8-32.2 39.3-52.6 54.3"></path></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://discord.gg/9A3k5dEBsY" target="_blank" rel="noopener" title="discord.gg" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M492.5 69.8c-.2-.3-.4-.6-.8-.7-38.1-17.5-78.4-30-119.7-37.1-.4-.1-.8 0-1.1.1s-.6.4-.8.8c-5.5 9.9-10.5 20.2-14.9 30.6-44.6-6.8-89.9-6.8-134.4 0-4.5-10.5-9.5-20.7-15.1-30.6-.2-.3-.5-.6-.8-.8s-.7-.2-1.1-.2C162.5 39 122.2 51.5 84.1 69c-.3.1-.6.4-.8.7C7.1 183.5-13.8 294.6-3.6 404.2c0 .3.1.5.2.8s.3.4.5.6c44.4 32.9 94 58 146.8 74.2.4.1.8.1 1.1 0s.7-.4.9-.7c11.3-15.4 21.4-31.8 30-48.8.1-.2.2-.5.2-.8s0-.5-.1-.8-.2-.5-.4-.6-.4-.3-.7-.4c-15.8-6.1-31.2-13.4-45.9-21.9-.3-.2-.5-.4-.7-.6s-.3-.6-.3-.9 0-.6.2-.9.3-.5.6-.7c3.1-2.3 6.2-4.7 9.1-7.1.3-.2.6-.4.9-.4s.7 0 1 .1c96.2 43.9 200.4 43.9 295.5 0 .3-.1.7-.2 1-.2s.7.2.9.4c2.9 2.4 6 4.9 9.1 7.2.2.2.4.4.6.7s.2.6.2.9-.1.6-.3.9-.4.5-.6.6c-14.7 8.6-30 15.9-45.9 21.8-.2.1-.5.2-.7.4s-.3.4-.4.7-.1.5-.1.8.1.5.2.8c8.8 17 18.8 33.3 30 48.8.2.3.6.6.9.7s.8.1 1.1 0c52.9-16.2 102.6-41.3 147.1-74.2.2-.2.4-.4.5-.6s.2-.5.2-.8c12.3-126.8-20.5-236.9-86.9-334.5zm-302 267.7c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.4 59.2-52.8 59.2m195.4 0c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.2 59.2-52.8 59.2"></path></svg>
+    </a>
+  
+</div>
+        
+      </div>
+    </div>
+
+    <hr class="footer-hr">
+
+    <div class="footer__bot">
+      <div class="md-copyright">
+  
+      Copyright © 2026 The Apache Software Foundation. Apache Sedona, Sedona, Apache, the Apache feather logo, and the Apache Sedona project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries. All other marks mentioned may be trademarks or registered trademarks of their respective owners. Please visit <a href="https://www.apache.org/">Apache Software Foundation</a> for more details.<img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=f3e121f6-c909-4592-8be6-5bd345768cba"><img referrerpolicy="no-referrer-when-downgrade" src="https://analytics.apache.org/matomo.php?idsite=74&amp;rec=1">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+    </div>
+
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.action.edit", "search.highlight", "search.share", "search.suggest", "navigation.footer", "navigation.instant", "navigation.top", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../assets/javascripts/main.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+      
+        <script src="../javascripts/katex.js"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>
