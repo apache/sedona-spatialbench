@@ -7,7 +7,6 @@ mkdocs-glightbox
 mkdocs-macros-plugin
 mkdocs-material
 mkdocs-static-i18n
-mkdocs-jupyter
 mkdocstrings[python]
 notebook
 nbconvert
