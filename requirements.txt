@@ -4,11 +4,12 @@ jupyterlab
 mike
 mkdocs-git-revision-date-localized-plugin
 mkdocs-glightbox
+mkdocs-jupyter
 mkdocs-macros-plugin
 mkdocs-material
 mkdocs-static-i18n
 mkdocstrings[python]
-notebook
 nbconvert
+notebook
 pyproj
 ruff
