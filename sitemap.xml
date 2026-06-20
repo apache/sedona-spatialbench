@@ -2,126 +2,126 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
     <url>
         <loc>https://sedona.apache.org/spatialbench/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/"/>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/contributors-guide/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/contributors-guide/"/>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/contributors-guide/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/datasets-generators/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/datasets-generators/"/>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/datasets-generators/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/overview-methodology/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/overview-methodology/"/>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/overview-methodology/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/queries/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/queries/"/>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/queries/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/quickstart/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/quickstart/"/>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/quickstart/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/release-notes/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/release-notes/"/>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/release-notes/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/single-node-benchmarks/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/single-node-benchmarks/"/>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/single-node-benchmarks/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/spatialbench-distributions/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/spatialbench-distributions/"/>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/spatialbench-distributions/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/zh/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/zh/contributors-guide/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/contributors-guide/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/contributors-guide/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/zh/datasets-generators/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/datasets-generators/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/datasets-generators/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/zh/overview-methodology/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/overview-methodology/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/overview-methodology/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/zh/queries/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/queries/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/queries/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/zh/quickstart/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/quickstart/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/quickstart/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/zh/release-notes/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/release-notes/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/release-notes/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/zh/single-node-benchmarks/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/single-node-benchmarks/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/single-node-benchmarks/"/>
     </url>
     <url>
         <loc>https://sedona.apache.org/spatialbench/zh/spatialbench-distributions/</loc>
-        <lastmod>2026-06-15</lastmod>
+        <lastmod>2026-06-20</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="zh" href="https://sedona.apache.org/spatialbench/zh/spatialbench-distributions/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sedona.apache.org/spatialbench/spatialbench-distributions/"/>
