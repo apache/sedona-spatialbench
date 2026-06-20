@@ -103,3 +103,10 @@ repos:
       - id: gitleaks
         name: run gitleaks
         description: check for secrets with gitleaks
+  - repo: https://github.com/oxipng/oxipng
+    rev: 628e241e23f368097883807fa6e985ccf7c00357 # frozen: v10.1.1
+    hooks:
+      - id: oxipng
+        name: run oxipng
+        description: check PNG files with oxipng
+        args: ['--fix', '-o', '4', '--strip', 'safe', '--alpha']
