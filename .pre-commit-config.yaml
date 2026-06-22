@@ -80,6 +80,11 @@ repos:
       - id: end-of-file-fixer
         name: run end-of-file-fixer
         description: makes sure files end in a newline and only a newline
+      - id: file-contents-sorter
+        name: run file-contents-sorter
+        description: sort the lines in specified files (defaults to alphabetical)
+        args: [--unique]
+        files: ^dev/release/rat_exclude_files\.txt$
       - id: fix-byte-order-marker
         name: run fix-byte-order-marker
         description: removes UTF-8 byte order marker
