@@ -438,10 +438,10 @@ class BigQuerySpatialBenchBenchmark(SpatialBenchBenchmark):
         return """
 -- Q1 (BigQuery): Find trips starting within 50km of Sedona city center, ordered by distance
 SELECT
-   t.t_tripkey, ST_X(ST_GeogFromWKB(t.t_pickuploc)) AS pickup_lon, ST_Y(ST_GeogFromWKB(t.t_pickuploc)) AS pickup_lat, t.t_pickuptime,
-   ST_Distance(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromText('POINT (-111.7610 34.8697)')) AS distance_to_center
+   t.t_tripkey, ST_X(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE)) AS pickup_lon, ST_Y(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE)) AS pickup_lat, t.t_pickuptime,
+   ST_Distance(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromText('POINT (-111.7610 34.8697)')) AS distance_to_center
 FROM trip t
-WHERE ST_DWithin(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromText('POINT (-111.7610 34.8697)'), 50000) -- 50km radius around Sedona center (meters for geography)
+WHERE ST_DWithin(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromText('POINT (-111.7610 34.8697)'), 50000) -- 50km radius around Sedona center (meters for geography)
 ORDER BY distance_to_center ASC, t.t_tripkey ASC
                """
 
@@ -451,7 +451,7 @@ ORDER BY distance_to_center ASC, t.t_tripkey ASC
 -- Q2 (BigQuery): Count trips starting within Coconino County (Arizona) zone
 SELECT COUNT(*) AS trip_count_in_coconino_county
 FROM trip t
-WHERE ST_Intersects(ST_GeogFromWKB(t.t_pickuploc), (SELECT ST_GeogFromWKB(z.z_boundary) FROM zone z WHERE z.z_name = 'Coconino County' LIMIT 1))
+WHERE ST_Intersects(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), (SELECT ST_GeogFromWKB(z.z_boundary, make_valid => TRUE) FROM zone z WHERE z.z_name = 'Coconino County' LIMIT 1))
                """
 
     @staticmethod
@@ -464,7 +464,7 @@ SELECT
    AVG(t.t_fare) AS avg_fare
 FROM trip t
 WHERE ST_DWithin(
-             ST_GeogFromWKB(t.t_pickuploc),
+             ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE),
              ST_GeogFromText('POLYGON((-111.9060 34.7347, -111.6160 34.7347, -111.6160 35.0047, -111.9060 35.0047, -111.9060 34.7347))'), -- 10km bounding box around Sedona
              5000 -- Additional 5km buffer (meters for geography)
      )
@@ -484,7 +484,7 @@ FROM
        FROM trip t
        ORDER BY t.t_tip DESC, t.t_tripkey ASC
            LIMIT 1000 -- Replace 1000 with x (how many top tips you want)
-   ) top_trips ON ST_Within(ST_GeogFromWKB(top_trips.t_pickuploc), ST_GeogFromWKB(z.z_boundary))
+   ) top_trips ON ST_Within(ST_GeogFromWKB(top_trips.t_pickuploc, make_valid => TRUE), ST_GeogFromWKB(z.z_boundary, make_valid => TRUE))
 GROUP BY z.z_zonekey, z.z_name
 ORDER BY trip_count DESC, z.z_zonekey ASC
                """
@@ -497,7 +497,7 @@ ORDER BY trip_count DESC, z.z_zonekey ASC
 SELECT
    c.c_custkey, c.c_name AS customer_name,
    DATE_TRUNC(t.t_pickuptime, MONTH) AS pickup_month,
-   ST_Area(ST_ConvexHull(ST_Union_Agg(ST_GeogFromWKB(t.t_dropoffloc)))) AS monthly_travel_hull_area,
+   ST_Area(ST_ConvexHull(ST_Union_Agg(ST_GeogFromWKB(t.t_dropoffloc, make_valid => TRUE)))) AS monthly_travel_hull_area,
    COUNT(*) as dropoff_count
 FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
@@ -514,8 +514,8 @@ SELECT
    COUNT(t.t_tripkey) AS total_pickups, AVG(t.t_totalamount) AS avg_distance,
    AVG(TIMESTAMP_DIFF(t.t_dropofftime, t.t_pickuptime, SECOND)) AS avg_duration_seconds
 FROM trip t, zone z
-WHERE ST_Intersects(ST_GeogFromText('POLYGON((-112.2110 34.4197, -111.3110 34.4197, -111.3110 35.3197, -112.2110 35.3197, -112.2110 34.4197))'), ST_GeogFromWKB(z.z_boundary))
- AND ST_Within(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromWKB(z.z_boundary))
+WHERE ST_Intersects(ST_GeogFromText('POLYGON((-112.2110 34.4197, -111.3110 34.4197, -111.3110 35.3197, -112.2110 35.3197, -112.2110 34.4197))'), ST_GeogFromWKB(z.z_boundary, make_valid => TRUE))
+ AND ST_Within(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromWKB(z.z_boundary, make_valid => TRUE))
 GROUP BY z.z_zonekey, z.z_name
 ORDER BY total_pickups DESC, z.z_zonekey ASC
                """
@@ -531,8 +531,8 @@ WITH trip_lengths AS (
        t.t_distance AS reported_distance_m,
        ST_Length(
                ST_MakeLine(
-                       ST_GeogFromWKB(t.t_pickuploc),
-                       ST_GeogFromWKB(t.t_dropoffloc)
+                       ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE),
+                       ST_GeogFromWKB(t.t_dropoffloc, make_valid => TRUE)
                )
        ) AS line_distance_m -- BigQuery returns meters directly for geography
    FROM trip t
@@ -551,7 +551,7 @@ ORDER BY detour_ratio DESC NULLS LAST, reported_distance_m DESC, t_tripkey ASC
         return """
 -- Q8 (BigQuery): Count nearby pickups for each building within 500m radius
 SELECT b.b_buildingkey, b.b_name, COUNT(*) AS nearby_pickup_count
-FROM trip t JOIN building b ON ST_DWithin(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromWKB(b.b_boundary), 500) -- 500m in meters for geography
+FROM trip t JOIN building b ON ST_DWithin(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromWKB(b.b_boundary, make_valid => TRUE), 500) -- 500m in meters for geography
 GROUP BY b.b_buildingkey, b.b_name
 ORDER BY nearby_pickup_count DESC, b.b_buildingkey ASC
                """
@@ -561,11 +561,11 @@ ORDER BY nearby_pickup_count DESC, b.b_buildingkey ASC
         return """
 -- Q9 (BigQuery): Building Conflation (duplicate/overlap detection via IoU), deterministic order
 WITH b1 AS (
-   SELECT b_buildingkey AS id, ST_GeogFromWKB(b_boundary) AS geog
+   SELECT b_buildingkey AS id, ST_GeogFromWKB(b_boundary, make_valid => TRUE) AS geog
    FROM building
 ),
     b2 AS (
-        SELECT b_buildingkey AS id, ST_GeogFromWKB(b_boundary) AS geog
+        SELECT b_buildingkey AS id, ST_GeogFromWKB(b_boundary, make_valid => TRUE) AS geog
         FROM building
     ),
     pairs AS (
@@ -602,7 +602,7 @@ ORDER BY iou DESC, building_1 ASC, building_2 ASC
 SELECT
    z.z_zonekey, z.z_name AS pickup_zone, AVG(TIMESTAMP_DIFF(t.t_dropofftime, t.t_pickuptime, SECOND)) AS avg_duration_seconds,
    AVG(t.t_distance) AS avg_distance, COUNT(t.t_tripkey) AS num_trips
-FROM zone z LEFT JOIN trip t ON ST_Within(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromWKB(z.z_boundary))
+FROM zone z LEFT JOIN trip t ON ST_Within(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromWKB(z.z_boundary, make_valid => TRUE))
 GROUP BY z.z_zonekey, z.z_name
 ORDER BY avg_duration_seconds DESC NULLS LAST, z.z_zonekey ASC
                """
@@ -614,8 +614,8 @@ ORDER BY avg_duration_seconds DESC NULLS LAST, z.z_zonekey ASC
 SELECT COUNT(*) AS cross_zone_trip_count
 FROM
    trip t
-       JOIN zone pickup_zone ON ST_Within(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromWKB(pickup_zone.z_boundary))
-       JOIN zone dropoff_zone ON ST_Within(ST_GeogFromWKB(t.t_dropoffloc), ST_GeogFromWKB(dropoff_zone.z_boundary))
+       JOIN zone pickup_zone ON ST_Within(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromWKB(pickup_zone.z_boundary, make_valid => TRUE))
+       JOIN zone dropoff_zone ON ST_Within(ST_GeogFromWKB(t.t_dropoffloc, make_valid => TRUE), ST_GeogFromWKB(dropoff_zone.z_boundary, make_valid => TRUE))
 WHERE pickup_zone.z_zonekey != dropoff_zone.z_zonekey
                """
 
@@ -630,10 +630,10 @@ WITH ranked_buildings AS (
         t.t_pickuploc,
         b.b_buildingkey,
         b.b_name AS building_name,
-        ST_Distance(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromWKB(b.b_boundary)) AS distance_to_building,
+        ST_Distance(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromWKB(b.b_boundary, make_valid => TRUE)) AS distance_to_building,
         ROW_NUMBER() OVER (
             PARTITION BY t.t_tripkey
-            ORDER BY ST_Distance(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromWKB(b.b_boundary)) ASC
+            ORDER BY ST_Distance(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromWKB(b.b_boundary, make_valid => TRUE)) ASC
         ) AS rn
     FROM trip t
     CROSS JOIN building b
