@@ -417,12 +417,246 @@ ORDER BY dropoff_count DESC, c.c_custkey ASC
                """
 
 
+class BigQuerySpatialBenchBenchmark(SpatialBenchBenchmark):
+    """A BigQuery-specific implementation of the SpatialBench benchmark.
+
+    BigQuery uses GEOGRAPHY type with spherical coordinates. Key differences:
+    - Uses ST_GeogFromWKB instead of ST_GeomFromWKB
+    - Uses ST_GeogFromText instead of ST_GeomFromText
+    - Uses ST_GeogPoint instead of ST_Point
+    - Some functions have different names or signatures
+
+    This class overrides all queries to use the BigQuery geography functions.
+    """
+
+    def dialect(self) -> str:
+        """Return the dialect of the benchmark."""
+        return "BigQuery"
+
+    @staticmethod
+    def q1() -> str:
+        return """
+-- Q1 (BigQuery): Find trips starting within 50km of Sedona city center, ordered by distance
+SELECT
+   t.t_tripkey, ST_X(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE)) AS pickup_lon, ST_Y(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE)) AS pickup_lat, t.t_pickuptime,
+   ST_Distance(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromText('POINT (-111.7610 34.8697)')) AS distance_to_center
+FROM trip t
+WHERE ST_DWithin(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromText('POINT (-111.7610 34.8697)'), 50000) -- 50km radius around Sedona center (meters for geography)
+ORDER BY distance_to_center ASC, t.t_tripkey ASC
+               """
+
+    @staticmethod
+    def q2() -> str:
+        return """
+-- Q2 (BigQuery): Count trips starting within Coconino County (Arizona) zone
+SELECT COUNT(*) AS trip_count_in_coconino_county
+FROM trip t
+WHERE ST_Intersects(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), (SELECT ST_GeogFromWKB(z.z_boundary, make_valid => TRUE) FROM zone z WHERE z.z_name = 'Coconino County' LIMIT 1))
+               """
+
+    @staticmethod
+    def q3() -> str:
+        return """
+-- Q3 (BigQuery): Monthly trip statistics within 15km radius of Sedona city center (10km base + 5km buffer)
+SELECT
+   DATE_TRUNC(t.t_pickuptime, MONTH) AS pickup_month, COUNT(t.t_tripkey) AS total_trips,
+   AVG(t.t_distance) AS avg_distance, AVG(TIMESTAMP_DIFF(t.t_dropofftime, t.t_pickuptime, SECOND)) AS avg_duration_seconds,
+   AVG(t.t_fare) AS avg_fare
+FROM trip t
+WHERE ST_DWithin(
+             ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE),
+             ST_GeogFromText('POLYGON((-111.9060 34.7347, -111.6160 34.7347, -111.6160 35.0047, -111.9060 35.0047, -111.9060 34.7347))'), -- 10km bounding box around Sedona
+             5000 -- Additional 5km buffer (meters for geography)
+     )
+GROUP BY pickup_month
+ORDER BY pickup_month
+"""
+
+    @staticmethod
+    def q4() -> str:
+        return """
+-- Q4 (BigQuery): Zone distribution of top 1000 trips by tip amount
+SELECT z.z_zonekey, z.z_name, COUNT(*) AS trip_count
+FROM
+   zone z
+       JOIN (
+       SELECT t.t_pickuploc
+       FROM trip t
+       ORDER BY t.t_tip DESC, t.t_tripkey ASC
+           LIMIT 1000 -- Replace 1000 with x (how many top tips you want)
+   ) top_trips ON ST_Within(ST_GeogFromWKB(top_trips.t_pickuploc, make_valid => TRUE), ST_GeogFromWKB(z.z_boundary, make_valid => TRUE))
+GROUP BY z.z_zonekey, z.z_name
+ORDER BY trip_count DESC, z.z_zonekey ASC
+               """
+
+    @staticmethod
+    def q5() -> str:
+        return """
+-- Q5 (BigQuery): Monthly travel patterns for repeat customers (convex hull of dropoff locations)
+-- BigQuery uses ST_Union_Agg instead of ST_Collect
+SELECT
+   c.c_custkey, c.c_name AS customer_name,
+   DATE_TRUNC(t.t_pickuptime, MONTH) AS pickup_month,
+   ST_Area(ST_ConvexHull(ST_Union_Agg(ST_GeogFromWKB(t.t_dropoffloc, make_valid => TRUE)))) AS monthly_travel_hull_area,
+   COUNT(*) as dropoff_count
+FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
+GROUP BY c.c_custkey, c.c_name, pickup_month
+HAVING dropoff_count > 5 -- Only include repeat customers for meaningful hulls
+ORDER BY dropoff_count DESC, c.c_custkey ASC
+            """
+
+    @staticmethod
+    def q6() -> str:
+        return """
+-- Q6 (BigQuery): Zone statistics for trips intersecting a bounding box
+SELECT
+   z.z_zonekey, z.z_name,
+   COUNT(t.t_tripkey) AS total_pickups, AVG(t.t_totalamount) AS avg_distance,
+   AVG(TIMESTAMP_DIFF(t.t_dropofftime, t.t_pickuptime, SECOND)) AS avg_duration_seconds
+FROM trip t, zone z
+WHERE ST_Intersects(ST_GeogFromText('POLYGON((-112.2110 34.4197, -111.3110 34.4197, -111.3110 35.3197, -112.2110 35.3197, -112.2110 34.4197))'), ST_GeogFromWKB(z.z_boundary, make_valid => TRUE))
+ AND ST_Within(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromWKB(z.z_boundary, make_valid => TRUE))
+GROUP BY z.z_zonekey, z.z_name
+ORDER BY total_pickups DESC, z.z_zonekey ASC
+               """
+
+    @staticmethod
+    def q7() -> str:
+        return """
+-- Q7 (BigQuery): Detect potential route detours by comparing reported vs. geometric distances
+-- BigQuery uses ST_MakeLine with array syntax and returns meters for ST_Length with geography
+WITH trip_lengths AS (
+   SELECT
+       t.t_tripkey,
+       t.t_distance AS reported_distance_m,
+       ST_Length(
+               ST_MakeLine(
+                       ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE),
+                       ST_GeogFromWKB(t.t_dropoffloc, make_valid => TRUE)
+               )
+       ) AS line_distance_m -- BigQuery returns meters directly for geography
+   FROM trip t
+)
+SELECT
+   t.t_tripkey,
+   t.reported_distance_m,
+   t.line_distance_m,
+   t.reported_distance_m / NULLIF(t.line_distance_m, 0) AS detour_ratio
+FROM trip_lengths t
+ORDER BY detour_ratio DESC NULLS LAST, reported_distance_m DESC, t_tripkey ASC
+               """
+
+    @staticmethod
+    def q8() -> str:
+        return """
+-- Q8 (BigQuery): Count nearby pickups for each building within 500m radius
+SELECT b.b_buildingkey, b.b_name, COUNT(*) AS nearby_pickup_count
+FROM trip t JOIN building b ON ST_DWithin(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromWKB(b.b_boundary, make_valid => TRUE), 500) -- 500m in meters for geography
+GROUP BY b.b_buildingkey, b.b_name
+ORDER BY nearby_pickup_count DESC, b.b_buildingkey ASC
+               """
+
+    @staticmethod
+    def q9() -> str:
+        return """
+-- Q9 (BigQuery): Building Conflation (duplicate/overlap detection via IoU), deterministic order
+WITH b1 AS (
+   SELECT b_buildingkey AS id, ST_GeogFromWKB(b_boundary, make_valid => TRUE) AS geog
+   FROM building
+),
+    b2 AS (
+        SELECT b_buildingkey AS id, ST_GeogFromWKB(b_boundary, make_valid => TRUE) AS geog
+        FROM building
+    ),
+    pairs AS (
+        SELECT
+            b1.id AS building_1,
+            b2.id AS building_2,
+            ST_Area(b1.geog) AS area1,
+            ST_Area(b2.geog) AS area2,
+            ST_Area(ST_Intersection(b1.geog, b2.geog)) AS overlap_area
+        FROM b1
+                 JOIN b2
+                      ON b1.id < b2.id
+                          AND ST_Intersects(b1.geog, b2.geog)
+    )
+SELECT
+   building_1,
+   building_2,
+   area1,
+   area2,
+   overlap_area,
+   CASE
+       WHEN overlap_area = 0 THEN 0.0
+       WHEN (area1 + area2 - overlap_area) = 0 THEN 1.0
+       ELSE overlap_area / (area1 + area2 - overlap_area)
+       END AS iou
+FROM pairs
+ORDER BY iou DESC, building_1 ASC, building_2 ASC
+               """
+
+    @staticmethod
+    def q10() -> str:
+        return """
+-- Q10 (BigQuery): Zone statistics for trips starting within each zone
+SELECT
+   z.z_zonekey, z.z_name AS pickup_zone, AVG(TIMESTAMP_DIFF(t.t_dropofftime, t.t_pickuptime, SECOND)) AS avg_duration_seconds,
+   AVG(t.t_distance) AS avg_distance, COUNT(t.t_tripkey) AS num_trips
+FROM zone z LEFT JOIN trip t ON ST_Within(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromWKB(z.z_boundary, make_valid => TRUE))
+GROUP BY z.z_zonekey, z.z_name
+ORDER BY avg_duration_seconds DESC NULLS LAST, z.z_zonekey ASC
+               """
+
+    @staticmethod
+    def q11() -> str:
+        return """
+-- Q11 (BigQuery): Count trips that cross between different zones
+SELECT COUNT(*) AS cross_zone_trip_count
+FROM
+   trip t
+       JOIN zone pickup_zone ON ST_Within(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromWKB(pickup_zone.z_boundary, make_valid => TRUE))
+       JOIN zone dropoff_zone ON ST_Within(ST_GeogFromWKB(t.t_dropoffloc, make_valid => TRUE), ST_GeogFromWKB(dropoff_zone.z_boundary, make_valid => TRUE))
+WHERE pickup_zone.z_zonekey != dropoff_zone.z_zonekey
+               """
+
+    @staticmethod
+    def q12() -> str:
+        return """
+-- Q12 (BigQuery): Find 5 nearest buildings to each trip pickup location
+-- BigQuery doesn't have KNN join, using ROW_NUMBER() window function instead
+WITH ranked_buildings AS (
+    SELECT
+        t.t_tripkey,
+        t.t_pickuploc,
+        b.b_buildingkey,
+        b.b_name AS building_name,
+        ST_Distance(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromWKB(b.b_boundary, make_valid => TRUE)) AS distance_to_building,
+        ROW_NUMBER() OVER (
+            PARTITION BY t.t_tripkey
+            ORDER BY ST_Distance(ST_GeogFromWKB(t.t_pickuploc, make_valid => TRUE), ST_GeogFromWKB(b.b_boundary, make_valid => TRUE)) ASC
+        ) AS rn
+    FROM trip t
+    CROSS JOIN building b
+)
+SELECT
+   t_tripkey,
+   t_pickuploc,
+   b_buildingkey,
+   building_name,
+   distance_to_building
+FROM ranked_buildings
+WHERE rn <= 5
+ORDER BY distance_to_building ASC, b_buildingkey ASC
+               """
+
+
 def main():
     query_classes = {
         "SedonaSpark": SpatialBenchBenchmark,
         "Databricks": DatabricksSpatialBenchBenchmark,
         "DuckDB": DuckDBSpatialBenchBenchmark,
         "SedonaDB": SedonaDBSpatialBenchBenchmark,
+        "BigQuery": BigQuerySpatialBenchBenchmark,
         "Geopandas": None,  # Special case, we will catch this below,
         "Spatial Polars": None,  # Special case, we will catch this below,
     }
