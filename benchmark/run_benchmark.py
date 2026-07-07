@@ -65,9 +65,11 @@ class BenchmarkSuite:
     total_time: float = 0.0
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     version: str = "unknown"
+    table_load_time: float | None = None  # Time to load tables (e.g., for BigQuery)
+    table_load_details: dict[str, Any] | None = None  # Per-table timing details
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result = {
             "engine": self.engine,
             "version": self.version,
             "scale_factor": self.scale_factor,
@@ -84,6 +86,11 @@ class BenchmarkSuite:
                 for r in self.results
             ],
         }
+        if self.table_load_time is not None:
+            result["table_load_time"] = self.table_load_time
+        if self.table_load_details is not None:
+            result["table_load_details"] = self.table_load_details
+        return result
 
 
 class QueryTimeoutError(Exception):
@@ -164,6 +171,33 @@ def get_data_paths(data_dir: str) -> dict[str, str]:
             if matches:
                 paths[table] = str(matches[0])
 
+    return paths
+
+
+def get_bigquery_data_paths(gcs_base_path: str, scale_factor: float | None = None) -> dict[str, str]:
+    """Get GCS paths to all data tables for BigQuery.
+
+    Args:
+        gcs_base_path: Base GCS path (e.g., gs://bucket/path/to/data or gs://bucket/path/)
+        scale_factor: If provided and path ends with /, appends sf-{scale_factor}/ to the path
+
+    Returns:
+        Dict mapping table names to GCS paths
+    """
+    base = gcs_base_path.rstrip("/")
+
+    # If scale_factor is provided and the base path looks like it needs a scale factor suffix
+    # (i.e., doesn't already end with sf-X), append it
+    if scale_factor is not None:
+        sf_int = int(scale_factor)
+        sf_suffix = f"sf-{sf_int}"
+        if not base.endswith(sf_suffix):
+            base = f"{base}/{sf_suffix}"
+
+    paths = {}
+    for table in TABLES:
+        # Assume single parquet file per table
+        paths[table] = f"{base}/{table}.parquet"
     return paths
 
 
@@ -344,13 +378,286 @@ class SpatialPolarsBenchmark(BaseBenchmark):
         return len(result), result
 
 
+@dataclass
+class TableLoadResult:
+    """Result of loading a single table."""
+    table: str
+    external_table_time: float
+    internal_table_time: float
+    total_time: float
+    status: str  # "success", "error"
+    error_message: str | None = None
+
+
+class BigQueryBenchmark(BaseBenchmark):
+    """BigQuery benchmark runner using ADBC driver.
+
+    This benchmark uses BigQuery's native GEOGRAPHY type with spherical coordinates.
+    Data is loaded from GCS Parquet files through external tables, then copied to
+    internal tables for optimized query performance.
+
+    Uses the ADBC BigQuery driver which works with Application Default Credentials (ADC).
+    Run `gcloud auth application-default login --project=<project>` to authenticate.
+
+    Environment variables:
+    - BIGQUERY_PROJECT_ID: GCP project ID (required)
+    - BIGQUERY_DATASET_ID: BigQuery dataset ID (required)
+    - BIGQUERY_GCS_BASE_PATH: Base GCS path for data (e.g., gs://bucket/path/), scale factor folder appended
+    """
+
+    # Class-level flag to indicate tables have been pre-loaded
+    _tables_preloaded = False
+    _preload_results: list["TableLoadResult"] = []
+    _scale_factor: int | None = None  # Class-level scale factor for table suffixes
+
+    def __init__(self, data_paths: dict[str, str], gcs_base_path: str | None = None,
+                 skip_table_loading: bool = False, scale_factor: int | None = None):
+        """Initialize BigQuery benchmark.
+
+        Args:
+            data_paths: Mapping of table names to GCS paths (gs://bucket/path/to/table.parquet)
+            gcs_base_path: Base GCS path for parquet files. If provided, data_paths values
+                           are treated as relative paths under this base.
+            skip_table_loading: If True, skip table loading (assumes tables already exist)
+            scale_factor: Scale factor for table name suffix (e.g., 1 creates trip_sf1)
+        """
+        super().__init__(data_paths, "bigquery")
+        self._con = None
+        self._project_id = None
+        self._dataset_id = None
+        self._gcs_base_path = gcs_base_path
+        self._skip_table_loading = skip_table_loading or BigQueryBenchmark._tables_preloaded
+        self._table_load_results: list[TableLoadResult] = []
+        # Use instance scale_factor or fall back to class-level
+        self._instance_scale_factor = scale_factor if scale_factor is not None else BigQueryBenchmark._scale_factor
+
+    def _create_connection(self):
+        """Create ADBC BigQuery connection."""
+        import warnings
+        import adbc_driver_bigquery.dbapi
+
+        db_kwargs = {
+            "adbc.bigquery.sql.project_id": self._project_id,
+            "adbc.bigquery.sql.dataset_id": self._dataset_id,
+        }
+        # Suppress autocommit warning from ADBC
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="Cannot disable autocommit")
+            return adbc_driver_bigquery.dbapi.connect(db_kwargs=db_kwargs)
+
+    @classmethod
+    def preload_tables(cls, data_paths: dict[str, str], gcs_base_path: str | None = None,
+                       scale_factor: int | None = None) -> list["TableLoadResult"]:
+        """Pre-load tables to BigQuery before running queries.
+
+        This is called once before running isolated query processes.
+        Sets the class-level _tables_preloaded flag so subsequent instances
+        skip table loading.
+
+        Args:
+            data_paths: Mapping of table names to GCS paths
+            gcs_base_path: Base GCS path for parquet files
+            scale_factor: Scale factor for table name suffix (e.g., 1 creates trip_sf1)
+
+        Returns:
+            List of TableLoadResult for each table
+        """
+        # Store scale factor at class level for subprocess access
+        cls._scale_factor = scale_factor
+
+        benchmark = cls(data_paths, gcs_base_path, skip_table_loading=False, scale_factor=scale_factor)
+        benchmark._skip_table_loading = False  # Force loading for preload
+
+        import os
+
+        benchmark._project_id = os.environ.get("BIGQUERY_PROJECT_ID")
+        benchmark._dataset_id = os.environ.get("BIGQUERY_DATASET_ID")
+
+        if not benchmark._project_id:
+            raise ValueError("BIGQUERY_PROJECT_ID environment variable is required")
+        if not benchmark._dataset_id:
+            raise ValueError("BIGQUERY_DATASET_ID environment variable is required")
+
+        benchmark._con = benchmark._create_connection()
+
+        # Load tables
+        benchmark._load_tables()
+
+        # Set class-level flag
+        cls._tables_preloaded = True
+        cls._preload_results = benchmark._table_load_results
+
+        benchmark._con.close()
+        return benchmark._table_load_results
+
+    @classmethod
+    def reset_preload_state(cls):
+        """Reset the preload state (useful for testing)."""
+        cls._tables_preloaded = False
+        cls._preload_results = []
+        cls._scale_factor = None
+
+    def setup(self) -> None:
+        """Initialize BigQuery ADBC connection and optionally load tables."""
+        import os
+
+        self._project_id = os.environ.get("BIGQUERY_PROJECT_ID")
+        self._dataset_id = os.environ.get("BIGQUERY_DATASET_ID")
+
+        if not self._project_id:
+            raise ValueError("BIGQUERY_PROJECT_ID environment variable is required")
+        if not self._dataset_id:
+            raise ValueError("BIGQUERY_DATASET_ID environment variable is required")
+
+        self._con = self._create_connection()
+
+        # Only load tables if not skipping
+        if not self._skip_table_loading:
+            self._load_tables()
+
+    def _get_gcs_path(self, table: str) -> str:
+        """Get the GCS path for a table."""
+        path = self.data_paths.get(table)
+        if not path:
+            raise ValueError(f"No path configured for table: {table}")
+
+        if path.startswith("gs://"):
+            return path
+
+        if self._gcs_base_path:
+            base = self._gcs_base_path.rstrip("/")
+            return f"{base}/{path}"
+
+        raise ValueError(f"Path {path} is not a GCS path and no gcs_base_path configured")
+
+    def _load_tables(self) -> None:
+        """Load all tables from GCS Parquet files into BigQuery internal tables."""
+        self._table_load_results = []
+
+        for table in self.data_paths.keys():
+            result = self._load_single_table(table)
+            self._table_load_results.append(result)
+            if result.status == "error":
+                raise RuntimeError(f"Failed to load table {table}: {result.error_message}")
+
+    def _get_table_suffix(self) -> str:
+        """Get the table name suffix based on scale factor."""
+        sf = self._instance_scale_factor
+        if sf is not None:
+            return f"_sf{sf}"
+        return ""
+
+    def _load_single_table(self, table: str) -> TableLoadResult:
+        """Load a single table from GCS to BigQuery internal table."""
+        gcs_path = self._get_gcs_path(table)
+        suffix = self._get_table_suffix()
+        external_table_name = f"{table}{suffix}_external"
+        internal_table_name = f"{table}{suffix}"
+
+        full_external_table = f"{self._project_id}.{self._dataset_id}.{external_table_name}"
+        full_internal_table = f"{self._project_id}.{self._dataset_id}.{internal_table_name}"
+
+        try:
+            # Step 1: Create external table pointing to GCS Parquet
+            external_start = time.perf_counter()
+
+            create_external_sql = f"""
+            CREATE OR REPLACE EXTERNAL TABLE `{full_external_table}`
+            OPTIONS (
+              format = 'PARQUET',
+              uris = ['{gcs_path}']
+            )
+            """
+            with self._con.cursor() as cur:
+                cur.execute(create_external_sql)
+            external_time = time.perf_counter() - external_start
+
+            # Step 2: Create internal table from external table
+            internal_start = time.perf_counter()
+
+            create_internal_sql = f"""
+            CREATE OR REPLACE TABLE `{full_internal_table}` AS
+            SELECT * FROM `{full_external_table}`
+            """
+            with self._con.cursor() as cur:
+                cur.execute(create_internal_sql)
+            internal_time = time.perf_counter() - internal_start
+
+            return TableLoadResult(
+                table=table,
+                external_table_time=round(external_time, 3),
+                internal_table_time=round(internal_time, 3),
+                total_time=round(external_time + internal_time, 3),
+                status="success",
+            )
+
+        except Exception as e:
+            return TableLoadResult(
+                table=table,
+                external_table_time=0,
+                internal_table_time=0,
+                total_time=0,
+                status="error",
+                error_message=str(e),
+            )
+
+    def teardown(self) -> None:
+        """Clean up BigQuery resources."""
+        if self._con:
+            # Optionally clean up tables here
+            # For now, leave tables in place for inspection
+            self._con.close()
+            self._con = None
+
+    def execute_query(self, query_name: str, query: str | None) -> tuple[int, Any]:
+        """Execute a query on BigQuery and return row count and results."""
+        if query is None:
+            raise ValueError(f"Query {query_name} requires SQL")
+
+        # Replace table names with suffixed versions
+        modified_query = self._apply_table_suffix(query)
+        with self._con.cursor() as cur:
+            cur.execute(modified_query)
+            result = cur.fetch_arrow_table()
+        return len(result), result
+
+    def _apply_table_suffix(self, query: str) -> str:
+        """Replace bare table names with scale-factor-suffixed versions."""
+        suffix = self._get_table_suffix()
+        if not suffix:
+            return query
+
+        import re
+        modified = query
+        for table in TABLES:
+            # Match table name as a whole word (not part of another identifier)
+            # Handles: FROM table, JOIN table, table., table WHERE, etc.
+            pattern = rf'\b{table}\b'
+            replacement = f'{table}{suffix}'
+            modified = re.sub(pattern, replacement, modified)
+        return modified
+
+    def get_table_load_times(self) -> dict[str, TableLoadResult]:
+        """Get table load timing results for analysis."""
+        return {r.table: r for r in self._table_load_results}
+
+    def get_total_load_time(self) -> float:
+        """Get total time spent loading all tables."""
+        return sum(r.total_time for r in self._table_load_results)
+
+
 def get_sql_queries(dialect: str) -> dict[str, str]:
     """Get SQL queries for a specific dialect from print_queries.py."""
-    from print_queries import DuckDBSpatialBenchBenchmark, SedonaDBSpatialBenchBenchmark
+    from print_queries import (
+        BigQuerySpatialBenchBenchmark,
+        DuckDBSpatialBenchBenchmark,
+        SedonaDBSpatialBenchBenchmark,
+    )
 
     dialects = {
         "duckdb": DuckDBSpatialBenchBenchmark,
         "sedonadb": SedonaDBSpatialBenchBenchmark,
+        "bigquery": BigQuerySpatialBenchBenchmark,
     }
     return dialects[dialect]().queries()
 
@@ -468,6 +775,11 @@ def run_benchmark(
             "version_getter": lambda: pkg_version("spatial-polars"),
             "queries_getter": lambda: {f"q{i}": None for i in range(1, QUERY_COUNT + 1)},
         },
+        "bigquery": {
+            "class": BigQueryBenchmark,
+            "version_getter": lambda: pkg_version("google-cloud-bigquery"),
+            "queries_getter": lambda: get_sql_queries("bigquery"),
+        },
     }
 
     config = configs[engine]
@@ -486,6 +798,31 @@ def run_benchmark(
     suite = BenchmarkSuite(engine=engine, scale_factor=scale_factor, version=version)
     all_queries = config["queries_getter"]()
     engine_class = config["class"]
+
+    # BigQuery: Pre-load tables before running queries
+    if engine == "bigquery":
+        sf_int = int(scale_factor)
+        print(f"  Pre-loading tables to BigQuery (scale factor: {sf_int})...")
+        try:
+            load_results = BigQueryBenchmark.preload_tables(data_paths, scale_factor=sf_int)
+            table_load_time = sum(r.total_time for r in load_results)
+            suite.table_load_time = round(table_load_time, 3)
+            suite.table_load_details = {
+                r.table: {
+                    "external_table_time": r.external_table_time,
+                    "internal_table_time": r.internal_table_time,
+                    "total_time": r.total_time,
+                    "status": r.status,
+                }
+                for r in load_results
+            }
+            print(f"  Table loading complete: {suite.table_load_time}s total")
+            for r in load_results:
+                suffix = f"_sf{sf_int}"
+                print(f"    {r.table}{suffix}: {r.total_time}s (external: {r.external_table_time}s, internal: {r.internal_table_time}s)")
+        except Exception as e:
+            print(f"  Error loading tables: {e}")
+            raise
 
     # Determine which queries will be run
     query_items = [
@@ -608,7 +945,22 @@ def print_summary(results: list[BenchmarkSuite]) -> None:
         print(row)
 
     print("-" * len(header))
-    print(f"{'Total':<10}" + "".join(f"{s.total_time:.2f}s{'':<9}" for s in results))
+    total_row = f"{'Total':<10}" + "".join(f"{s.total_time:.2f}s{'':<9}" for s in results)
+    print(total_row)
+
+    # Show table load time for engines that have it (e.g., BigQuery)
+    engines_with_load = [s for s in results if s.table_load_time is not None]
+    if engines_with_load:
+        load_row = f"{'Load Time':<10}" + "".join(
+            f"{s.table_load_time:.2f}s{'':<9}" if s.table_load_time is not None else f"{'N/A':<15}"
+            for s in results
+        )
+        print(load_row)
+        combined_row = f"{'Combined':<10}" + "".join(
+            f"{(s.total_time + (s.table_load_time or 0)):.2f}s{'':<9}"
+            for s in results
+        )
+        print(combined_row)
 
 
 def save_results(results: list[BenchmarkSuite], output_file: str) -> None:
@@ -628,12 +980,12 @@ def save_results(results: list[BenchmarkSuite], output_file: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run SpatialBench benchmarks comparing SedonaDB, DuckDB, GeoPandas, and Spatial Polars"
+        description="Run SpatialBench benchmarks comparing SedonaDB, DuckDB, GeoPandas, Spatial Polars, and BigQuery"
     )
     parser.add_argument("--data-dir", type=str, required=True,
-                        help="Path to directory containing benchmark data (parquet files)")
+                        help="Path to directory containing benchmark data (parquet files). For BigQuery, use GCS paths.")
     parser.add_argument("--engines", type=str, default="duckdb,geopandas,sedonadb,spatial_polars",
-                        help="Comma-separated list of engines to benchmark")
+                        help="Comma-separated list of engines to benchmark (add 'bigquery' for BigQuery)")
     parser.add_argument("--queries", type=str, default=None,
                         help="Comma-separated list of queries to run (e.g., q1,q2,q3)")
     parser.add_argument("--timeout", type=int, default=10,
@@ -644,32 +996,75 @@ def main():
                         help="Output file for results")
     parser.add_argument("--scale-factor", type=float, default=1,
                         help="Scale factor of the data (for reporting only)")
+    parser.add_argument("--gcs-base-path", type=str, default=None,
+                        help="Base GCS path for BigQuery data (e.g., gs://bucket/path/to/data)")
 
     args = parser.parse_args()
 
     engines = [e.strip().lower() for e in args.engines.split(",")]
-    valid_engines = {"duckdb", "geopandas", "sedonadb", "spatial_polars"}
+    valid_engines = {"duckdb", "geopandas", "sedonadb", "spatial_polars", "bigquery"}
 
     for e in engines:
         if e not in valid_engines:
             print(f"Error: Unknown engine '{e}'. Valid options: {valid_engines}")
             sys.exit(1)
 
-    queries = [q.strip().lower() for q in args.queries.split(",")] if args.queries else None
+    # Get GCS base path from argument or environment variable
+    import os
+    gcs_base_path = args.gcs_base_path or os.environ.get("BIGQUERY_GCS_BASE_PATH")
 
-    data_paths = get_data_paths(args.data_dir)
-    if not data_paths:
-        print(f"Error: No data files found in {args.data_dir}")
+    # Check BigQuery requirements
+    if "bigquery" in engines and not gcs_base_path:
+        print("Error: BigQuery engine requires --gcs-base-path argument or BIGQUERY_GCS_BASE_PATH environment variable")
         sys.exit(1)
 
-    print("Data paths:")
-    for table, path in data_paths.items():
-        print(f"  {table}: {path}")
+    queries = [q.strip().lower() for q in args.queries.split(",")] if args.queries else None
 
-    results = [
-        run_benchmark(engine, data_paths, queries, args.timeout, args.scale_factor, args.runs, args.output)
-        for engine in engines
-    ]
+    # Prepare data paths for local engines (non-BigQuery)
+    local_engines = [e for e in engines if e != "bigquery"]
+    bigquery_engines = [e for e in engines if e == "bigquery"]
+
+    data_paths = {}
+    bigquery_data_paths = {}
+
+    if local_engines:
+        data_paths = get_data_paths(args.data_dir)
+        if not data_paths and local_engines:
+            print(f"Error: No data files found in {args.data_dir}")
+            sys.exit(1)
+
+        print("Local data paths:")
+        for table, path in data_paths.items():
+            print(f"  {table}: {path}")
+
+    if bigquery_engines:
+        # Construct dataset ID from prefix + scale factor if not explicitly set
+        dataset_id = os.environ.get("BIGQUERY_DATASET_ID")
+        if not dataset_id:
+            dataset_prefix = os.environ.get("BIGQUERY_DATASET_PREFIX", "spatialbench_")
+            sf_int = int(args.scale_factor)
+            dataset_id = f"{dataset_prefix}sf{sf_int}"
+            os.environ["BIGQUERY_DATASET_ID"] = dataset_id
+            print(f"Using BigQuery dataset: {dataset_id}")
+
+        bigquery_data_paths = get_bigquery_data_paths(gcs_base_path, args.scale_factor)
+        print("BigQuery GCS paths:")
+        for table, path in bigquery_data_paths.items():
+            print(f"  {table}: {path}")
+
+    results = []
+
+    # Run local engine benchmarks
+    for engine in local_engines:
+        result = run_benchmark(engine, data_paths, queries, args.timeout, args.scale_factor, args.runs, args.output)
+        results.append(result)
+
+    # Run BigQuery benchmarks with GCS paths
+    for engine in bigquery_engines:
+        result = run_benchmark(engine, bigquery_data_paths, queries, args.timeout, args.scale_factor, args.runs, args.output)
+        results.append(result)
+        # Reset BigQuery preload state for potential re-runs
+        BigQueryBenchmark.reset_preload_state()
 
     print_summary(results)
     save_results(results, args.output)
