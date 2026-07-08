@@ -92,7 +92,7 @@ jobs:
             os: macos
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Set ARM architecture flags for Linux cross-compilation
         if: (matrix.target == 'aarch64' || matrix.target == 'armv7') && (matrix.os == 'linux' || matrix.os == 'musllinux')
         run: |
@@ -120,7 +120,7 @@ jobs:
   sdist:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:
