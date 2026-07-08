@@ -160,6 +160,7 @@ def generate_markdown_summary(results: dict, output_file: str, query_timeout: in
         "duckdb": "🦆 DuckDB",
         "geopandas": "🐼 GeoPandas",
         "spatial_polars": "🐻‍❄️ Spatial Polars",
+        "pycanopy": "🌴 PyCanopy",
     }
 
     # Generate markdown
@@ -374,7 +375,7 @@ def main():
         "--engines",
         type=str,
         default=None,
-        help="Comma-separated list of expected engines (e.g., 'duckdb,geopandas,sedonadb,spatial_polars'). "
+        help="Comma-separated list of expected engines (e.g., 'duckdb,geopandas,sedonadb,spatial_polars,pycanopy'). "
         "Engines that were expected but have no results will be shown as OOM/runner-killed.",
     )
 

@@ -15,6 +15,7 @@ to print all 12 queries in the dialect of your choice. Currently supported diale
 - Databricks Spatial SQL
 - DuckDB
 - Geopandas (distinct case)
+- PyCanopy (distinct case)
 - SedonaDB
 - SedonaSpark
 - Spatial Polars
@@ -31,6 +32,11 @@ hand-optimized" version of the queries.
 [Spatial Polars](https://atl2001.github.io/spatial_polars), like Geopandas, is not SQL-based.  It uses shapely to extend
 polars, enabling it to work with geospatial data similar to how Geopandas extends pandas.  It is much newer and nowhere
 near as popular/tested as Geopandas, but is capable of computing all of the spatial bench queries, and has been included.
+
+[PyCanopy](https://github.com/pranav-walimbe/PyCanopy) is also not SQL-based. It's a Rust-backed spatial extension for
+Polars with a lazy spatial query planner and dynamic spatial indexing, exposed through a dataframe-native API rather
+than SQL. It is newer and less established than Geopandas, but is capable of computing all of the spatial bench
+queries, and has been included.
 
 We welcome contributions and civil discussions on how to improve the queries and their implementations.
 
@@ -51,6 +57,7 @@ The automated tests cover:
 - 🐼 **GeoPandas** - Python geospatial data analysis library
 - 🌵 **SedonaDB** - High-performance spatial analytics engine
 - 🐻‍❄️ **Spatial Polars** - Geospatial extension for Polars dataframes
+- 🌴 **PyCanopy** - High-performance spatial query engine for Polars
 
 ### View Latest Results
 

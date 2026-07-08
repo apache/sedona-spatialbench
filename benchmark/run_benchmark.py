@@ -344,6 +344,31 @@ class SpatialPolarsBenchmark(BaseBenchmark):
         return len(result), result
 
 
+class PyCanopyBenchmark(BaseBenchmark):
+    """PyCanopy benchmark runner."""
+
+    def __init__(self, data_paths: dict[str, str]):
+        super().__init__(data_paths, "pycanopy")
+        self._queries = None
+
+    def setup(self) -> None:
+        import importlib.util
+        query_file = Path(__file__).parent.parent / "spatialbench-queries" / "pycanopy_queries.py"
+        spec = importlib.util.spec_from_file_location("pycanopy_queries", query_file)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self._queries = {f"q{i}": getattr(module, f"q{i}") for i in range(1, QUERY_COUNT + 1)}
+
+    def teardown(self) -> None:
+        self._queries = None
+
+    def execute_query(self, query_name: str, query: str | None) -> tuple[int, Any]:
+        if query_name not in self._queries:
+            raise ValueError(f"Query {query_name} not found")
+        result = self._queries[query_name](self.data_paths)
+        return len(result), result
+
+
 def get_sql_queries(dialect: str) -> dict[str, str]:
     """Get SQL queries for a specific dialect from print_queries.py."""
     from print_queries import DuckDBSpatialBenchBenchmark, SedonaDBSpatialBenchBenchmark
@@ -466,6 +491,11 @@ def run_benchmark(
         "spatial_polars": {
             "class": SpatialPolarsBenchmark,
             "version_getter": lambda: pkg_version("spatial-polars"),
+            "queries_getter": lambda: {f"q{i}": None for i in range(1, QUERY_COUNT + 1)},
+        },
+        "pycanopy": {
+            "class": PyCanopyBenchmark,
+            "version_getter": lambda: pkg_version("pycanopy"),
             "queries_getter": lambda: {f"q{i}": None for i in range(1, QUERY_COUNT + 1)},
         },
     }
@@ -628,11 +658,11 @@ def save_results(results: list[BenchmarkSuite], output_file: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run SpatialBench benchmarks comparing SedonaDB, DuckDB, GeoPandas, and Spatial Polars"
+        description="Run SpatialBench benchmarks comparing SedonaDB, DuckDB, GeoPandas, Spatial Polars, and PyCanopy"
     )
     parser.add_argument("--data-dir", type=str, required=True,
                         help="Path to directory containing benchmark data (parquet files)")
-    parser.add_argument("--engines", type=str, default="duckdb,geopandas,sedonadb,spatial_polars",
+    parser.add_argument("--engines", type=str, default="duckdb,geopandas,sedonadb,spatial_polars,pycanopy",
                         help="Comma-separated list of engines to benchmark")
     parser.add_argument("--queries", type=str, default=None,
                         help="Comma-separated list of queries to run (e.g., q1,q2,q3)")
@@ -648,7 +678,7 @@ def main():
     args = parser.parse_args()
 
     engines = [e.strip().lower() for e in args.engines.split(",")]
-    valid_engines = {"duckdb", "geopandas", "sedonadb", "spatial_polars"}
+    valid_engines = {"duckdb", "geopandas", "sedonadb", "spatial_polars", "pycanopy"}
 
     for e in engines:
         if e not in valid_engines:

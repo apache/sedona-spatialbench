@@ -28,7 +28,7 @@ on:
       engines:
         description: 'Engines to benchmark (comma-separated)'
         required: false
-        default: 'duckdb,geopandas,sedonadb,spatial_polars'
+        default: 'duckdb,geopandas,sedonadb,spatial_polars,pycanopy'
         type: string
       sedonadb_version:
         description: 'SedonaDB version (e.g., 1.0.0, leave empty for latest)'
@@ -47,6 +47,11 @@ on:
         type: string
       spatial_polars_version:
         description: 'Spatial Polars version (e.g., 1.0.0, leave empty for latest)'
+        required: false
+        default: ''
+        type: string
+      pycanopy_version:
+        description: 'PyCanopy version (e.g., 1.0.0, leave empty for latest)'
         required: false
         default: ''
         type: string
@@ -76,13 +81,14 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  BENCHMARK_ENGINES: ${{ github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars' }}
+  BENCHMARK_ENGINES: ${{ github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars,pycanopy' }}
   BENCHMARK_RUNS: ${{ github.event.inputs.runs || '3' }}
   # Package versions (empty = latest, can be overridden via workflow_dispatch)
   SEDONADB_VERSION: ${{ github.event.inputs.sedonadb_version }}
   DUCKDB_VERSION: ${{ github.event.inputs.duckdb_version }}
   GEOPANDAS_VERSION: ${{ github.event.inputs.geopandas_version }}
   SPATIAL_POLARS_VERSION: ${{ github.event.inputs.spatial_polars_version }}
+  PYCANOPY_VERSION: ${{ github.event.inputs.pycanopy_version }}
   # Nightly build options (default: false, use stable releases)
   SEDONADB_NIGHTLY: ${{ github.event.inputs.sedonadb_nightly || 'false' }}
   DUCKDB_NIGHTLY: ${{ github.event.inputs.duckdb_nightly || 'false' }}
@@ -208,7 +214,7 @@ jobs:
     name: DuckDB ${{ matrix.query }} (SF${{ matrix.scale_factor }})
     needs: [parse-scale-factors, download-data]
     runs-on: ubuntu-latest
-    if: contains(github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars', 'duckdb')
+    if: contains(github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars,pycanopy', 'duckdb')
     strategy:
       matrix:
         scale_factor: ${{ fromJson(needs.parse-scale-factors.outputs.matrix) }}
@@ -271,7 +277,7 @@ jobs:
     name: GeoPandas ${{ matrix.query }} (SF${{ matrix.scale_factor }})
     needs: [parse-scale-factors, download-data]
     runs-on: ubuntu-latest
-    if: contains(github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars', 'geopandas')
+    if: contains(github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars,pycanopy', 'geopandas')
     strategy:
       matrix:
         scale_factor: ${{ fromJson(needs.parse-scale-factors.outputs.matrix) }}
@@ -327,7 +333,7 @@ jobs:
     name: SedonaDB ${{ matrix.query }} (SF${{ matrix.scale_factor }})
     needs: [parse-scale-factors, download-data]
     runs-on: ubuntu-latest
-    if: contains(github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars', 'sedonadb')
+    if: contains(github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars,pycanopy', 'sedonadb')
     strategy:
       matrix:
         scale_factor: ${{ fromJson(needs.parse-scale-factors.outputs.matrix) }}
@@ -388,7 +394,7 @@ jobs:
     name: Spatial Polars ${{ matrix.query }} (SF${{ matrix.scale_factor }})
     needs: [parse-scale-factors, download-data]
     runs-on: ubuntu-latest
-    if: contains(github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars', 'spatial_polars')
+    if: contains(github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars,pycanopy', 'spatial_polars')
     strategy:
       matrix:
         scale_factor: ${{ fromJson(needs.parse-scale-factors.outputs.matrix) }}
@@ -440,10 +446,66 @@ jobs:
           path: spatial_polars_${{ matrix.query }}_results.json
           retention-days: 30
 
+  benchmark-pycanopy:
+    name: PyCanopy ${{ matrix.query }} (SF${{ matrix.scale_factor }})
+    needs: [parse-scale-factors, download-data]
+    runs-on: ubuntu-latest
+    if: contains(github.event.inputs.engines || 'duckdb,geopandas,sedonadb,spatial_polars,pycanopy', 'pycanopy')
+    strategy:
+      matrix:
+        scale_factor: ${{ fromJson(needs.parse-scale-factors.outputs.matrix) }}
+        query: [q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12]
+      fail-fast: false
+      max-parallel: 2
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Restore benchmark data from cache
+        uses: actions/cache/restore@v5
+        with:
+          path: benchmark-data-sf${{ matrix.scale_factor }}
+          key: benchmark-data-${{ env.HF_DATA_VERSION }}-sf${{ matrix.scale_factor }}
+          fail-on-cache-miss: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: .github/workflows/benchmark.yml
+
+      - name: Install dependencies
+        run: |
+          if [ -n "${{ env.PYCANOPY_VERSION }}" ]; then
+            pip install "pycanopy==${{ env.PYCANOPY_VERSION }}" pyarrow
+          else
+            pip install pycanopy pyarrow
+          fi
+          echo "Installed PyCanopy version: $(python -c 'from importlib.metadata import version; print(version("pycanopy"))')"
+
+      - name: Run PyCanopy ${{ matrix.query }}
+        run: |
+          python benchmark/run_benchmark.py \
+            --data-dir benchmark-data-sf${{ matrix.scale_factor }} \
+            --engines pycanopy \
+            --queries ${{ matrix.query }} \
+            --runs ${{ env.BENCHMARK_RUNS }} \
+            --timeout ${{ env.QUERY_TIMEOUT }} \
+            --scale-factor ${{ matrix.scale_factor }} \
+            --output pycanopy_${{ matrix.query }}_results.json
+
+      - name: Upload results
+        if: always() && hashFiles(format('pycanopy_{0}_results.json', matrix.query)) != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: pycanopy-${{ matrix.query }}-results-sf${{ matrix.scale_factor }}
+          path: pycanopy_${{ matrix.query }}_results.json
+          retention-days: 30
+
   summarize-results:
     name: Summarize Results (SF${{ matrix.scale_factor }})
-    needs: [parse-scale-factors, benchmark-duckdb, benchmark-geopandas, benchmark-sedonadb, benchmark-spatial-polars]
-    if: always() && (needs.benchmark-duckdb.result != 'cancelled' || needs.benchmark-geopandas.result != 'cancelled' || needs.benchmark-sedonadb.result != 'cancelled' || needs.benchmark-spatial-polars.result != 'cancelled')
+    needs: [parse-scale-factors, benchmark-duckdb, benchmark-geopandas, benchmark-sedonadb, benchmark-spatial-polars, benchmark-pycanopy]
+    if: always() && (needs.benchmark-duckdb.result != 'cancelled' || needs.benchmark-geopandas.result != 'cancelled' || needs.benchmark-sedonadb.result != 'cancelled' || needs.benchmark-spatial-polars.result != 'cancelled' || needs.benchmark-pycanopy.result != 'cancelled')
     runs-on: ubuntu-latest
     strategy:
       matrix:
