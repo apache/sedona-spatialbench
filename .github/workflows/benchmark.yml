@@ -124,11 +124,11 @@ jobs:
       matrix:
         scale_factor: ${{ fromJson(needs.parse-scale-factors.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Cache benchmark data
         id: cache-data
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: benchmark-data-sf${{ matrix.scale_factor }}
           key: benchmark-data-${{ env.HF_DATA_VERSION }}-sf${{ matrix.scale_factor }}
@@ -222,10 +222,10 @@ jobs:
       fail-fast: false
       max-parallel: 2  # 1 per scale factor
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Restore benchmark data from cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: benchmark-data-sf${{ matrix.scale_factor }}
           key: benchmark-data-${{ env.HF_DATA_VERSION }}-sf${{ matrix.scale_factor }}
@@ -285,10 +285,10 @@ jobs:
       fail-fast: false
       max-parallel: 2
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Restore benchmark data from cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: benchmark-data-sf${{ matrix.scale_factor }}
           key: benchmark-data-${{ env.HF_DATA_VERSION }}-sf${{ matrix.scale_factor }}
@@ -341,10 +341,10 @@ jobs:
       fail-fast: false
       max-parallel: 2
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Restore benchmark data from cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: benchmark-data-sf${{ matrix.scale_factor }}
           key: benchmark-data-${{ env.HF_DATA_VERSION }}-sf${{ matrix.scale_factor }}
@@ -402,10 +402,10 @@ jobs:
       fail-fast: false
       max-parallel: 2
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Restore benchmark data from cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: benchmark-data-sf${{ matrix.scale_factor }}
           key: benchmark-data-${{ env.HF_DATA_VERSION }}-sf${{ matrix.scale_factor }}
@@ -458,10 +458,10 @@ jobs:
       fail-fast: false
       max-parallel: 2
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Restore benchmark data from cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: benchmark-data-sf${{ matrix.scale_factor }}
           key: benchmark-data-${{ env.HF_DATA_VERSION }}-sf${{ matrix.scale_factor }}
@@ -511,7 +511,7 @@ jobs:
       matrix:
         scale_factor: ${{ fromJson(needs.parse-scale-factors.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Download all results for this scale factor
         uses: actions/download-artifact@v8
