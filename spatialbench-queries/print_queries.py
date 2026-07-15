@@ -71,6 +71,7 @@ SELECT
 FROM trip t
 WHERE ST_DWithin(ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromText('POINT (-111.7610 34.8697)'), 0.45) -- 50km radius around Sedona center
 ORDER BY distance_to_center ASC, t.t_tripkey ASC
+LIMIT 100 -- Return only the 100 closest trips (bounded result set)
                """
 
     @staticmethod
@@ -129,7 +130,8 @@ SELECT
 FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
 HAVING dropoff_count > 5 -- Only include repeat customers for meaningful hulls
-ORDER BY dropoff_count DESC, c.c_custkey ASC
+ORDER BY dropoff_count DESC, c.c_custkey ASC, pickup_month ASC
+LIMIT 100 -- Return only the top 100 repeat customer-months (bounded result set)
             """
 
     @staticmethod
@@ -170,6 +172,7 @@ SELECT
    t.reported_distance_m / NULLIF(t.line_distance_m, 0) AS detour_ratio
 FROM trip_lengths t
 ORDER BY detour_ratio DESC NULLS LAST, reported_distance_m DESC, t_tripkey ASC
+LIMIT 100 -- Return only the top 100 highest-detour trips (bounded result set)
                """
 
     @staticmethod
@@ -180,6 +183,7 @@ SELECT b.b_buildingkey, b.b_name, COUNT(*) AS nearby_pickup_count
 FROM trip t JOIN building b ON ST_DWithin(ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(b.b_boundary), 0.0045) -- ~500m
 GROUP BY b.b_buildingkey, b.b_name
 ORDER BY nearby_pickup_count DESC, b.b_buildingkey ASC
+LIMIT 100 -- Return only the top 100 busiest buildings (bounded result set)
                """
 
     @staticmethod
@@ -219,6 +223,7 @@ SELECT
        END AS iou
 FROM pairs
 ORDER BY iou DESC, building_1 ASC, building_2 ASC
+LIMIT 100 -- Return only the top 100 most-overlapping building pairs (bounded result set)
                """
 
     @staticmethod
@@ -231,6 +236,7 @@ SELECT
 FROM zone z LEFT JOIN trip t ON ST_Within(ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(z.z_boundary))
 GROUP BY z.z_zonekey, z.z_name
 ORDER BY avg_duration DESC NULLS LAST, z.z_zonekey ASC
+LIMIT 100 -- Return only the top 100 zones by average trip duration (bounded result set)
                """
 
     @staticmethod
@@ -249,24 +255,30 @@ WHERE pickup_zone.z_zonekey != dropoff_zone.z_zonekey
     def q12() -> str:
         # There is some odd bug with missing columns in EMR. Using CTEs to work around it.
         return """
--- Q12: Find 5 nearest buildings to each trip pickup location using KNN join
+-- Q12: Rank trip pickups by the average distance to their 5 nearest buildings (KNN join).
+-- The top results are the most isolated pickups (farthest from surrounding buildings).
 WITH trip_with_geom AS (
-   SELECT t_tripkey, t_pickuploc, ST_GeomFromWKB(t_pickuploc) as pickup_geom
+   SELECT t_tripkey, ST_GeomFromWKB(t_pickuploc) as pickup_geom
    FROM trip
 ),
     building_with_geom AS (
-        SELECT b_buildingkey, b_name, b_boundary, ST_GeomFromWKB(b_boundary) as boundary_geom
+        SELECT ST_GeomFromWKB(b_boundary) as boundary_geom
         FROM building
+    ),
+    knn AS (
+        SELECT
+            t.t_tripkey,
+            ST_Distance(t.pickup_geom, b.boundary_geom) AS distance_to_building
+        FROM trip_with_geom t JOIN building_with_geom b
+                                  ON ST_KNN(t.pickup_geom, b.boundary_geom, 5, FALSE)
     )
 SELECT
-   t.t_tripkey,
-   t.t_pickuploc,
-   b.b_buildingkey,
-   b.b_name AS building_name,
-   ST_Distance(t.pickup_geom, b.boundary_geom) AS distance_to_building
-FROM trip_with_geom t JOIN building_with_geom b
-                          ON ST_KNN(t.pickup_geom, b.boundary_geom, 5, FALSE)
-ORDER BY distance_to_building ASC, b.b_buildingkey ASC
+   t_tripkey,
+   AVG(distance_to_building) AS avg_distance_to_5_nearest
+FROM knn
+GROUP BY t_tripkey
+ORDER BY avg_distance_to_5_nearest DESC, t_tripkey ASC
+LIMIT 100 -- Return only the top 100 most-isolated pickups (bounded result set)
                """
 
 
@@ -294,7 +306,8 @@ SELECT
 FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
 HAVING dropoff_count > 5 -- Only include repeat customers for meaningful hulls
-ORDER BY dropoff_count DESC, c.c_custkey ASC
+ORDER BY dropoff_count DESC, c.c_custkey ASC, pickup_month ASC
+LIMIT 100 -- Return only the top 100 repeat customer-months (bounded result set)
                """
 
     @staticmethod
@@ -322,6 +335,7 @@ SELECT
    t.reported_distance_m / NULLIF(t.line_distance_m, 0) AS detour_ratio
 FROM trip_lengths t
 ORDER BY detour_ratio DESC NULLS LAST, reported_distance_m DESC, t_tripkey ASC
+LIMIT 100 -- Return only the top 100 highest-detour trips (bounded result set)
                """
 
     @staticmethod
@@ -329,18 +343,13 @@ ORDER BY detour_ratio DESC NULLS LAST, reported_distance_m DESC, t_tripkey ASC
         return """
 -- Q12 (Databricks): No KNN join, using cross join + ROW_NUMBER() window function instead.
 -- Note: Databricks doesn't have  cross join lateral support.
+-- Ranks trip pickups by the average distance to their 5 nearest buildings.
 SELECT
    t_tripkey,
-   t_pickuploc,
-   b_buildingkey,
-   building_name,
-   distance_to_building
+   AVG(distance_to_building) AS avg_distance_to_5_nearest
 FROM (
         SELECT
             t.t_tripkey,
-            t.t_pickuploc,
-            b.b_buildingkey,
-            b.b_name AS building_name,
             ST_Distance(ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(b.b_boundary)) AS distance_to_building,
             ROW_NUMBER() OVER (
         PARTITION BY t.t_tripkey
@@ -350,7 +359,9 @@ FROM (
                  JOIN building b
     ) AS ranked_buildings
 WHERE rn <= 5
-ORDER BY distance_to_building ASC, b_buildingkey ASC
+GROUP BY t_tripkey
+ORDER BY avg_distance_to_5_nearest DESC, t_tripkey ASC
+LIMIT 100 -- Return only the top 100 most-isolated pickups (bounded result set)
                """
 
 
@@ -369,23 +380,21 @@ class DuckDBSpatialBenchBenchmark(SpatialBenchBenchmark):
     def q12() -> str:
         return """
 -- Q12 (DuckDB): No KNN join, using cross join lateral instead.
+-- Ranks trip pickups by the average distance to their 5 nearest buildings.
 SELECT
    t.t_tripkey,
-   t.t_pickuploc,
-   nb.b_buildingkey,
-   nb.building_name,
-   nb.distance_to_building
+   AVG(nb.distance_to_building) AS avg_distance_to_5_nearest
 FROM trip t
         CROSS JOIN LATERAL (
    SELECT
-       b.b_buildingkey,
-       b.b_name AS building_name,
        ST_Distance(ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(b.b_boundary)) AS distance_to_building
    FROM building b
    ORDER BY distance_to_building
        LIMIT 5
 ) AS nb
-ORDER BY nb.distance_to_building, nb.b_buildingkey
+GROUP BY t.t_tripkey
+ORDER BY avg_distance_to_5_nearest DESC, t.t_tripkey ASC
+LIMIT 100 -- Return only the top 100 most-isolated pickups (bounded result set)
                """
 
 
@@ -413,7 +422,8 @@ SELECT
 FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
 HAVING dropoff_count > 5 -- Only include repeat customers for meaningful hulls
-ORDER BY dropoff_count DESC, c.c_custkey ASC
+ORDER BY dropoff_count DESC, c.c_custkey ASC, pickup_month ASC
+LIMIT 100 -- Return only the top 100 repeat customer-months (bounded result set)
                """
 
 

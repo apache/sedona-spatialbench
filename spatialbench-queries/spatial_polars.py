@@ -52,6 +52,7 @@ def q1(data_paths: dict[str, str]) -> DataFrame:
             "distance_to_center",
             "t_tripkey",
         )
+        .head(100)  # Return only the 100 closest trips (bounded result set)
         .collect(engine="streaming")
     )
 
@@ -235,10 +236,12 @@ def q5(data_paths: dict[str, str]) -> DataFrame:
             pl.col("dropoff_count"),
         )
         .sort(
-            pl.col("monthly_travel_hull_area"),
+            pl.col("dropoff_count"),
             pl.col("c_custkey"),
-            descending=[True, False],
+            pl.col("pickup_month"),
+            descending=[True, False, False],
         )
+        .head(100)  # Return only the top 100 repeat customer-months (bounded result set)
         .collect(engine="streaming")
     )
 
@@ -349,6 +352,7 @@ def q7(data_paths: dict[str, str]) -> DataFrame:
             descending=[True, True, False],
             nulls_last=[True, False, False],
         )
+        .head(100)  # Return only the top 100 highest-detour trips (bounded result set)
         .collect(engine="streaming")
     )
 
@@ -384,6 +388,7 @@ def q8(data_paths: dict[str, str]) -> DataFrame:
             pl.col("b_buildingkey"),
             descending=[True, False],
         )
+        .head(100)  # Return only the top 100 busiest buildings (bounded result set)
     )
 
 
@@ -453,6 +458,7 @@ def q9(data_paths: dict[str, str]) -> DataFrame:
             pl.col("building_2"),
             descending=[True, False, False],
         )
+        .head(100)  # Return only the top 100 most-overlapping building pairs (bounded result set)
     )
 
 
@@ -497,6 +503,7 @@ def q10(data_paths: dict[str, str]) -> DataFrame:
             descending=[True, False],
             nulls_last=[True, False],
         )
+        .head(100)  # Return only the top 100 zones by average trip duration (bounded result set)
     )
 
 
@@ -545,13 +552,14 @@ def q11(data_paths: dict[str, str]) -> DataFrame:
 
 
 def q12(data_paths: dict[str, str]) -> DataFrame:
-    """Q12 (Spatial Polars): Find 5 nearest buildings to each trip pickup location.
+    """Q12 (Spatial Polars): Rank trip pickups by average distance to their 5 nearest buildings.
 
     Spatial polars uses scipy's KDtree for KNN joins. Scipy must be installed for this to work.
     `pip install spatial-polars[knn]`
 
-    For each pickup, computes distances to candidates, selects 5 closest (ties by building key ASC).
-    Output columns: t_tripkey, t_pickuploc, b_buildingkey, building_name, distance_to_building
+    For each pickup, computes distances to the 5 nearest buildings and averages them to produce one
+    row per trip. Ordered by that average descending (most isolated pickups first), bounded to top 100.
+    Output columns: t_tripkey, avg_distance_to_5_nearest
     """
 
     return (
@@ -564,8 +572,6 @@ def q12(data_paths: dict[str, str]) -> DataFrame:
         .spatial.centroid_knn_join(
             pl.scan_parquet(data_paths["building"])
             .select(
-                pl.col("b_buildingkey"),
-                pl.col("b_name"),
                 pl.col("b_boundary").spatial.from_WKB().alias("boundary_geom"),
             )
             .collect(engine="streaming"),
@@ -576,18 +582,19 @@ def q12(data_paths: dict[str, str]) -> DataFrame:
         .lazy()
         .select(
             pl.col("t_tripkey"),
-            pl.col("pickup_geom").struct.field("wkb_geometry").alias("t_pickuploc"),
-            pl.col("b_buildingkey"),
-            pl.col("b_name").alias("building_name"),
             pl.struct(("pickup_geom", "boundary_geom"))
             .spatial.distance()
             .alias("distance_to_building"),
         )
-        .sort(
-            pl.col("t_tripkey"),
-            pl.col("distance_to_building"),
-            pl.col("b_buildingkey"),
-            descending=[False, False, True],
+        .group_by("t_tripkey")
+        .agg(
+            pl.col("distance_to_building").mean().alias("avg_distance_to_5_nearest"),
         )
+        .sort(
+            pl.col("avg_distance_to_5_nearest"),
+            pl.col("t_tripkey"),
+            descending=[True, False],
+        )
+        .head(100)  # Return only the top 100 most-isolated pickups (bounded result set)
         .collect(engine="streaming")
     )

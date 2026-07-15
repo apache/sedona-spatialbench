@@ -81,6 +81,7 @@ WHERE ST_DWithin(
     0.45 -- 50km radius around Sedona center in degrees
 )
 ORDER BY distance_to_center ASC, t.t_tripkey ASC
+LIMIT 100 -- Return only the 100 closest trips (bounded result set)
 """).show(3)
 ```
 
@@ -234,7 +235,7 @@ ORDER BY trip_count DESC, z.z_zonekey ASC
 
 **Real-life scenario:** Analyze the geographic spread of travel patterns for frequent customers to understand their mobility behavior.
 
-This query analyzes the monthly travel patterns of frequent customers by measuring how much geographic area they cover with their trips. For each customer who took more than five trips in a month, it calculates the size of the "travel hull" - the area enclosed by connecting all their dropoff locations that month. The results reveal which customers have the most expansive travel patterns, helping to identify power users who cover large geographic areas versus those who stick to smaller, local areas.
+This query analyzes the monthly travel patterns of frequent customers by measuring how much geographic area they cover with their trips. For each customer who took more than five trips in a month, it calculates the size of the "travel hull" - the area enclosed by connecting all their dropoff locations that month. Results are ranked by trip frequency (dropoff_count) so the busiest repeat customer-months appear first, and are bounded to the top 100.
 
 **Spatial query characteristics tested:**
 
@@ -259,20 +260,13 @@ JOIN customer c
     ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
 HAVING dropoff_count > 5 -- Only include repeat customers
-ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC
+ORDER BY dropoff_count DESC, c.c_custkey ASC, pickup_month ASC
+LIMIT 100 -- Return only the top 100 repeat customer-months (bounded result set)
 """).show(3)
 ```
 
-    ┌───────────┬────────────────────┬─────────────────────┬────────────────────┬───────────────┐
-    │ c_custkey ┆    customer_name   ┆     pickup_month    ┆ monthly_travel_hul ┆ dropoff_count │
-    │   int64   ┆        utf8        ┆      timestamp      ┆       l_area…      ┆     int64     │
-    ╞═══════════╪════════════════════╪═════════════════════╪════════════════════╪═══════════════╡
-    │     25975 ┆ Customer#000025975 ┆ 1992-02-01T00:00:00 ┆ 34941.303419053635 ┆            10 │
-    ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │     12061 ┆ Customer#000012061 ┆ 1997-03-01T00:00:00 ┆  34607.53871953154 ┆            14 │
-    ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │     21418 ┆ Customer#000021418 ┆ 1993-08-01T00:00:00 ┆  34465.32323910264 ┆             9 │
-    └───────────┴────────────────────┴─────────────────────┴────────────────────┴───────────────┘
+    (Sample output omitted — regenerate by running the notebook. Rows are now ordered by
+     dropoff_count DESC, c_custkey ASC, pickup_month ASC and bounded to the top 100.)
 
 
 ## Q6: Zone statistics for trips within a 50km radius of the Sedona city center
@@ -363,6 +357,7 @@ ORDER BY
     detour_ratio DESC NULLS LAST,
     reported_distance_m DESC,
     t_tripkey ASC
+LIMIT 100 -- Return only the top 100 highest-detour trips (bounded result set)
 """).show(3)
 ```
 
@@ -398,6 +393,7 @@ JOIN building b
 ON ST_DWithin(ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(b.b_boundary), 0.0045) -- ~500m
 GROUP BY b.b_buildingkey, b.b_name
 ORDER BY nearby_pickup_count DESC, b.b_buildingkey ASC
+LIMIT 100 -- Return only the top 100 busiest buildings (bounded result set)
 """).show(3)
 ```
 
@@ -459,6 +455,7 @@ SELECT
    END AS iou
 FROM pairs
 ORDER BY iou DESC, building_1 ASC, building_2 ASC
+LIMIT 100 -- Return only the top 100 most-overlapping building pairs (bounded result set)
 """).show(3)
 ```
 
@@ -503,6 +500,7 @@ FROM
     )
 GROUP BY z.z_zonekey, z.z_name
 ORDER BY avg_duration DESC NULLS LAST, z.z_zonekey ASC
+LIMIT 100 -- Return only the top 100 zones by average trip duration (bounded result set)
 """).show(3)
 ```
 
@@ -557,16 +555,17 @@ WHERE pickup_zone.z_zonekey != dropoff_zone.z_zonekey
     └───────────────────────┘
 
 
-## Q12: Find five nearest buildings to each trip pickup location using KNN join
-**Real-life scenario:** Identify the closest landmarks or buildings to each trip start point for location context and navigation.
+## Q12: Rank trip pickups by average distance to their five nearest buildings (KNN join)
+**Real-life scenario:** Identify the most isolated trip pickups — those in areas with the fewest nearby buildings — for coverage and location-context analysis.
 
-This query finds the 5 closest buildings to each trip pickup location using spatial nearest neighbor analysis. For every trip, it identifies the five buildings that are geographically closest to where the passenger was picked up and calculates the exact distance to each of those buildings. The results show which buildings are most commonly near pickup points, helping understand the relationship between trip origins and nearby landmarks, businesses, or residential structures that might influence ride demand patterns.
+This query finds the 5 closest buildings to each trip pickup location using spatial nearest neighbor analysis, then averages those five distances to produce a single "local building density" measure per pickup. Ranking pickups by this average (largest first) surfaces the most isolated trip origins — those farthest from any surrounding buildings — which can indicate rural areas, coverage gaps, or unusual pickup locations. The result is bounded to the top 100 pickups.
 
 **Spatial query characteristics tested:**
 
 1. K-nearest neighbor (KNN) spatial join
 2. Distance calculations between points and polygons
-3. Ranking and limiting results based on spatial proximity
+3. Aggregation (average) over each pickup's k nearest neighbors
+4. Ranking and limiting the aggregated per-pickup results
 
 
 ```python
@@ -574,38 +573,31 @@ sd.sql("""
 WITH trip_with_geom AS (
     SELECT
         t_tripkey,
-        t_pickuploc,
         ST_GeomFromWKB(t_pickuploc) as pickup_geom
     FROM trip
 ),
 building_with_geom AS (
     SELECT
-        b_buildingkey,
-        b_name,
-        b_boundary,
         ST_GeomFromWKB(b_boundary) as boundary_geom
     FROM building
+),
+knn AS (
+    SELECT
+        t.t_tripkey,
+        ST_Distance(t.pickup_geom, b.boundary_geom) AS distance_to_building
+    FROM trip_with_geom t
+    JOIN building_with_geom b
+        ON ST_KNN(t.pickup_geom, b.boundary_geom, 5, FALSE)
 )
 SELECT
-    t.t_tripkey,
-    t.t_pickuploc,
-    b.b_buildingkey,
-    b.b_name AS building_name,
-    ST_Distance(t.pickup_geom, b.boundary_geom) AS distance_to_building
-FROM trip_with_geom t
-JOIN building_with_geom b
-    ON ST_KNN(t.pickup_geom, b.boundary_geom, 5, FALSE)
-ORDER BY t.t_tripkey ASC, distance_to_building ASC, b.b_buildingkey ASC
+    t_tripkey,
+    AVG(distance_to_building) AS avg_distance_to_5_nearest
+FROM knn
+GROUP BY t_tripkey
+ORDER BY avg_distance_to_5_nearest DESC, t_tripkey ASC
+LIMIT 100 -- Return only the top 100 most-isolated pickups (bounded result set)
 """).show(3)
 ```
 
-    ┌───────────┬─────────────────────────────────┬───────────────┬───────────────┬────────────────────┐
-    │ t_tripkey ┆           t_pickuploc           ┆ b_buildingkey ┆ building_name ┆ distance_to_buildi │
-    │   int64   ┆              binary             ┆     int64     ┆      utf8     ┆         ng…        │
-    ╞═══════════╪═════════════════════════════════╪═══════════════╪═══════════════╪════════════════════╡
-    │         1 ┆ 01010000009f3c318dd43735405930… ┆         15870 ┆ purple        ┆  0.984633987957188 │
-    ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │         1 ┆ 01010000009f3c318dd43735405930… ┆          6800 ┆ ghost         ┆  1.205725156670704 │
-    ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │         1 ┆ 01010000009f3c318dd43735405930… ┆          8384 ┆ lavender      ┆ 1.4195012994942622 │
-    └───────────┴─────────────────────────────────┴───────────────┴───────────────┴────────────────────┘
+    (Sample output omitted — regenerate by running the notebook. Each row is now one pickup with its
+     avg_distance_to_5_nearest, ordered descending and bounded to the top 100.)
