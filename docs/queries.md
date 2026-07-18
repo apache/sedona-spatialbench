@@ -235,7 +235,7 @@ ORDER BY trip_count DESC, z.z_zonekey ASC
 
 **Real-life scenario:** Analyze the geographic spread of travel patterns for frequent customers to understand their mobility behavior.
 
-This query analyzes the monthly travel patterns of frequent customers by measuring how much geographic area they cover with their trips. For each customer who took more than five trips in a month, it calculates the size of the "travel hull" - the area enclosed by connecting all their dropoff locations that month. Results are ranked by trip frequency (dropoff_count) so the busiest repeat customer-months appear first, and are bounded to the top 100.
+This query analyzes the monthly travel patterns of frequent customers by measuring how much geographic area they cover with their trips. For each customer who took more than five trips in a month, it calculates the size of the "travel hull" - the area enclosed by connecting all their dropoff locations that month. Results are ranked by travel-hull area (largest first) so the most geographically spread-out repeat customer-months appear first, and are bounded to the top 100. Ranking by the hull area (rather than a plain trip count) ensures the convex hull is computed for every group, so the bound cannot be satisfied by a top-k shortcut that skips the spatial work.
 
 **Spatial query characteristics tested:**
 
@@ -260,13 +260,13 @@ JOIN customer c
     ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
 HAVING dropoff_count > 5 -- Only include repeat customers
-ORDER BY dropoff_count DESC, c.c_custkey ASC, pickup_month ASC
-LIMIT 100 -- Return only the top 100 repeat customer-months (bounded result set)
+ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC, pickup_month ASC
+LIMIT 100 -- Return only the top 100 repeat customer-months by travel-hull area (bounded result set)
 """).show(3)
 ```
 
     (Sample output omitted — regenerate by running the notebook. Rows are now ordered by
-     dropoff_count DESC, c_custkey ASC, pickup_month ASC and bounded to the top 100.)
+     monthly_travel_hull_area DESC, c_custkey ASC, pickup_month ASC and bounded to the top 100.)
 
 
 ## Q6: Zone statistics for trips within a 50km radius of the Sedona city center

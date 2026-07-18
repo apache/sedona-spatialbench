@@ -130,8 +130,8 @@ SELECT
 FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
 HAVING dropoff_count > 5 -- Only include repeat customers for meaningful hulls
-ORDER BY dropoff_count DESC, c.c_custkey ASC, pickup_month ASC
-LIMIT 100 -- Return only the top 100 repeat customer-months (bounded result set)
+ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC, pickup_month ASC
+LIMIT 100 -- Return only the top 100 repeat customer-months by travel-hull area (bounded result set)
             """
 
     @staticmethod
@@ -306,8 +306,8 @@ SELECT
 FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
 HAVING dropoff_count > 5 -- Only include repeat customers for meaningful hulls
-ORDER BY dropoff_count DESC, c.c_custkey ASC, pickup_month ASC
-LIMIT 100 -- Return only the top 100 repeat customer-months (bounded result set)
+ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC, pickup_month ASC
+LIMIT 100 -- Return only the top 100 repeat customer-months by travel-hull area (bounded result set)
                """
 
     @staticmethod
@@ -422,8 +422,8 @@ SELECT
 FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
 HAVING dropoff_count > 5 -- Only include repeat customers for meaningful hulls
-ORDER BY dropoff_count DESC, c.c_custkey ASC, pickup_month ASC
-LIMIT 100 -- Return only the top 100 repeat customer-months (bounded result set)
+ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC, pickup_month ASC
+LIMIT 100 -- Return only the top 100 repeat customer-months by travel-hull area (bounded result set)
                """
 
 

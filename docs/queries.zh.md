@@ -235,7 +235,7 @@ ORDER BY trip_count DESC, z.z_zonekey ASC
 
 **真实场景：** 分析常客出行模式的地理分布范围，以了解他们的出行行为。
 
-该查询通过测量常客每月行程所覆盖的地理范围，分析他们的月度出行模式。对于每个在某个月内乘坐超过 5 次行程的客户，它会计算其“出行凸包”的面积——即连接当月所有下车点形成的区域的面积。结果按行程频次（dropoff_count）降序排列，使乘车次数最多的重复客户月份排在最前，并限制为前 100 行。
+该查询通过测量常客每月行程所覆盖的地理范围，分析他们的月度出行模式。对于每个在某个月内乘坐超过 5 次行程的客户，它会计算其“出行凸包”的面积——即连接当月所有下车点形成的区域的面积。结果按出行凸包面积降序排列，使出行范围最广的重复客户月份排在最前，并限制为前 100 行。按凸包面积（而非简单的行程计数）排序可确保每个分组都必须计算凸包，因此该限制无法被跳过空间计算的 top-k 优化所规避。
 
 **被测试的空间查询特性：**
 
@@ -260,12 +260,12 @@ JOIN customer c
     ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
 HAVING dropoff_count > 5 -- 仅保留重复客户
-ORDER BY dropoff_count DESC, c.c_custkey ASC, pickup_month ASC
-LIMIT 100 -- Return only the top 100 repeat customer-months (bounded result set)
+ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC, pickup_month ASC
+LIMIT 100 -- Return only the top 100 repeat customer-months by travel-hull area (bounded result set)
 """).show(3)
 ```
 
-    （示例输出已省略——请运行 notebook 重新生成。结果现在按 dropoff_count DESC、c_custkey ASC、
+    （示例输出已省略——请运行 notebook 重新生成。结果现在按 monthly_travel_hull_area DESC、c_custkey ASC、
      pickup_month ASC 排序，并限制为前 100 行。）
 
 

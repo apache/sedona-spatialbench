@@ -236,12 +236,12 @@ def q5(data_paths: dict[str, str]) -> DataFrame:
             pl.col("dropoff_count"),
         )
         .sort(
-            pl.col("dropoff_count"),
+            pl.col("monthly_travel_hull_area"),
             pl.col("c_custkey"),
             pl.col("pickup_month"),
             descending=[True, False, False],
         )
-        .head(100)  # Return only the top 100 repeat customer-months (bounded result set)
+        .head(100)  # Return only the top 100 repeat customer-months by travel-hull area (bounded result set)
         .collect(engine="streaming")
     )
 

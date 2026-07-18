@@ -203,7 +203,7 @@ def q5(data_paths: dict[str, str]) -> DataFrame:  # type: ignore[override]
 
     result = (
         grouped.sort_values(
-            ["trip_count", "c_custkey", "pickup_month"],
+            ["monthly_travel_hull_area", "c_custkey", "pickup_month"],
             ascending=[False, True, True],
         )[["c_custkey", "c_name", "pickup_month", "monthly_travel_hull_area"]]
         .rename(columns={"c_name": "customer_name"})
