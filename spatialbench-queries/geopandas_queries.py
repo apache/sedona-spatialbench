@@ -52,7 +52,7 @@ def q1(data_paths: dict[str, str]) -> DataFrame:  # type: ignore[override]
             "t_pickuptime",
             "distance_to_center",
         ]
-    ].reset_index(drop=True)
+    ].head(100).reset_index(drop=True)  # Return only the 100 closest trips (bounded result set)
 
 
 def q2(data_paths: dict[str, str]) -> DataFrame:  # type: ignore[override]
@@ -202,10 +202,12 @@ def q5(data_paths: dict[str, str]) -> DataFrame:  # type: ignore[override]
     ).convex_hull.area
 
     result = (
-        grouped.sort_values(["trip_count", "c_custkey"], ascending=[False, True])[
-            ["c_custkey", "c_name", "pickup_month", "monthly_travel_hull_area"]
-        ]
+        grouped.sort_values(
+            ["monthly_travel_hull_area", "c_custkey", "pickup_month"],
+            ascending=[False, True, True],
+        )[["c_custkey", "c_name", "pickup_month", "monthly_travel_hull_area"]]
         .rename(columns={"c_name": "customer_name"})
+        .head(100)  # Return only the top 100 repeat customer-months (bounded result set)
         .reset_index(drop=True)
     )
     return result
@@ -336,6 +338,7 @@ def q7(data_paths: dict[str, str]) -> DataFrame:  # type: ignore[override]
             ascending=[False, False, True],
             na_position="last",
         )
+        .head(100)  # Return only the top 100 highest-detour trips (bounded result set)
         .reset_index(drop=True)
     )
     return result
@@ -368,6 +371,7 @@ def q8(data_paths: dict[str, str]) -> DataFrame:  # type: ignore[override]
         .sort_values(
             ["nearby_pickup_count", "b_buildingkey"], ascending=[False, True]
         )
+        .head(100)  # Return only the top 100 busiest buildings (bounded result set)
         .reset_index(drop=True)
     )
     return result  # type: ignore[no-any-return]
@@ -434,6 +438,7 @@ def q9(data_paths: dict[str, str]) -> DataFrame:  # type: ignore[override]
         .sort_values(
             ["iou", "building_1", "building_2"], ascending=[False, True, True]
         )
+        .head(100)  # Return only the top 100 most-overlapping building pairs (bounded result set)
         .reset_index(drop=True)
     )
     return cast(DataFrame, result)
@@ -490,6 +495,7 @@ def q10(data_paths: dict[str, str]) -> DataFrame:  # type: ignore[override]
             na_position="last",
         )
         .rename(columns={"z_name": "pickup_zone"})
+        .head(100)  # Return only the top 100 zones by average trip duration (bounded result set)
         .reset_index(drop=True)
     )
     return result  # type: ignore[no-any-return]
@@ -570,12 +576,13 @@ def q11(data_paths: dict[str, str]) -> DataFrame:  # type: ignore[override]
 
 
 def q12(data_paths: dict[str, str]) -> DataFrame:  # type: ignore[override]
-    """Q12 (GeoPandas): Find 5 nearest buildings to each trip pickup location (NLJ, memory-efficient).
+    """Q12 (GeoPandas): Rank trip pickups by average distance to their 5 nearest buildings (NLJ, memory-efficient).
 
     Uses a Python loop (nested loop join) to avoid materializing the full cross join.
-    Optionally uses STRtree to shortlist candidate buildings for each pickup point.
-    For each pickup, computes distances to candidates, selects 5 closest (ties by building key ASC).
-    Output columns: t_tripkey, t_pickuploc, b_buildingkey, building_name, distance_to_building
+    For each pickup, computes distances to buildings, selects the 5 closest (ties by building key ASC),
+    then averages those 5 distances to produce one row per trip. Ordered by that average descending
+    (most isolated pickups first) and bounded to the top 100.
+    Output columns: t_tripkey, avg_distance_to_5_nearest
     """
     trips_df = pd.read_parquet(data_paths["trip"])
     buildings_df = pd.read_parquet(data_paths["building"])
@@ -592,9 +599,9 @@ def q12(data_paths: dict[str, str]) -> DataFrame:  # type: ignore[override]
     )
 
     pickup_geoms = trips_gdf["pickup_geom"].to_list()
+    trip_keys = trips_gdf["t_tripkey"].to_numpy()
     building_geoms = buildings_gdf["boundary_geom"].to_list()
     building_keys = buildings_gdf["b_buildingkey"].to_numpy()
-    building_names = buildings_gdf["b_name"].to_numpy()
 
     results = []
     # Since geopandas doesn't support KNN join, we had to choose either a cross join + filter or a NLJ.
@@ -603,22 +610,20 @@ def q12(data_paths: dict[str, str]) -> DataFrame:  # type: ignore[override]
     # actually get the query to run.
     for i, pt in enumerate(pickup_geoms):
         dists = [pt.distance(geom) for geom in building_geoms]
-        # Sort by distance, then building key
+        # 5 nearest buildings (ties by building key ASC), then average their distances
         nearest_idx = np.lexsort((building_keys, dists))[:5]
-        for idx in nearest_idx:
-            results.append(
-                {
-                    "t_tripkey": trips_gdf.iloc[i]["t_tripkey"],
-                    "t_pickuploc": trips_gdf.iloc[i]["t_pickuploc"],
-                    "b_buildingkey": building_keys[idx],
-                    "building_name": building_names[idx],
-                    "distance_to_building": dists[idx],
-                }
-            )
+        avg_distance = float(np.mean([dists[idx] for idx in nearest_idx]))
+        results.append(
+            {
+                "t_tripkey": trip_keys[i],
+                "avg_distance_to_5_nearest": avg_distance,
+            }
+        )
     return (
         pd.DataFrame(results)
         .sort_values(
-            ["distance_to_building", "b_buildingkey"], ascending=[True, True]
+            ["avg_distance_to_5_nearest", "t_tripkey"], ascending=[False, True]
         )
+        .head(100)  # Return only the top 100 most-isolated pickups (bounded result set)
         .reset_index(drop=True)
     )

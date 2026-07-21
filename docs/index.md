@@ -81,7 +81,8 @@ FROM trip t
 JOIN building b
 ON ST_DWithin(t.t_pickup_loc, b.b_boundary, 500)
 GROUP BY b.b_buildingkey, b.b_name
-ORDER BY nearby_pickup_count DESC;
+ORDER BY nearby_pickup_count DESC, b.b_buildingkey ASC
+LIMIT 100;
 ```
 
 This query performs a distance join, followed by an aggregation. It's a great example of a query that's useful for performance benchmarking a spatial engine that can process vector geometries.

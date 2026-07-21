@@ -44,6 +44,7 @@ def q1(data_paths: dict[str, str]) -> pl.DataFrame:
             "distance_to_center",
         )
         .sort(["distance_to_center", "t_tripkey"])
+        .head(100)  # Return only the 100 closest trips (bounded result set)
     )
 
 
@@ -145,10 +146,12 @@ def q5(data_paths: dict[str, str]) -> pl.DataFrame:
     areas = pc.Engine.group_convex_hull_areas(grouped["dxs"], grouped["dys"])
     grouped = grouped.with_columns(
         monthly_travel_hull_area=pl.Series("monthly_travel_hull_area", areas, dtype=pl.Float64)
-    ).sort(["trip_count", "t_custkey"], descending=[True, False])
+    ).sort(["monthly_travel_hull_area", "t_custkey", "pickup_month"], descending=[True, False, False])
 
-    return grouped.select(["t_custkey", "c_name", "pickup_month", "monthly_travel_hull_area"]).rename(
-        {"t_custkey": "c_custkey", "c_name": "customer_name"}
+    return (
+        grouped.select(["t_custkey", "c_name", "pickup_month", "monthly_travel_hull_area"])
+        .rename({"t_custkey": "c_custkey", "c_name": "customer_name"})
+        .head(100)  # Return only the top 100 repeat customer-months (bounded result set)
     )
 
 
@@ -210,10 +213,14 @@ def q7(data_paths: dict[str, str]) -> pl.DataFrame:
         .then(pl.col("reported_distance_m") / pl.col("line_distance_m"))
         .otherwise(None)
     )
-    return df.select("t_tripkey", "reported_distance_m", "line_distance_m", "detour_ratio").sort(
-        ["detour_ratio", "reported_distance_m", "t_tripkey"],
-        descending=[True, True, False],
-        nulls_last=True,
+    return (
+        df.select("t_tripkey", "reported_distance_m", "line_distance_m", "detour_ratio")
+        .sort(
+            ["detour_ratio", "reported_distance_m", "t_tripkey"],
+            descending=[True, True, False],
+            nulls_last=True,
+        )
+        .head(100)  # Return only the top 100 highest-detour trips (bounded result set)
     )
 
 
@@ -234,6 +241,7 @@ def q8(data_paths: dict[str, str]) -> pl.DataFrame:
         .group_by(["b_buildingkey", "b_name"])
         .agg(nearby_pickup_count=pc.agg.count())
         .sort(["nearby_pickup_count", "b_buildingkey"], descending=[True, False])
+        .head(100)  # Return only the top 100 busiest buildings (bounded result set)
     )
 
 
@@ -253,14 +261,18 @@ def q9(data_paths: dict[str, str]) -> pl.DataFrame:
                 "iou": pl.Float64,
             }
         )
-    return pairs.select(
-        pl.col("b_buildingkey_1").alias("building_1"),
-        pl.col("b_buildingkey_2").alias("building_2"),
-        pl.col("area_left").alias("area1"),
-        pl.col("area_right").alias("area2"),
-        "overlap_area",
-        "iou",
-    ).sort(["iou", "building_1", "building_2"], descending=[True, False, False])
+    return (
+        pairs.select(
+            pl.col("b_buildingkey_1").alias("building_1"),
+            pl.col("b_buildingkey_2").alias("building_2"),
+            pl.col("area_left").alias("area1"),
+            pl.col("area_right").alias("area2"),
+            "overlap_area",
+            "iou",
+        )
+        .sort(["iou", "building_1", "building_2"], descending=[True, False, False])
+        .head(100)  # Return only the top 100 most-overlapping building pairs (bounded result set)
+    )
 
 
 def q10(data_paths: dict[str, str]) -> pl.DataFrame:
@@ -295,7 +307,9 @@ def q10(data_paths: dict[str, str]) -> pl.DataFrame:
         .with_columns(num_trips=pl.col("num_trips").fill_null(0))
         .rename({"z_name": "pickup_zone"})
     )
-    return result.sort(["avg_duration", "z_zonekey"], descending=[True, False], nulls_last=True)
+    return result.sort(
+        ["avg_duration", "z_zonekey"], descending=[True, False], nulls_last=True
+    ).head(100)  # Return only the top 100 zones by average trip duration (bounded result set)
 
 
 def q11(data_paths: dict[str, str]) -> pl.DataFrame:
@@ -330,20 +344,30 @@ def q11(data_paths: dict[str, str]) -> pl.DataFrame:
 
 
 def q12(data_paths: dict[str, str]) -> pl.DataFrame:
-    """Q12 (PyCanopy): The 5 nearest buildings to each trip pickup location."""
+    """Q12 (PyCanopy): Rank trip pickups by average distance to their 5 nearest buildings.
+
+    For each pickup, averages the distances to its 5 nearest buildings to produce one row per trip.
+    Ordered by that average descending (most isolated pickups first), bounded to the top 100.
+    Output columns: t_tripkey, avg_distance_to_5_nearest
+    """
     k = 5
 
-    buildings = pl.read_parquet(data_paths["building"], columns=["b_buildingkey", "b_name", "b_boundary"])
+    buildings = pl.read_parquet(data_paths["building"], columns=["b_buildingkey", "b_boundary"])
     sf = pc.SpatialFrame.from_wkb_polygons(buildings, "b_boundary")
 
     trip = pl.read_parquet(data_paths["trip"], columns=["t_tripkey", "t_pickuploc"])
     qx, qy = pc.wkb_points_to_xy(trip["t_pickuploc"])
-    query_df = trip.select("t_tripkey", "t_pickuploc").with_columns(pl.Series("qx", qx), pl.Series("qy", qy))
+    query_df = trip.select("t_tripkey").with_columns(pl.Series("qx", qx), pl.Series("qy", qy))
 
-    return (
+    knn = (
         sf.lazy()
         .polygon_knn_join(query_df, "qx", "qy", k=k, sorted_output=True)
-        .select("t_tripkey", "t_pickuploc", "b_buildingkey", "b_name", "distance_to_polygon")
+        .select("t_tripkey", "distance_to_polygon")
         .collect()
-        .rename({"b_name": "building_name", "distance_to_polygon": "distance_to_building"})
+    )
+    return (
+        knn.group_by("t_tripkey")
+        .agg(avg_distance_to_5_nearest=pl.col("distance_to_polygon").mean())
+        .sort(["avg_distance_to_5_nearest", "t_tripkey"], descending=[True, False])
+        .head(100)  # Return only the top 100 most-isolated pickups (bounded result set)
     )

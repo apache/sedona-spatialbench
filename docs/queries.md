@@ -81,6 +81,7 @@ WHERE ST_DWithin(
     0.45 -- 50km radius around Sedona center in degrees
 )
 ORDER BY distance_to_center ASC, t.t_tripkey ASC
+LIMIT 100 -- Return only the 100 closest trips (bounded result set)
 """).show(3)
 ```
 
@@ -222,11 +223,11 @@ ORDER BY trip_count DESC, z.z_zonekey ASC
     │ z_zonekey ┆              z_name             ┆ trip_count │
     │   int64   ┆               utf8              ┆    int64   │
     ╞═══════════╪═════════════════════════════════╪════════════╡
-    │     65008 ┆ Ndélé                           ┆         35 │
+    │     21286 ┆ Ndélé                           ┆         35 │
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │    147530 ┆ 乐山市                          ┆         27 │
+    │     80341 ┆ 乐山市                          ┆         27 │
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │    150276 ┆ 锡林郭勒盟 ᠰᠢᠯᠢ ᠶᠢᠨ ᠭᠣᠣᠯ ᠠᠶᠢᠮᠠᠭ ┆         19 │
+    │     88075 ┆ 锡林郭勒盟 ᠰᠢᠯᠢ ᠶᠢᠨ ᠭᠣᠣᠯ ᠠᠶᠢᠮᠠᠭ ┆         19 │
     └───────────┴─────────────────────────────────┴────────────┘
 
 
@@ -234,7 +235,7 @@ ORDER BY trip_count DESC, z.z_zonekey ASC
 
 **Real-life scenario:** Analyze the geographic spread of travel patterns for frequent customers to understand their mobility behavior.
 
-This query analyzes the monthly travel patterns of frequent customers by measuring how much geographic area they cover with their trips. For each customer who took more than five trips in a month, it calculates the size of the "travel hull" - the area enclosed by connecting all their dropoff locations that month. The results reveal which customers have the most expansive travel patterns, helping to identify power users who cover large geographic areas versus those who stick to smaller, local areas.
+This query analyzes the monthly travel patterns of frequent customers by measuring how much geographic area they cover with their trips. For each customer who took more than five trips in a month, it calculates the size of the "travel hull" - the area enclosed by connecting all their dropoff locations that month. Results are ranked by travel-hull area (largest first) so the most geographically spread-out repeat customer-months appear first, and are bounded to the top 100. Ranking by the hull area (rather than a plain trip count) ensures the convex hull is computed for every group, so the bound cannot be satisfied by a top-k shortcut that skips the spatial work.
 
 **Spatial query characteristics tested:**
 
@@ -259,7 +260,8 @@ JOIN customer c
     ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
 HAVING dropoff_count > 5 -- Only include repeat customers
-ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC
+ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC, pickup_month ASC
+LIMIT 100 -- Return only the top 100 repeat customer-months by travel-hull area (bounded result set)
 """).show(3)
 ```
 
@@ -267,11 +269,11 @@ ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC
     │ c_custkey ┆    customer_name   ┆     pickup_month    ┆ monthly_travel_hul ┆ dropoff_count │
     │   int64   ┆        utf8        ┆      timestamp      ┆       l_area…      ┆     int64     │
     ╞═══════════╪════════════════════╪═════════════════════╪════════════════════╪═══════════════╡
+    │     10609 ┆ Customer#000010609 ┆ 1998-05-01T00:00:00 ┆   36943.5600373373 ┆            11 │
+    ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
     │     25975 ┆ Customer#000025975 ┆ 1992-02-01T00:00:00 ┆ 34941.303419053635 ┆            10 │
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
     │     12061 ┆ Customer#000012061 ┆ 1997-03-01T00:00:00 ┆  34607.53871953154 ┆            14 │
-    ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │     21418 ┆ Customer#000021418 ┆ 1993-08-01T00:00:00 ┆  34465.32323910264 ┆             9 │
     └───────────┴────────────────────┴─────────────────────┴────────────────────┴───────────────┘
 
 
@@ -317,11 +319,11 @@ ORDER BY total_pickups DESC, z.z_zonekey ASC
     │ z_zonekey ┆      z_name     ┆ total_pickups ┆ avg_distance ┆            avg_duration            │
     │   int64   ┆       utf8      ┆     int64     ┆  decimal128  ┆              duration              │
     ╞═══════════╪═════════════════╪═══════════════╪══════════════╪════════════════════════════════════╡
-    │     30084 ┆ Coconino County ┆           541 ┆  0.000030406 ┆ 0 days 1 hours 45 mins 16.591 secs │
+    │    149106 ┆ Coconino County ┆           541 ┆  0.000030406 ┆ 0 days 1 hours 45 mins 16.591 secs │
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │     30083 ┆ Yavapai County  ┆           292 ┆  0.000027157 ┆ 0 days 1 hours 36 mins 43.647 secs │
+    │    132418 ┆ Yavapai County  ┆           292 ┆  0.000027157 ┆ 0 days 1 hours 36 mins 43.647 secs │
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │     29488 ┆ Gila County     ┆            39 ┆  0.000021282 ┆ 0 days 1 hours 16 mins 59.769 secs │
+    │     82996 ┆ Gila County     ┆            39 ┆  0.000021282 ┆ 0 days 1 hours 16 mins 59.769 secs │
     └───────────┴─────────────────┴───────────────┴──────────────┴────────────────────────────────────┘
 
 
@@ -363,6 +365,7 @@ ORDER BY
     detour_ratio DESC NULLS LAST,
     reported_distance_m DESC,
     t_tripkey ASC
+LIMIT 100 -- Return only the top 100 highest-detour trips (bounded result set)
 """).show(3)
 ```
 
@@ -398,6 +401,7 @@ JOIN building b
 ON ST_DWithin(ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(b.b_boundary), 0.0045) -- ~500m
 GROUP BY b.b_buildingkey, b.b_name
 ORDER BY nearby_pickup_count DESC, b.b_buildingkey ASC
+LIMIT 100 -- Return only the top 100 busiest buildings (bounded result set)
 """).show(3)
 ```
 
@@ -459,19 +463,20 @@ SELECT
    END AS iou
 FROM pairs
 ORDER BY iou DESC, building_1 ASC, building_2 ASC
+LIMIT 100 -- Return only the top 100 most-overlapping building pairs (bounded result set)
 """).show(3)
 ```
 
-    ┌────────────┬────────────┬───┬───────────────────────┬────────────────────┐
-    │ building_1 ┆ building_2 ┆ … ┆      overlap_area     ┆         iou        │
-    │    int64   ┆    int64   ┆   ┆        float64        ┆       float64      │
-    ╞════════════╪════════════╪═══╪═══════════════════════╪════════════════════╡
-    │       2285 ┆      15719 ┆ … ┆ 2.3709162946727276e-6 ┆ 0.9056816071717889 │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │       7562 ┆      18534 ┆ … ┆  5.855106543747764e-6 ┆ 0.8450437137796769 │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │       2285 ┆      13658 ┆ … ┆ 1.9770693222933237e-6 ┆  0.737899157380637 │
-    └────────────┴────────────┴───┴───────────────────────┴────────────────────┘
+    ┌────────────┬────────────┬───┬─────────────────────────┬────────────────────┐
+    │ building_1 ┆ building_2 ┆ … ┆       overlap_area      ┆         iou        │
+    │    int64   ┆    int64   ┆   ┆         float64         ┆       float64      │
+    ╞════════════╪════════════╪═══╪═════════════════════════╪════════════════════╡
+    │       7562 ┆      18534 ┆ … ┆ 0.000022785758541344757 ┆ 0.8415764980401906 │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │       2285 ┆      15719 ┆ … ┆    6.445979506828921e-6 ┆ 0.7022218100645453 │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │      13658 ┆      15719 ┆ … ┆    6.813826545713668e-6 ┆ 0.7019832720541139 │
+    └────────────┴────────────┴───┴─────────────────────────┴────────────────────┘
 
 
 ## Q10: Zone statistics for trips starting within each zone
@@ -503,6 +508,7 @@ FROM
     )
 GROUP BY z.z_zonekey, z.z_name
 ORDER BY avg_duration DESC NULLS LAST, z.z_zonekey ASC
+LIMIT 100 -- Return only the top 100 zones by average trip duration (bounded result set)
 """).show(3)
 ```
 
@@ -510,11 +516,11 @@ ORDER BY avg_duration DESC NULLS LAST, z.z_zonekey ASC
     │ z_zonekey ┆   pickup_zone  ┆            avg_duration            ┆ avg_distance ┆ num_trips │
     │   int64   ┆      utf8      ┆              duration              ┆  decimal128  ┆   int64   │
     ╞═══════════╪════════════════╪════════════════════════════════════╪══════════════╪═══════════╡
-    │     31558 ┆ Benewah County ┆ 4 days 13 hours 3 mins 34.000 secs ┆  0.002180000 ┆         2 │
+    │     13183 ┆ Benewah County ┆ 4 days 13 hours 3 mins 34.000 secs ┆  0.002180000 ┆         2 │
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-    │    119540 ┆ Kreis Unna     ┆ 2 days 4 hours 52 mins 44.000 secs ┆  0.001050000 ┆         1 │
+    │    124002 ┆ Kreis Unna     ┆ 2 days 4 hours 52 mins 44.000 secs ┆  0.001050000 ┆         1 │
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-    │     59928 ┆ Ndhiwa         ┆ 2 days 4 hours 19 mins 39.000 secs ┆  0.001040000 ┆         1 │
+    │     52386 ┆ Castel di Leva ┆ 2 days 4 hours 19 mins 39.000 secs ┆  0.001040000 ┆         1 │
     └───────────┴────────────────┴────────────────────────────────────┴──────────────┴───────────┘
 
 
@@ -557,16 +563,17 @@ WHERE pickup_zone.z_zonekey != dropoff_zone.z_zonekey
     └───────────────────────┘
 
 
-## Q12: Find five nearest buildings to each trip pickup location using KNN join
-**Real-life scenario:** Identify the closest landmarks or buildings to each trip start point for location context and navigation.
+## Q12: Rank trip pickups by average distance to their five nearest buildings (KNN join)
+**Real-life scenario:** Identify the most isolated trip pickups — those in areas with the fewest nearby buildings — for coverage and location-context analysis.
 
-This query finds the 5 closest buildings to each trip pickup location using spatial nearest neighbor analysis. For every trip, it identifies the five buildings that are geographically closest to where the passenger was picked up and calculates the exact distance to each of those buildings. The results show which buildings are most commonly near pickup points, helping understand the relationship between trip origins and nearby landmarks, businesses, or residential structures that might influence ride demand patterns.
+This query finds the 5 closest buildings to each trip pickup location using spatial nearest neighbor analysis, then averages those five distances to produce a single "local building density" measure per pickup. Ranking pickups by this average (largest first) surfaces the most isolated trip origins — those farthest from any surrounding buildings — which can indicate rural areas, coverage gaps, or unusual pickup locations. The result is bounded to the top 100 pickups.
 
 **Spatial query characteristics tested:**
 
 1. K-nearest neighbor (KNN) spatial join
 2. Distance calculations between points and polygons
-3. Ranking and limiting results based on spatial proximity
+3. Aggregation (average) over each pickup's k nearest neighbors
+4. Ranking and limiting the aggregated per-pickup results
 
 
 ```python
@@ -574,38 +581,40 @@ sd.sql("""
 WITH trip_with_geom AS (
     SELECT
         t_tripkey,
-        t_pickuploc,
         ST_GeomFromWKB(t_pickuploc) as pickup_geom
     FROM trip
 ),
 building_with_geom AS (
     SELECT
-        b_buildingkey,
-        b_name,
-        b_boundary,
         ST_GeomFromWKB(b_boundary) as boundary_geom
     FROM building
+),
+knn AS (
+    SELECT
+        t.t_tripkey,
+        ST_Distance(t.pickup_geom, b.boundary_geom) AS distance_to_building
+    FROM trip_with_geom t
+    JOIN building_with_geom b
+        ON ST_KNN(t.pickup_geom, b.boundary_geom, 5, FALSE)
 )
 SELECT
-    t.t_tripkey,
-    t.t_pickuploc,
-    b.b_buildingkey,
-    b.b_name AS building_name,
-    ST_Distance(t.pickup_geom, b.boundary_geom) AS distance_to_building
-FROM trip_with_geom t
-JOIN building_with_geom b
-    ON ST_KNN(t.pickup_geom, b.boundary_geom, 5, FALSE)
-ORDER BY t.t_tripkey ASC, distance_to_building ASC, b.b_buildingkey ASC
+    t_tripkey,
+    AVG(distance_to_building) AS avg_distance_to_5_nearest
+FROM knn
+GROUP BY t_tripkey
+ORDER BY avg_distance_to_5_nearest DESC, t_tripkey ASC
+LIMIT 100 -- Return only the top 100 most-isolated pickups (bounded result set)
 """).show(3)
 ```
 
-    ┌───────────┬─────────────────────────────────┬───────────────┬───────────────┬────────────────────┐
-    │ t_tripkey ┆           t_pickuploc           ┆ b_buildingkey ┆ building_name ┆ distance_to_buildi │
-    │   int64   ┆              binary             ┆     int64     ┆      utf8     ┆         ng…        │
-    ╞═══════════╪═════════════════════════════════╪═══════════════╪═══════════════╪════════════════════╡
-    │         1 ┆ 01010000009f3c318dd43735405930… ┆         15870 ┆ purple        ┆  0.984633987957188 │
-    ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │         1 ┆ 01010000009f3c318dd43735405930… ┆          6800 ┆ ghost         ┆  1.205725156670704 │
-    ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │         1 ┆ 01010000009f3c318dd43735405930… ┆          8384 ┆ lavender      ┆ 1.4195012994942622 │
-    └───────────┴─────────────────────────────────┴───────────────┴───────────────┴────────────────────┘
+    ┌───────────┬───────────────────────────┐
+    │ t_tripkey ┆ avg_distance_to_5_nearest │
+    │   int64   ┆          float64          │
+    ╞═══════════╪═══════════════════════════╡
+    │   1397637 ┆         82.40977530183955 │
+    ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │   4166482 ┆         82.38756120900636 │
+    ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │   2976679 ┆         82.36270091818895 │
+    └───────────┴───────────────────────────┘
+

@@ -79,7 +79,8 @@ FROM trip t
 JOIN building b
 ON ST_DWithin(t.t_pickup_loc, b.b_boundary, 500)
 GROUP BY b.b_buildingkey, b.b_name
-ORDER BY nearby_pickup_count DESC;
+ORDER BY nearby_pickup_count DESC, b.b_buildingkey ASC
+LIMIT 100;
 ```
 
 该查询先执行一个基于距离的连接，再进行聚合。它非常适合用于评测可处理矢量几何的空间引擎的性能。
