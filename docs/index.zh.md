@@ -64,6 +64,13 @@ cargo install --path ./spatialbench-cli
 spatialbench-cli -s 1 --format=parquet
 ```
 
+或者，你也可以从 [Hugging Face](https://huggingface.co/datasets/apache-sedona/spatialbench) 直接下载预生成的数据（按 `v<版本>/sf<规模>/` 组织；提供 `sf0.1`、`sf1`、`sf10`、`sf100` 等规模因子），而无需自行生成：
+
+```
+pip install huggingface-hub
+hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1/**" --local-dir spatialbench-data
+```
+
 完整的数据生成说明请参见项目仓库的 [README](https://github.com/apache/sedona-spatialbench)。
 
 ## 示例查询
@@ -88,6 +95,8 @@ LIMIT 100;
 ## 自动化测试
 
 SpatialBench 包含一个在 GitHub Actions 上运行的自动化基准测试，用于验证所有查询能够在受支持的引擎（DuckDB、GeoPandas、SedonaDB 和 Spatial Polars）上完整运行。
+
+每个查询的参考答案都已提交到 [`benchmark/answers/`](https://github.com/apache/sedona-spatialbench/tree/main/benchmark/answers)（当前为 scale factor 1），因此可以据此验证各引擎输出的正确性——即对于同一查询返回相同的答案，而不仅仅是能够运行。
 
 **[查看最新的测试结果 →](https://github.com/apache/sedona-spatialbench/actions/workflows/benchmark.yml)**
 

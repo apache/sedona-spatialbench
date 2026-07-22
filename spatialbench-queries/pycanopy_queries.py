@@ -158,7 +158,7 @@ def q5(data_paths: dict[str, str]) -> pl.DataFrame:
 def q6(data_paths: dict[str, str]) -> pl.DataFrame:
     """Q6 (PyCanopy): Zone statistics for trips intersecting a bounding box."""
     bbox = (-112.2110, 34.4197, -111.3110, 35.3197)  # min_x, min_y, max_x, max_y
-    trip_cols = ["t_pickuploc", "t_totalamount", "t_pickuptime", "t_dropofftime"]
+    trip_cols = ["t_pickuploc", "t_distance", "t_pickuptime", "t_dropofftime"]
 
     zone = pl.read_parquet(data_paths["zone"], columns=["z_zonekey", "z_name", "z_boundary"])
     zsf = pc.SpatialFrame.from_wkb_polygons(zone, "z_boundary")
@@ -176,7 +176,7 @@ def q6(data_paths: dict[str, str]) -> pl.DataFrame:
 
     trip = pl.read_parquet(data_paths["trip"], columns=trip_cols)
     qx, qy = pc.wkb_points_to_xy(trip["t_pickuploc"])
-    qdf = trip.select(["t_totalamount", "t_pickuptime", "t_dropofftime"]).with_columns(
+    qdf = trip.select(["t_distance", "t_pickuptime", "t_dropofftime"]).with_columns(
         pl.Series("qx", qx),
         pl.Series("qy", qy),
         duration_seconds=(pl.col("t_dropofftime") - pl.col("t_pickuptime")).dt.total_seconds(),
@@ -188,7 +188,7 @@ def q6(data_paths: dict[str, str]) -> pl.DataFrame:
         .group_by(["z_zonekey", "z_name"])
         .agg(
             total_pickups=pc.agg.count(),
-            avg_distance=pc.agg.mean("t_totalamount"),
+            avg_distance=pc.agg.mean("t_distance"),
             avg_duration=pc.agg.mean("duration_seconds"),
         )
         .sort(["total_pickups", "z_zonekey"], descending=[True, False])

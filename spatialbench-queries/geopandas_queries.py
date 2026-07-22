@@ -221,7 +221,7 @@ def q6(data_paths: dict[str, str]) -> DataFrame:  # type: ignore[override]
       * Count trips whose pickup point lies within each zone (inner semantics: zones with 0 pickups excluded).
       * Compute:
           total_pickups = COUNT(t_tripkey)
-          avg_distance  = AVG(t_totalamount) (matches original aliasing; falls back to t_distance if needed)
+          avg_distance  = AVG(t_distance)
           avg_duration  = AVG(t_dropofftime - t_pickuptime) in seconds
       * Order by total_pickups DESC, z_zonekey ASC.
     Returns DataFrame with columns: z_zonekey, z_name, total_pickups, avg_distance, avg_duration
@@ -258,11 +258,7 @@ def q6(data_paths: dict[str, str]) -> DataFrame:  # type: ignore[override]
         & zones_gdf["zone_geom"].intersects(bbox_poly)
         ]
 
-    distance_col = (
-        "t_totalamount"
-        if "t_totalamount" in trip_df.columns
-        else ("t_distance" if "t_distance" in trip_df.columns else None)
-    )
+    distance_col = "t_distance" if "t_distance" in trip_df.columns else None
 
     result = (
         gpd.sjoin(pickup_points, candidate_zones, how="inner", predicate="within")

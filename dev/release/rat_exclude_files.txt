@@ -6,6 +6,8 @@ site/**
 docs-overrides/**
 raster/output/**
 spatialbench/data/**
+benchmark/answers/*.csv
+benchmark/answers/*.parquet
 dev/release/rat_exclude_files.txt
 .gitignore
 .gitkeep
