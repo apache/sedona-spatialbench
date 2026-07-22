@@ -33,8 +33,10 @@ spatialbench-cli -s 1 --format=parquet --output-dir sf1-parquet
 
 ```
 pip install huggingface-hub
-huggingface-cli download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1/**" --local-dir spatialbench-data
+hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1/**" --local-dir spatialbench-data
 ```
+
+如果使用 Hugging Face 下载的数据，请在下方的数据加载单元格中设置 `DATA_DIR = "spatialbench-data/v0.1.0/sf1"`。
 
 
 ```python
@@ -48,12 +50,17 @@ sd = sedona.db.connect()
 
 
 ```python
-sd.read_parquet(f"../sf1-parquet/building.parquet").to_view("building")
-sd.read_parquet(f"../sf1-parquet/customer.parquet").to_view("customer")
-sd.read_parquet(f"../sf1-parquet/driver.parquet").to_view("driver")
-sd.read_parquet(f"../sf1-parquet/trip.parquet").to_view("trip")
-sd.read_parquet(f"../sf1-parquet/vehicle.parquet").to_view("vehicle")
-sd.read_parquet(f"../sf1-parquet/zone.parquet").to_view("zone")
+import os
+
+# The CLI writes flat files to sf1-parquet/; the Hugging Face download puts
+# partitioned tables under spatialbench-data/v0.1.0/sf1/. Point DATA_DIR at
+# whichever you used -- both layouts load below.
+DATA_DIR = "../sf1-parquet"
+
+for table in ["building", "customer", "driver", "trip", "vehicle", "zone"]:
+    flat = f"{DATA_DIR}/{table}.parquet"
+    source = flat if os.path.exists(flat) else f"{DATA_DIR}/{table}/*.parquet"
+    sd.read_parquet(source).to_view(table)
 ```
 
 ## Q1：在距离 Sedona 市中心 50 公里以内的行程，按距离排序
@@ -302,7 +309,7 @@ SELECT
     z.z_zonekey,
     z.z_name,
     COUNT(t.t_tripkey) AS total_pickups,
-    AVG(t.t_distance) AS avg_distance, -- Corrected from t_totalamount
+    AVG(t.t_distance) AS avg_distance,
     AVG(t.t_dropofftime - t.t_pickuptime) AS avg_duration
 FROM trip t, zone z
 WHERE ST_Intersects(

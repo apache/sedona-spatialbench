@@ -1,3 +1,22 @@
+<!--
+ Licensed to the Apache Software Foundation (ASF) under one
+ or more contributor license agreements.  See the NOTICE file
+ distributed with this work for additional information
+ regarding copyright ownership.  The ASF licenses this file
+ to you under the Apache License, Version 2.0 (the
+ "License"); you may not use this file except in compliance
+ with the License.  You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing,
+ software distributed under the License is distributed on an
+ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND, either express or implied.  See the License for the
+ specific language governing permissions and limitations
+ under the License.
+-->
+
 # SpatialBench ground-truth answers
 
 Reference results for the SpatialBench queries, used by the correctness harness to
@@ -18,7 +37,10 @@ normalized frame:
 - **`q<n>.csv`** — a review companion: GitHub renders it as a table and diffs are
   readable when an answer changes.
 
-Every query is bounded to at most 100 rows (see #124), so the fixtures are tiny.
+Most queries are bounded to at most 100 rows (see #124), so the fixtures are tiny. The one
+exception is **Q4**, which groups the top-1000 tipped trips by zone and returns one row per
+zone (~260 at SF1); it is inherently small and bounded (never more than the number of zones
+touched by 1000 trips) but is not capped at 100.
 
 ## How they are generated
 

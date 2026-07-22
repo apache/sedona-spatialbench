@@ -68,7 +68,7 @@ spatialbench-cli -s 1 --format=parquet
 
 ```
 pip install huggingface-hub
-huggingface-cli download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1/**" --local-dir spatialbench-data
+hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1/**" --local-dir spatialbench-data
 ```
 
 完整的数据生成说明请参见项目仓库的 [README](https://github.com/apache/sedona-spatialbench)。

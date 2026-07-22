@@ -70,7 +70,7 @@ Alternatively, download pre-generated data from [Hugging Face](https://huggingfa
 
 ```
 pip install huggingface-hub
-huggingface-cli download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1/**" --local-dir spatialbench-data
+hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1/**" --local-dir spatialbench-data
 ```
 
 See the project repository [README](https://github.com/apache/sedona-spatialbench) for the complete set of straightforward data generation instructions.

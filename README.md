@@ -166,7 +166,7 @@ Pre-generated datasets are published on Hugging Face at [`apache-sedona/spatialb
 
 ```bash
 pip install huggingface-hub
-huggingface-cli download apache-sedona/spatialbench --repo-type dataset \
+hf download apache-sedona/spatialbench --repo-type dataset \
   --include "v0.1.0/sf1/**" --local-dir spatialbench-data
 ```
 
