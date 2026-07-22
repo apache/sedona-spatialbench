@@ -59,6 +59,10 @@ The automated tests cover:
 - 🐻‍❄️ **Spatial Polars** - Geospatial extension for Polars dataframes
 - 🌴 **PyCanopy** - High-performance spatial query engine for Polars
 
+### Verifying correctness
+
+SpatialBench ships reference answers for every query under [`benchmark/answers/`](benchmark/answers/) (currently scale factor 1). They are the output of the canonical SedonaDB dialect, independently cross-checked against DuckDB, and let you confirm that each engine returns the same result for the same query — not just that it runs. See the [answers README](benchmark/answers/README.md) for the format and comparison rules.
+
 ### View Latest Results
 
 You can view the latest results on the [GitHub Actions page](../../actions/workflows/benchmark.yml). Click on any successful workflow run to see the summary with:
@@ -155,6 +159,18 @@ cargo install --path ./spatialbench-cli
 For contribution or debugging, refer to the [ARCHITECTURE.md](./ARCHITECTURE.md) guide.
 
 ## Usage
+
+### Download pre-generated data (Hugging Face)
+
+Pre-generated datasets are published on Hugging Face at [`apache-sedona/spatialbench`](https://huggingface.co/datasets/apache-sedona/spatialbench), organized as `v<version>/sf<scale>/` (scale factors `sf0.1`, `sf1`, `sf10`, and `sf100`). If you'd rather not build the generator, download the data directly — for example, scale factor 1:
+
+```bash
+pip install huggingface-hub
+huggingface-cli download apache-sedona/spatialbench --repo-type dataset \
+  --include "v0.1.0/sf1/**" --local-dir spatialbench-data
+```
+
+The tables land under `spatialbench-data/v0.1.0/sf1/`. This is the same data the automated benchmark uses. Or generate it yourself with the CLI:
 
 #### Generate All Tables (Scale Factor 1)
 

@@ -66,6 +66,13 @@ Here's how you can generate the synthetic dataset:
 spatialbench-cli -s 1 --format=parquet
 ```
 
+Alternatively, download pre-generated data from [Hugging Face](https://huggingface.co/datasets/apache-sedona/spatialbench) instead of generating it (organized as `v<version>/sf<scale>/`; scale factors `sf0.1`, `sf1`, `sf10`, `sf100`):
+
+```
+pip install huggingface-hub
+huggingface-cli download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1/**" --local-dir spatialbench-data
+```
+
 See the project repository [README](https://github.com/apache/sedona-spatialbench) for the complete set of straightforward data generation instructions.
 
 ## Example query
@@ -90,6 +97,8 @@ This query performs a distance join, followed by an aggregation. It's a great ex
 ## Automated Testing
 
 SpatialBench includes an automated benchmark that runs on GitHub Actions to verify that all queries are fully runnable across supported engines (DuckDB, GeoPandas, SedonaDB, and Spatial Polars).
+
+Reference answers for every query are committed under [`benchmark/answers/`](https://github.com/apache/sedona-spatialbench/tree/main/benchmark/answers) (scale factor 1), so each engine's output can be verified for correctness — the same answer for the same query, not just that it runs.
 
 **[View the latest test results →](https://github.com/apache/sedona-spatialbench/actions/workflows/benchmark.yml)**
 

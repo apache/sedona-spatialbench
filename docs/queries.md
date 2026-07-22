@@ -29,6 +29,13 @@ cargo install --path ./spatialbench-cli
 spatialbench-cli -s 1 --format=parquet --output-dir sf1-parquet
 ```
 
+Alternatively, download pre-generated data from [Hugging Face](https://huggingface.co/datasets/apache-sedona/spatialbench) instead of generating it (tables are published under `v<version>/sf<scale>/`; scale factors `sf0.1`, `sf1`, `sf10`, `sf100`):
+
+```
+pip install huggingface-hub
+huggingface-cli download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1/**" --local-dir spatialbench-data
+```
+
 
 ```python
 import sedona.db
@@ -617,4 +624,3 @@ LIMIT 100 -- Return only the top 100 most-isolated pickups (bounded result set)
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
     │   2976679 ┆         82.36270091818895 │
     └───────────┴───────────────────────────┘
-
