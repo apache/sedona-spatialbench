@@ -25,8 +25,12 @@ verify that every participating engine returns the same answer for the same quer
 ## Layout
 
 ```
-answers/
-  sf1/q1.parquet  q1.csv  ...  q12.parquet  q12.csv     # scale factor 1  (SF10 to follow)
+benchmark/answers/
+  sf1/                          # scale factor 1  (SF10 to follow)
+    q1.parquet   q1.csv
+    q2.parquet   q2.csv
+    ...
+    q12.parquet  q12.csv
 ```
 
 Each query's expected result is committed in two formats, written from the same
