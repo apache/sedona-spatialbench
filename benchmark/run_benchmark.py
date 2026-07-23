@@ -43,6 +43,7 @@ sys.path.append(str(Path(__file__).parent.parent / "spatialbench-queries"))
 # Constants
 QUERY_COUNT = 12
 TABLES = ["building", "customer", "driver", "trip", "vehicle", "zone"]
+DURATION_SUFFIX = "_seconds"
 
 
 @dataclass
@@ -97,11 +98,17 @@ def _run_query_in_process(
     data_paths: dict[str, str],
     query_name: str,
     query_sql: str | None,
+    dump_csv: str | None = None,
 ):
     """Worker function to run a query in a separate process.
 
     This allows us to forcefully terminate queries that hang or consume
     too much memory, which SIGALRM cannot do for native code.
+
+    If dump_csv is set, the *timed* result is reused (no re-execution) to write the
+    normalized result there for the correctness verify job. The timing result is put
+    on the queue before dumping, so a dump failure never affects the timing; the
+    verify job reports a missing csv as a failed correctness check.
     """
     try:
         # For Spatial Polars, ensure the package is imported first to register namespace
@@ -112,7 +119,7 @@ def _run_query_in_process(
         benchmark.setup()
         try:
             start_time = time.perf_counter()
-            row_count, _ = benchmark.execute_query(query_name, query_sql)
+            row_count, result = benchmark.execute_query(query_name, query_sql)
             elapsed = time.perf_counter() - start_time
             result_queue.put({
                 "status": "success",
@@ -120,6 +127,11 @@ def _run_query_in_process(
                 "row_count": row_count,
                 "error_message": None,
             })
+            if dump_csv:
+                try:
+                    normalize(benchmark.dump_frame(result, query_sql)).to_csv(dump_csv, index=False)
+                except Exception as e:
+                    print(f"  [dump] failed to write {dump_csv}: {e}", file=sys.stderr, flush=True)
         finally:
             benchmark.teardown()
     except Exception as e:
@@ -129,6 +141,61 @@ def _run_query_in_process(
             "row_count": None,
             "error_message": str(e),
         })
+
+
+# ── Result dumping (for correctness verification) ──
+# The benchmark run optionally writes each query's normalized result to a csv so a
+# downstream, engine-free CI job (verify_results.py) can compare it to the committed
+# ground-truth answer. The dump reuses the *timed* run's result (no extra query
+# execution) and writes csv only (never parquet), so no pyarrow filesystem is
+# touched inside a SedonaDB worker. pandas/numpy are imported lazily so the parent
+# never pulls them in before forking a SedonaDB worker (which bundles its own Arrow
+# and segfaults if pyarrow/pandas load first).
+
+
+def normalize(df):
+    """Coerce an engine result to the canonical, engine-neutral form.
+
+    Matches the normalization used to generate the committed answers: durations
+    become float seconds (with a ``_seconds`` suffix), decimals become floats, and
+    timestamps become microsecond datetimes. Object columns of Decimal / timedelta
+    (which DuckDB's fetchall yields) are handled too.
+    """
+    import datetime as _dt
+    import decimal
+
+    import pandas as pd
+
+    df = df.reset_index(drop=True).copy()
+    rename = {}
+    for col in df.columns:
+        s = df[col]
+        if pd.api.types.is_timedelta64_dtype(s):
+            df[col] = s.dt.total_seconds().astype(float)
+            if not str(col).endswith(DURATION_SUFFIX):
+                rename[col] = f"{col}{DURATION_SUFFIX}"
+        elif s.dtype == object:
+            non_null = s.dropna()
+            if len(non_null) and all(isinstance(v, decimal.Decimal) for v in non_null):
+                df[col] = s.astype(float)
+            elif len(non_null) and all(isinstance(v, _dt.timedelta) for v in non_null):
+                df[col] = s.map(lambda v: v.total_seconds() if isinstance(v, _dt.timedelta) else v).astype(float)
+                if not str(col).endswith(DURATION_SUFFIX):
+                    rename[col] = f"{col}{DURATION_SUFFIX}"
+        elif pd.api.types.is_datetime64_any_dtype(s):
+            df[col] = s.astype("datetime64[us]")
+    return df.rename(columns=rename)
+
+
+def _to_pandas_frame(result):
+    """Coerce whatever an engine's query returns into a plain pandas DataFrame."""
+    import pandas as pd
+
+    if isinstance(result, pd.DataFrame):
+        return pd.DataFrame(result)  # strip GeoDataFrame subclass; keep values
+    if hasattr(result, "to_pandas"):  # polars (spatial_polars, pycanopy)
+        return result.to_pandas()
+    return pd.DataFrame(result)
 
 
 def get_data_paths(data_dir: str) -> dict[str, str]:
@@ -189,6 +256,14 @@ class BaseBenchmark(ABC):
         """Execute a query and return (row_count, result)."""
         pass
 
+    def dump_frame(self, result, query: str | None):
+        """Convert a *timed* query result into a pandas DataFrame for dumping.
+
+        Reuses the result from execute_query (no re-execution). DuckDB overrides
+        this because its execute_query returns raw rows without column names.
+        """
+        return _to_pandas_frame(result)
+
     def run_query(self, query_name: str, query: str | None = None, timeout: int = 1200) -> BenchmarkResult:
         """Run a single query with timeout handling."""
         start_time = time.perf_counter()
@@ -242,6 +317,7 @@ class DuckDBBenchmark(BaseBenchmark):
     def __init__(self, data_paths: dict[str, str]):
         super().__init__(data_paths, "duckdb")
         self._conn = None
+        self._last_columns = None
 
     def setup(self) -> None:
         import duckdb
@@ -261,8 +337,16 @@ class DuckDBBenchmark(BaseBenchmark):
             self._conn = None
 
     def execute_query(self, query_name: str, query: str | None) -> tuple[int, Any]:
-        result = self._conn.execute(query).fetchall()
+        rel = self._conn.execute(query)
+        # Capture column names (cheap, from the cursor) so the timed fetchall result
+        # can be turned into a DataFrame later without re-running the query.
+        self._last_columns = [d[0] for d in rel.description]
+        result = rel.fetchall()
         return len(result), result
+
+    def dump_frame(self, result, query: str | None):
+        import pandas as pd
+        return pd.DataFrame(result, columns=self._last_columns)
 
 
 class GeoPandasBenchmark(BaseBenchmark):
@@ -387,6 +471,7 @@ def run_query_isolated(
     query_name: str,
     query_sql: str | None,
     timeout: int,
+    dump_csv: Path | None = None,
 ) -> BenchmarkResult:
     """Run a single query in an isolated subprocess with hard timeout.
 
@@ -394,11 +479,15 @@ def run_query_isolated(
     1. Native code (C++/Rust) can be forcefully terminated
     2. Memory-hungry queries don't affect the main process
     3. Crashed queries don't invalidate the benchmark runner
+
+    If dump_csv is set, the timed result is also written there (reused, not re-run)
+    for the correctness verify job.
     """
     result_queue = multiprocessing.Queue()
     process = multiprocessing.Process(
         target=_run_query_in_process,
-        args=(result_queue, engine_class, data_paths, query_name, query_sql),
+        args=(result_queue, engine_class, data_paths, query_name, query_sql,
+              str(dump_csv) if dump_csv else None),
     )
 
     process.start()
@@ -454,6 +543,7 @@ def run_benchmark(
     scale_factor: float,
     runs: int = 3,
     output_file: str | None = None,
+    result_dir: Path | None = None,
 ) -> BenchmarkSuite:
     """Generic benchmark runner for any engine.
 
@@ -550,7 +640,8 @@ def run_benchmark(
         for idx, (query_name, query_sql) in enumerate(query_items):
             print(f"  Running {query_name}...", end=" ", flush=True)
 
-            # First run
+            # First run — also dump the (reused) result for the verify job.
+            dump_csv = result_dir / f"{engine}_{query_name}_result.csv" if result_dir else None
             result = run_query_isolated(
                 engine_class=engine_class,
                 engine_name=engine,
@@ -558,6 +649,7 @@ def run_benchmark(
                 query_name=query_name,
                 query_sql=query_sql,
                 timeout=timeout,
+                dump_csv=dump_csv,
             )
 
             # If first run succeeded and we want multiple runs, do additional runs
@@ -674,6 +766,15 @@ def main():
                         help="Output file for results")
     parser.add_argument("--scale-factor", type=float, default=1,
                         help="Scale factor of the data (for reporting only)")
+    parser.add_argument("--result-dir", type=str, default=None,
+                        help="If set, write each query's normalized result to "
+                             "<result-dir>/<engine>_<query>_result.csv for the downstream "
+                             "correctness verify job. Only done for scale factors that have "
+                             "committed answers (benchmark/answers/sf<sf>).")
+    parser.add_argument("--answers-dir", type=str, default=None,
+                        help="Directory of committed answers for this scale factor "
+                             "(default: benchmark/answers/sf<sf>). Gates --result-dir: "
+                             "results are dumped only when this directory exists.")
 
     args = parser.parse_args()
 
@@ -696,8 +797,23 @@ def main():
     for table, path in data_paths.items():
         print(f"  {table}: {path}")
 
+    # Resolve where to dump normalized results (for the downstream verify job).
+    # Only dump for scale factors that have committed answers to compare against.
+    result_dir = None
+    if args.result_dir:
+        sf = args.scale_factor
+        sf_tag = f"sf{int(sf) if float(sf).is_integer() else sf}"
+        answers_dir = Path(args.answers_dir) if args.answers_dir else Path(__file__).parent / "answers" / sf_tag
+        if answers_dir.is_dir():
+            result_dir = Path(args.result_dir)
+            result_dir.mkdir(parents=True, exist_ok=True)
+            print(f"Dumping normalized results to {result_dir} (answers exist at {answers_dir})")
+        else:
+            print(f"No committed answers at {answers_dir} — results not dumped, correctness not checked for this scale factor")
+
     results = [
-        run_benchmark(engine, data_paths, queries, args.timeout, args.scale_factor, args.runs, args.output)
+        run_benchmark(engine, data_paths, queries, args.timeout, args.scale_factor,
+                      args.runs, args.output, result_dir)
         for engine in engines
     ]
 
