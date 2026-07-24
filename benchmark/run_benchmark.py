@@ -642,6 +642,15 @@ def run_benchmark(
         if not queries or qname in queries
     ]
 
+    # Remove any stale dump from a previous run of these queries so a failed or
+    # skipped capture can't leave behind another scale's result (dump filenames are
+    # not scale-scoped, so a reused --result-dir could otherwise mix scales).
+    if result_dir is not None:
+        for query_name, _ in query_items:
+            stale = result_dir / f"{engine}_{query_name}_result.csv"
+            if stale.exists():
+                stale.unlink()
+
     # Pre-populate all queries as "not_started" so even a total crash
     # (e.g. OOM killing the runner) leaves a file showing what was attempted
     for query_name, _ in query_items:
@@ -841,6 +850,22 @@ def main():
 
     print_summary(results)
     save_results(results, args.output)
+
+    # If result capture was requested, a query that ran successfully must have left a
+    # dump. A missing one means serialization failed; fail loudly rather than let a
+    # bootstrapping run (no committed answers to verify against) pass silently.
+    if result_dir is not None:
+        dump_failures = [
+            f"{suite.engine}/{r.query}"
+            for suite in results
+            for r in suite.results
+            if r.status == "success"
+            and not (result_dir / f"{suite.engine}_{r.query}_result.csv").exists()
+        ]
+        if dump_failures:
+            print(f"\nError: --result-dir was set but these successful queries produced no "
+                  f"result dump (capture failed): {', '.join(dump_failures)}", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

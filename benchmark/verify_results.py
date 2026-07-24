@@ -72,6 +72,12 @@ ENGINE_ICONS = {
 LIMIT_QUERIES = {"q1", "q5", "q7", "q9", "q10", "q12"}
 LIMIT_CAP = 100
 
+# Duration columns are named with this suffix (see run_benchmark.normalize). SedonaDB
+# truncates interval averages to milliseconds, so allow a ~1 ms absolute tolerance on
+# them; every other float metric uses the tight default.
+DURATION_SUFFIX = "_seconds"
+DURATION_ATOL = 1e-3
+
 # Verdicts that must fail CI: a wrong value, a result that reported success but is
 # missing, or a result file that exists but cannot be read/compared.
 FAILING = {"fail", "missing", "verify_error"}
@@ -127,9 +133,14 @@ def compare(answer: pd.DataFrame, result: pd.DataFrame, rtol: float, atol: float
         a = answer.iloc[:n, i].reset_index(drop=True)
         b = result.iloc[:n, i].reset_index(drop=True)
         if kind == "float":
+            # SedonaDB truncates interval averages to milliseconds, so a duration
+            # column (named *_seconds) can differ from a full-precision engine by up
+            # to ~1 ms. Allow that as an absolute tolerance on duration columns; other
+            # float metrics keep the tight default.
+            col_atol = max(atol, DURATION_ATOL) if str(name).endswith(DURATION_SUFFIX) else atol
             va = pd.to_numeric(a, errors="coerce").to_numpy(dtype=float)
             vb = pd.to_numeric(b, errors="coerce").to_numpy(dtype=float)
-            bad = ~np.isclose(va, vb, rtol=rtol, atol=atol, equal_nan=True)
+            bad = ~np.isclose(va, vb, rtol=rtol, atol=col_atol, equal_nan=True)
         elif kind == "int":
             va = pd.to_numeric(a, errors="coerce")
             vb = pd.to_numeric(b, errors="coerce")
