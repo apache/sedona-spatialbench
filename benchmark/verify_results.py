@@ -64,14 +64,17 @@ ENGINE_ICONS = {
     "pycanopy": "🌴 PyCanopy",
 }
 
-# Queries whose result is bounded by an ORDER BY ... LIMIT (see #124). Only these
-# can have a genuine LIMIT-boundary tie; every LIMIT query orders by a float metric
-# and caps at LIMIT_CAP rows.
-LIMIT_QUERIES = {"q1", "q5", "q7", "q8", "q9", "q10", "q12"}
+# Queries eligible for the LIMIT-boundary-tie tolerance (see #124): bounded by
+# ORDER BY <float metric> ... LIMIT, so two rows can tie on the float metric within
+# tolerance and swap the final row's identity. Q8 is deliberately excluded — it
+# orders by an integer count (nearby_pickup_count) with an integer-key tiebreaker,
+# so its ordering is fully deterministic and must match exactly.
+LIMIT_QUERIES = {"q1", "q5", "q7", "q9", "q10", "q12"}
 LIMIT_CAP = 100
 
-# Verdicts that must fail CI.
-FAILING = {"fail", "missing"}
+# Verdicts that must fail CI: a wrong value, a result that reported success but is
+# missing, or a result file that exists but cannot be read/compared.
+FAILING = {"fail", "missing", "verify_error"}
 
 VERDICT_SYMBOL = {
     "pass": "✅",
@@ -80,7 +83,7 @@ VERDICT_SYMBOL = {
     "timeout": "⏱️",
     "oom": "💀",
     "run_error": "⚠️",
-    "verify_error": "⚠️",
+    "verify_error": "❌",
     "no_data": "❔",
     "no_answer": "—",
 }
@@ -283,14 +286,34 @@ def main() -> int:
         if verdict in FAILING
     ]
 
+    # Number of (engine, query) pairs actually compared against an answer. If this is
+    # zero the gate verified nothing — a total artifact-download failure or a fully
+    # broken benchmark — and must not pass silently.
+    compared = sum(
+        1
+        for engine in engines
+        for _q, (verdict, _d) in verdicts[engine].items()
+        if verdict in ("pass", "fail")
+    )
+    verified_nothing = compared == 0
+
     # ── Build the markdown summary ──
     lines = [
         f"# ✅ SpatialBench Correctness (SF{sf_display})",
         "",
         f"Each engine's result compared against the committed ground-truth answers in "
         f"[`benchmark/answers/{sf_tag}`](../tree/main/benchmark/answers/{sf_tag}). "
-        "A mismatch (❌) or a missing result (🚫) fails this job.",
+        "A mismatch (❌), a missing result (🚫), or an unreadable result (⚠️) fails this job.",
         "",
+    ]
+    if verified_nothing:
+        lines += [
+            "> ❌ **No engine results were verified** — the benchmark artifacts are "
+            "missing or unreadable (likely a download failure). Failing the job rather "
+            "than passing without checking anything.",
+            "",
+        ]
+    lines += [
         "| Query | " + " | ".join(ENGINE_ICONS.get(e, e.title()) for e in engines) + " |",
         "|:------|" + "|".join(":---:" for _ in engines) + "|",
     ]
@@ -319,29 +342,16 @@ def main() -> int:
             sym = VERDICT_SYMBOL.get(verdict, "❌")
             lines.append(f"- {sym} **{ENGINE_ICONS.get(engine, engine.title())} {query.upper()}**: {detail}")
 
-    # Non-failing diagnostics: a result that could not be read/compared. Surfaced so a
-    # broken framework is visible without taking down the whole summary or failing CI.
-    notes = [
-        (engine, query, detail)
-        for engine in engines
-        for query, (verdict, detail) in verdicts[engine].items()
-        if verdict == "verify_error" and detail
-    ]
-    if notes:
-        lines.extend(["", "## ⚠️ Could not verify (not counted as failures)", ""])
-        for engine, query, detail in notes:
-            lines.append(f"- **{ENGINE_ICONS.get(engine, engine.title())} {query.upper()}**: {detail}")
-
     lines.extend([
         "",
         "| Legend | Meaning |",
         "|--------|---------|",
         "| ✅ | Matches the committed answer |",
-        "| ❌ | Does not match — fails CI |",
-        "| 🚫 | Expected result missing (dump failed / not uploaded) — fails CI |",
+        "| ❌ | Does not match, or the result exists but could not be read/compared — fails CI |",
+        "| 🚫 | Reported success but produced no result (dump failed) — fails CI |",
         "| ⏱️ | Engine could not compute the query in time (not a failure) |",
         "| 💀 | Runner killed before this query ran, likely OOM (not a failure) |",
-        "| ⚠️ | Engine errored, or its result could not be read/compared (not a failure) |",
+        "| ⚠️ | Engine errored running the query (not a failure) |",
         "| ❔ | Framework produced no result — its benchmark job failed; see the benchmark summary (not a failure) |",
         "| — | No committed answer for this query |",
         "",
@@ -352,9 +362,13 @@ def main() -> int:
     Path(args.output).write_text(markdown)
     print(markdown)
 
+    if verified_nothing:
+        print("\nFAILED: no engine results were verified (artifacts missing/unreadable — "
+              "possible download failure).", file=sys.stderr)
+        return 1
     if failures:
-        print(f"\nFAILED: {len(failures)} (engine, query) result(s) did not match or were missing.",
-              file=sys.stderr)
+        print(f"\nFAILED: {len(failures)} (engine, query) result(s) did not match, were "
+              f"missing, or could not be read.", file=sys.stderr)
         return 1
     print("\nAll engine results match the committed answers (where a result was produced).")
     return 0

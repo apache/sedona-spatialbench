@@ -587,13 +587,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # No continue-on-error: a failed artifact download must fail the correctness
+      # job rather than let it verify nothing. (A run that produced no artifacts is
+      # not a download error; verify_results.py fails that case via its
+      # "no results verified" guard.)
       - name: Download all results for this scale factor
         uses: actions/download-artifact@v8
         with:
           pattern: '*-results-sf${{ matrix.scale_factor }}'
           path: results
           merge-multiple: true
-        continue-on-error: true
 
       - name: Setup Python
         uses: actions/setup-python@v6

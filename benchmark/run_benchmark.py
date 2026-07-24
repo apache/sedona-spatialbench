@@ -26,6 +26,7 @@ on the SpatialBench queries at a specified scale factor.
 import argparse
 import json
 import multiprocessing
+import os
 import signal
 import sys
 import time
@@ -44,6 +45,13 @@ sys.path.append(str(Path(__file__).parent.parent / "spatialbench-queries"))
 QUERY_COUNT = 12
 TABLES = ["building", "customer", "driver", "trip", "vehicle", "zone"]
 DURATION_SUFFIX = "_seconds"
+# When --result-dir is set, the worker serializes the (already computed) result
+# after queueing its timing. If the process is still alive at the query timeout, we
+# briefly probe the queue: a result already there means the query finished and only
+# serialization is running, which then gets its own grace window rather than being
+# charged to the query timeout.
+SERIALIZE_PROBE_SECONDS = 5
+SERIALIZE_GRACE_SECONDS = 120
 
 
 @dataclass
@@ -129,7 +137,11 @@ def _run_query_in_process(
             })
             if dump_csv:
                 try:
-                    normalize(benchmark.dump_frame(result, query_sql)).to_csv(dump_csv, index=False)
+                    # Write to a temp file and atomically replace, so a process killed
+                    # mid-serialization never leaves a partial csv at the final path.
+                    tmp_csv = f"{dump_csv}.tmp"
+                    normalize(benchmark.dump_frame(result, query_sql)).to_csv(tmp_csv, index=False)
+                    os.replace(tmp_csv, dump_csv)
                 except Exception as e:
                     print(f"  [dump] failed to write {dump_csv}: {e}", file=sys.stderr, flush=True)
         finally:
@@ -490,19 +502,44 @@ def run_query_isolated(
               str(dump_csv) if dump_csv else None),
     )
 
+    def _kill():
+        process.terminate()
+        process.join(timeout=5)
+        if process.is_alive():
+            process.kill()
+            process.join(timeout=2)
+
+    def _from_queue(result_data):
+        return BenchmarkResult(
+            query=query_name,
+            engine=engine_name,
+            time_seconds=result_data["time_seconds"],
+            row_count=result_data["row_count"],
+            status=result_data["status"],
+            error_message=result_data["error_message"],
+        )
+
     process.start()
     process.join(timeout=timeout)
 
     if process.is_alive():
-        # Query exceeded timeout - forcefully terminate
-        process.terminate()
-        process.join(timeout=5)  # Give it 5 seconds to terminate gracefully
+        # The query didn't signal completion within the timeout. It may, however, have
+        # finished and left only the (reused) result serialization running — that must
+        # not count against the query timeout. The worker queues its timing result
+        # *before* serializing, so a result already on the queue means the query
+        # finished; give serialization a bounded grace. An empty queue means the query
+        # itself is still running: a real timeout.
+        try:
+            result_data = result_queue.get(timeout=SERIALIZE_PROBE_SECONDS)
+        except Exception:
+            result_data = None
 
-        if process.is_alive():
-            # Still alive - kill it
-            process.kill()
-            process.join(timeout=2)
+        if result_data is not None:
+            process.join(timeout=SERIALIZE_GRACE_SECONDS)
+            _kill()
+            return _from_queue(result_data)
 
+        _kill()
         return BenchmarkResult(
             query=query_name,
             engine=engine_name,
@@ -514,15 +551,7 @@ def run_query_isolated(
 
     # Process completed - get result from queue
     try:
-        result_data = result_queue.get_nowait()
-        return BenchmarkResult(
-            query=query_name,
-            engine=engine_name,
-            time_seconds=result_data["time_seconds"],
-            row_count=result_data["row_count"],
-            status=result_data["status"],
-            error_message=result_data["error_message"],
-        )
+        return _from_queue(result_queue.get_nowait())
     except Exception:
         # Process died without putting result in queue
         return BenchmarkResult(
