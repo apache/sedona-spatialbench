@@ -28,9 +28,13 @@ A mismatch **fails CI**.
 
 ```
 benchmark/answers/
-  sf1/                          # scale factor 1  (SF10 to follow)
+  sf1/                          # scale factor 1
     q1.parquet   q1.csv
     q2.parquet   q2.csv
+    ...
+    q12.parquet  q12.csv
+  sf10/                         # scale factor 10
+    q1.parquet   q1.csv
     ...
     q12.parquet  q12.csv
 ```
@@ -51,16 +55,23 @@ the answer parquet (types) and that csv (values) and compares them.
 
 Most queries are bounded to at most 100 rows (see #124), so the fixtures are tiny. The one
 exception is **Q4**, which groups the top-1000 tipped trips by zone and returns one row per
-zone (~260 at SF1); it is inherently small and bounded (never more than the number of zones
-touched by 1000 trips) but is not capped at 100.
+zone (~260 at SF1, ~240 at SF10); it is inherently small and bounded (never more than the
+number of zones touched by 1000 trips) but is not capped at 100.
 
 ## How they are generated
 
 - **SedonaDB is the reference oracle** — the answers are the output of the canonical
-  SedonaDB dialect on the SF1 dataset.
-- **DuckDB independently cross-checks** every query it can run; an answer is only
-  blessed when DuckDB agrees with SedonaDB within a small float tolerance
-  (`rtol=1e-6`), so the committed answers are validated by two independent engines.
+  SedonaDB dialect on the SpatialBench dataset, produced by the benchmark run in CI (the
+  `--result-dir` dumps), not on a local machine.
+- **SF1** was generated with SedonaDB 0.4.0.
+- **SF10** was generated with SedonaDB 0.3.0. SedonaDB 0.4.0 cannot compute Q5 at SF10 —
+  its grouped convex-hull aggregation spills >100 GB and aborts
+  ([apache/sedona-db#1077](https://github.com/apache/sedona-db/issues/1077)) — while 0.3.0
+  computes it in modest space. The two versions produce identical results for the other 11
+  queries at SF10, so the values are version-independent; only Q5's feasibility differs.
+- **Cross-check:** the correctness verify job runs every participating engine against these
+  answers, so each committed answer is independently validated by the other engines (e.g.
+  DuckDB) wherever they can compute the query.
 
 ## Canonical, engine-neutral form
 

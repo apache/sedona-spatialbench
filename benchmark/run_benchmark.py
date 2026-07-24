@@ -642,6 +642,15 @@ def run_benchmark(
         if not queries or qname in queries
     ]
 
+    # Remove any stale dump from a previous run of these queries so a failed or
+    # skipped capture can't leave behind another scale's result (dump filenames are
+    # not scale-scoped, so a reused --result-dir could otherwise mix scales).
+    if result_dir is not None:
+        for query_name, _ in query_items:
+            stale = result_dir / f"{engine}_{query_name}_result.csv"
+            if stale.exists():
+                stale.unlink()
+
     # Pre-populate all queries as "not_started" so even a total crash
     # (e.g. OOM killing the runner) leaves a file showing what was attempted
     for query_name, _ in query_items:
@@ -797,13 +806,10 @@ def main():
                         help="Scale factor of the data (for reporting only)")
     parser.add_argument("--result-dir", type=str, default=None,
                         help="If set, write each query's normalized result to "
-                             "<result-dir>/<engine>_<query>_result.csv for the downstream "
-                             "correctness verify job. Only done for scale factors that have "
-                             "committed answers (benchmark/answers/sf<sf>).")
-    parser.add_argument("--answers-dir", type=str, default=None,
-                        help="Directory of committed answers for this scale factor "
-                             "(default: benchmark/answers/sf<sf>). Gates --result-dir: "
-                             "results are dumped only when this directory exists.")
+                             "<result-dir>/<engine>_<query>_result.csv. The downstream "
+                             "correctness verify job compares these to the committed answers "
+                             "(and skips scale factors that have none), and the same dumps "
+                             "bootstrap the answers for a new scale factor.")
 
     args = parser.parse_args()
 
@@ -826,19 +832,15 @@ def main():
     for table, path in data_paths.items():
         print(f"  {table}: {path}")
 
-    # Resolve where to dump normalized results (for the downstream verify job).
-    # Only dump for scale factors that have committed answers to compare against.
+    # Dump normalized results (for the downstream verify job, and to bootstrap answers
+    # for a new scale factor). Dumping reuses each timed run, so it is unconditional
+    # when --result-dir is given; the verify job independently skips scale factors that
+    # have no committed answers.
     result_dir = None
     if args.result_dir:
-        sf = args.scale_factor
-        sf_tag = f"sf{int(sf) if float(sf).is_integer() else sf}"
-        answers_dir = Path(args.answers_dir) if args.answers_dir else Path(__file__).parent / "answers" / sf_tag
-        if answers_dir.is_dir():
-            result_dir = Path(args.result_dir)
-            result_dir.mkdir(parents=True, exist_ok=True)
-            print(f"Dumping normalized results to {result_dir} (answers exist at {answers_dir})")
-        else:
-            print(f"No committed answers at {answers_dir} — results not dumped, correctness not checked for this scale factor")
+        result_dir = Path(args.result_dir)
+        result_dir.mkdir(parents=True, exist_ok=True)
+        print(f"Dumping normalized results to {result_dir}")
 
     results = [
         run_benchmark(engine, data_paths, queries, args.timeout, args.scale_factor,
@@ -848,6 +850,22 @@ def main():
 
     print_summary(results)
     save_results(results, args.output)
+
+    # If result capture was requested, a query that ran successfully must have left a
+    # dump. A missing one means serialization failed; fail loudly rather than let a
+    # bootstrapping run (no committed answers to verify against) pass silently.
+    if result_dir is not None:
+        dump_failures = [
+            f"{suite.engine}/{r.query}"
+            for suite in results
+            for r in suite.results
+            if r.status == "success"
+            and not (result_dir / f"{suite.engine}_{r.query}_result.csv").exists()
+        ]
+        if dump_failures:
+            print(f"\nError: --result-dir was set but these successful queries produced no "
+                  f"result dump (capture failed): {', '.join(dump_failures)}", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -61,7 +61,7 @@ The automated tests cover:
 
 ### Verifying correctness
 
-SpatialBench ships reference answers for every query under [`benchmark/answers/`](benchmark/answers/) (currently scale factor 1). They are the output of the canonical SedonaDB dialect, independently cross-checked against DuckDB for every query DuckDB can compute at this scale (all except Q12, whose lateral-join plan is infeasible at SF1), and let you confirm that each engine returns the same result for the same query — not just that it runs. See the [answers README](benchmark/answers/README.md) for the format and comparison rules.
+SpatialBench ships reference answers for every query under [`benchmark/answers/`](benchmark/answers/) (scale factors 1 and 10). They are the output of the canonical SedonaDB dialect, and the correctness job independently cross-checks them against every other engine wherever it can compute the query, so you can confirm that each engine returns the same result for the same query — not just that it runs. See the [answers README](benchmark/answers/README.md) for the format, provenance, and comparison rules.
 
 ### View Latest Results
 
