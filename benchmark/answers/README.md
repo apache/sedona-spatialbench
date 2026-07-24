@@ -19,8 +19,10 @@
 
 # SpatialBench ground-truth answers
 
-Reference results for the SpatialBench queries, used by the correctness harness to
-verify that every participating engine returns the same answer for the same query.
+Reference results for the SpatialBench queries. A downstream CI job
+(`verify_results.py`) reuses the benchmark run's result dumps — instead of
+re-executing any query — and compares each engine's result against these answers.
+A mismatch **fails CI**.
 
 ## Layout
 
@@ -37,9 +39,15 @@ Each query's expected result is committed in two formats, written from the same
 normalized frame:
 
 - **`q<n>.parquet`** — the type-faithful canonical answer (timestamps stay
-  timestamps, ints stay ints). The correctness harness compares against this.
+  timestamps, ints stay ints). The verify job reads this to know each column's type,
+  so comparison semantics come from the schema: integer keys/counts, timestamps and
+  strings are matched exactly, and only floating-point metrics use tolerance.
 - **`q<n>.csv`** — a review companion: GitHub renders it as a table and diffs are
   readable when an answer changes.
+
+The benchmark run dumps each engine's result to a csv (never parquet), so no pyarrow
+filesystem is touched inside a SedonaDB worker; the engine-free verify job then reads
+the answer parquet (types) and that csv (values) and compares them.
 
 Most queries are bounded to at most 100 rows (see #124), so the fixtures are tiny. The one
 exception is **Q4**, which groups the top-1000 tipped trips by zone and returns one row per
@@ -67,18 +75,25 @@ Row order is significant and preserved: every query has a deterministic `ORDER B
 (with key tiebreakers) followed by `LIMIT`, so the expected rows and their order are
 well defined.
 
-## Comparison semantics (for the harness)
+## Comparison semantics
+
+Columns are compared by position (engines name columns differently, e.g.
+`avg_duration` vs `avg_duration_seconds`), with:
 
 - Integer keys, strings, and timestamps: exact match.
 - Floats (distances, areas, IoU, seconds): relative + absolute tolerance
   (`rtol=1e-6`, `atol=1e-9`) to absorb cross-engine floating-point differences.
 - The final row may legitimately differ across engines when a float metric ties near
-  the `LIMIT` boundary; the harness treats a within-tolerance boundary difference as a
-  pass.
+  the `LIMIT` boundary; a within-tolerance boundary difference is treated as a pass.
+
+An engine that cannot compute a query (timeout / error / OOM, e.g. DuckDB's Q12
+below) is reported but does **not** fail the job — that is a runtime issue surfaced
+by the benchmark summary, not a wrong answer. Only an actual mismatch fails CI.
 
 ## Caveat: Q12 at SF1
 
 DuckDB has no KNN operator, so its Q12 uses a lateral cross-join that is infeasible at
 SF1 (it does not finish in reasonable time). Q12 is therefore **not** cross-checked by
 DuckDB here — it is validated by the KNN-capable engines (SedonaDB, Spatial Polars,
-PyCanopy) in the correctness harness.
+PyCanopy). In the verify job, DuckDB's Q12 shows as "could not compute" rather than a
+failure.

@@ -263,6 +263,7 @@ jobs:
             --runs ${{ env.BENCHMARK_RUNS }} \
             --timeout ${{ env.QUERY_TIMEOUT }} \
             --scale-factor ${{ matrix.scale_factor }} \
+            --result-dir . \
             --output duckdb_${{ matrix.query }}_results.json
 
       - name: Upload results
@@ -270,7 +271,10 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: duckdb-${{ matrix.query }}-results-sf${{ matrix.scale_factor }}
-          path: duckdb_${{ matrix.query }}_results.json
+          path: |
+            duckdb_${{ matrix.query }}_results.json
+            duckdb_${{ matrix.query }}_result.csv
+          if-no-files-found: warn
           retention-days: 30
 
   benchmark-geopandas:
@@ -319,6 +323,7 @@ jobs:
             --runs ${{ env.BENCHMARK_RUNS }} \
             --timeout ${{ env.QUERY_TIMEOUT }} \
             --scale-factor ${{ matrix.scale_factor }} \
+            --result-dir . \
             --output geopandas_${{ matrix.query }}_results.json
 
       - name: Upload results
@@ -326,7 +331,10 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: geopandas-${{ matrix.query }}-results-sf${{ matrix.scale_factor }}
-          path: geopandas_${{ matrix.query }}_results.json
+          path: |
+            geopandas_${{ matrix.query }}_results.json
+            geopandas_${{ matrix.query }}_result.csv
+          if-no-files-found: warn
           retention-days: 30
 
   benchmark-sedonadb:
@@ -380,6 +388,7 @@ jobs:
             --runs ${{ env.BENCHMARK_RUNS }} \
             --timeout ${{ env.QUERY_TIMEOUT }} \
             --scale-factor ${{ matrix.scale_factor }} \
+            --result-dir . \
             --output sedonadb_${{ matrix.query }}_results.json
 
       - name: Upload results
@@ -387,7 +396,10 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: sedonadb-${{ matrix.query }}-results-sf${{ matrix.scale_factor }}
-          path: sedonadb_${{ matrix.query }}_results.json
+          path: |
+            sedonadb_${{ matrix.query }}_results.json
+            sedonadb_${{ matrix.query }}_result.csv
+          if-no-files-found: warn
           retention-days: 30
 
   benchmark-spatial-polars:
@@ -421,9 +433,9 @@ jobs:
       - name: Install dependencies
         run: |
           if [ -n "${{ env.SPATIAL_POLARS_VERSION }}" ]; then
-            pip install "spatial-polars[knn]==${{ env.SPATIAL_POLARS_VERSION }}" pyarrow
+            pip install "spatial-polars[knn]==${{ env.SPATIAL_POLARS_VERSION }}" pyarrow pandas
           else
-            pip install "spatial-polars[knn]" pyarrow
+            pip install "spatial-polars[knn]" pyarrow pandas
           fi
           echo "Installed Spatial Polars version: $(python -c 'from importlib.metadata import version; print(version("spatial-polars"))')"
 
@@ -436,6 +448,7 @@ jobs:
             --runs ${{ env.BENCHMARK_RUNS }} \
             --timeout ${{ env.QUERY_TIMEOUT }} \
             --scale-factor ${{ matrix.scale_factor }} \
+            --result-dir . \
             --output spatial_polars_${{ matrix.query }}_results.json
 
       - name: Upload results
@@ -443,7 +456,10 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: spatial_polars-${{ matrix.query }}-results-sf${{ matrix.scale_factor }}
-          path: spatial_polars_${{ matrix.query }}_results.json
+          path: |
+            spatial_polars_${{ matrix.query }}_results.json
+            spatial_polars_${{ matrix.query }}_result.csv
+          if-no-files-found: warn
           retention-days: 30
 
   benchmark-pycanopy:
@@ -477,9 +493,9 @@ jobs:
       - name: Install dependencies
         run: |
           if [ -n "${{ env.PYCANOPY_VERSION }}" ]; then
-            pip install "pycanopy==${{ env.PYCANOPY_VERSION }}" pyarrow
+            pip install "pycanopy==${{ env.PYCANOPY_VERSION }}" pyarrow pandas
           else
-            pip install pycanopy pyarrow
+            pip install pycanopy pyarrow pandas
           fi
           echo "Installed PyCanopy version: $(python -c 'from importlib.metadata import version; print(version("pycanopy"))')"
 
@@ -492,6 +508,7 @@ jobs:
             --runs ${{ env.BENCHMARK_RUNS }} \
             --timeout ${{ env.QUERY_TIMEOUT }} \
             --scale-factor ${{ matrix.scale_factor }} \
+            --result-dir . \
             --output pycanopy_${{ matrix.query }}_results.json
 
       - name: Upload results
@@ -499,7 +516,10 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: pycanopy-${{ matrix.query }}-results-sf${{ matrix.scale_factor }}
-          path: pycanopy_${{ matrix.query }}_results.json
+          path: |
+            pycanopy_${{ matrix.query }}_results.json
+            pycanopy_${{ matrix.query }}_result.csv
+          if-no-files-found: warn
           retention-days: 30
 
   summarize-results:
@@ -549,3 +569,76 @@ jobs:
             results/
             benchmark_summary.md
           retention-days: 90
+
+  # ── Correctness verification ──
+  # Depends on (needs) the benchmark jobs and reuses their result dumps
+  # (<engine>_<query>_result.csv) instead of re-running any query. Compares each
+  # against the committed ground-truth answers (benchmark/answers/sf<sf>) in a
+  # clean, engine-free environment. Fails the job — and thus CI — if any engine's
+  # result does not match its committed answer.
+  verify-correctness:
+    name: Verify Correctness (SF${{ matrix.scale_factor }})
+    needs: [parse-scale-factors, benchmark-duckdb, benchmark-geopandas, benchmark-sedonadb, benchmark-spatial-polars, benchmark-pycanopy]
+    if: always() && (needs.benchmark-duckdb.result != 'cancelled' || needs.benchmark-geopandas.result != 'cancelled' || needs.benchmark-sedonadb.result != 'cancelled' || needs.benchmark-spatial-polars.result != 'cancelled' || needs.benchmark-pycanopy.result != 'cancelled')
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        scale_factor: ${{ fromJson(needs.parse-scale-factors.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # No continue-on-error: a failed artifact download must fail the correctness
+      # job rather than let it verify nothing. (A run that produced no artifacts is
+      # not a download error; verify_results.py fails that case via its
+      # "no results verified" guard.)
+      - name: Download all results for this scale factor
+        uses: actions/download-artifact@v8
+        with:
+          pattern: '*-results-sf${{ matrix.scale_factor }}'
+          path: results
+          merge-multiple: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install pandas
+        run: pip install pandas pyarrow
+
+      - name: Verify results against committed answers
+        id: verify
+        continue-on-error: true
+        run: |
+          python benchmark/verify_results.py \
+            --results-dir results \
+            --scale-factor ${{ matrix.scale_factor }} \
+            --engines ${{ env.BENCHMARK_ENGINES }} \
+            --output correctness_summary.md
+
+      - name: Display and publish correctness summary
+        if: always()
+        run: |
+          if [ -f correctness_summary.md ]; then
+            cat correctness_summary.md
+            cat correctness_summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            msg="### ⚠️ Correctness summary not generated (verify_results.py produced no output)."
+            echo "$msg"
+            echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload correctness summary
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: correctness-summary-sf${{ matrix.scale_factor }}
+          path: correctness_summary.md
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Fail if any result did not match
+        if: always() && steps.verify.outcome == 'failure'
+        run: |
+          echo "::error::One or more engine results did not match the committed answers (SF${{ matrix.scale_factor }})."
+          exit 1
