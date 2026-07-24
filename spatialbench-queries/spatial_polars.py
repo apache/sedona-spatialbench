@@ -328,7 +328,9 @@ def q7(data_paths: dict[str, str]) -> DataFrame:
         )
         .with_columns(
             (
-                pl.struct(("t_pickuploc", "t_dropoffloc")).spatial.distance() * 111111
+                # meters = degrees / 0.000009  (1 meter ~= 0.000009 degree), matching
+                # the reference SQL and the other engines' conversion constant.
+                pl.struct(("t_pickuploc", "t_dropoffloc")).spatial.distance() / 0.000009
             ).alias("line_distance_m"),
             pl.col("t_distance").alias("reported_distance_m"),
         )

@@ -205,8 +205,8 @@ def q5(data_paths: dict[str, str]) -> DataFrame:  # type: ignore[override]
         grouped.sort_values(
             ["monthly_travel_hull_area", "c_custkey", "pickup_month"],
             ascending=[False, True, True],
-        )[["c_custkey", "c_name", "pickup_month", "monthly_travel_hull_area"]]
-        .rename(columns={"c_name": "customer_name"})
+        )[["c_custkey", "c_name", "pickup_month", "monthly_travel_hull_area", "trip_count"]]
+        .rename(columns={"c_name": "customer_name", "trip_count": "dropoff_count"})
         .head(100)  # Return only the top 100 repeat customer-months (bounded result set)
         .reset_index(drop=True)
     )
