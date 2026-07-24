@@ -254,6 +254,14 @@ jobs:
           # INSTALL is a no-op on DuckDB 1.5 stable (spatial bundled natively) but required for nightly builds.
           python -c "import duckdb; con = duckdb.connect(); con.execute('INSTALL spatial'); con.execute('LOAD spatial'); print('DuckDB spatial extension installed and loaded')"
 
+      - name: Free disk space
+        run: |
+          # SF10 queries can spill several GB; reclaim space from preinstalled
+          # toolchains so a heavy query doesn't fail with "No space left on device".
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/powershell /usr/share/swift || true
+          df -h /
+
       - name: Run DuckDB ${{ matrix.query }}
         run: |
           python benchmark/run_benchmark.py \
@@ -313,6 +321,14 @@ jobs:
             pip install geopandas pandas pyarrow shapely
           fi
           echo "Installed GeoPandas version: $(python -c 'from importlib.metadata import version; print(version("geopandas"))')"
+
+      - name: Free disk space
+        run: |
+          # SF10 queries can spill several GB; reclaim space from preinstalled
+          # toolchains so a heavy query doesn't fail with "No space left on device".
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/powershell /usr/share/swift || true
+          df -h /
 
       - name: Run GeoPandas ${{ matrix.query }}
         run: |
@@ -379,6 +395,14 @@ jobs:
           fi
           echo "Installed SedonaDB version: $(python -c 'from importlib.metadata import version; print(version("sedonadb"))')"
 
+      - name: Free disk space
+        run: |
+          # SF10 queries can spill several GB; reclaim space from preinstalled
+          # toolchains so a heavy query doesn't fail with "No space left on device".
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/powershell /usr/share/swift || true
+          df -h /
+
       - name: Run SedonaDB ${{ matrix.query }}
         run: |
           python benchmark/run_benchmark.py \
@@ -439,6 +463,14 @@ jobs:
           fi
           echo "Installed Spatial Polars version: $(python -c 'from importlib.metadata import version; print(version("spatial-polars"))')"
 
+      - name: Free disk space
+        run: |
+          # SF10 queries can spill several GB; reclaim space from preinstalled
+          # toolchains so a heavy query doesn't fail with "No space left on device".
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/powershell /usr/share/swift || true
+          df -h /
+
       - name: Run Spatial Polars ${{ matrix.query }}
         run: |
           python benchmark/run_benchmark.py \
@@ -498,6 +530,14 @@ jobs:
             pip install pycanopy pyarrow pandas
           fi
           echo "Installed PyCanopy version: $(python -c 'from importlib.metadata import version; print(version("pycanopy"))')"
+
+      - name: Free disk space
+        run: |
+          # SF10 queries can spill several GB; reclaim space from preinstalled
+          # toolchains so a heavy query doesn't fail with "No space left on device".
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/powershell /usr/share/swift || true
+          df -h /
 
       - name: Run PyCanopy ${{ matrix.query }}
         run: |
