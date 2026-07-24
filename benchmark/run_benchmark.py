@@ -797,13 +797,10 @@ def main():
                         help="Scale factor of the data (for reporting only)")
     parser.add_argument("--result-dir", type=str, default=None,
                         help="If set, write each query's normalized result to "
-                             "<result-dir>/<engine>_<query>_result.csv for the downstream "
-                             "correctness verify job. Only done for scale factors that have "
-                             "committed answers (benchmark/answers/sf<sf>).")
-    parser.add_argument("--answers-dir", type=str, default=None,
-                        help="Directory of committed answers for this scale factor "
-                             "(default: benchmark/answers/sf<sf>). Gates --result-dir: "
-                             "results are dumped only when this directory exists.")
+                             "<result-dir>/<engine>_<query>_result.csv. The downstream "
+                             "correctness verify job compares these to the committed answers "
+                             "(and skips scale factors that have none), and the same dumps "
+                             "bootstrap the answers for a new scale factor.")
 
     args = parser.parse_args()
 
@@ -826,19 +823,15 @@ def main():
     for table, path in data_paths.items():
         print(f"  {table}: {path}")
 
-    # Resolve where to dump normalized results (for the downstream verify job).
-    # Only dump for scale factors that have committed answers to compare against.
+    # Dump normalized results (for the downstream verify job, and to bootstrap answers
+    # for a new scale factor). Dumping reuses each timed run, so it is unconditional
+    # when --result-dir is given; the verify job independently skips scale factors that
+    # have no committed answers.
     result_dir = None
     if args.result_dir:
-        sf = args.scale_factor
-        sf_tag = f"sf{int(sf) if float(sf).is_integer() else sf}"
-        answers_dir = Path(args.answers_dir) if args.answers_dir else Path(__file__).parent / "answers" / sf_tag
-        if answers_dir.is_dir():
-            result_dir = Path(args.result_dir)
-            result_dir.mkdir(parents=True, exist_ok=True)
-            print(f"Dumping normalized results to {result_dir} (answers exist at {answers_dir})")
-        else:
-            print(f"No committed answers at {answers_dir} — results not dumped, correctness not checked for this scale factor")
+        result_dir = Path(args.result_dir)
+        result_dir.mkdir(parents=True, exist_ok=True)
+        print(f"Dumping normalized results to {result_dir}")
 
     results = [
         run_benchmark(engine, data_paths, queries, args.timeout, args.scale_factor,
