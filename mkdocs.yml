@@ -32,7 +32,8 @@ extra:
   spatialbench_links: &spatialbench_links
     - Framework:
         - Methodology: overview-methodology.md
-        - SpatialBench Queries: queries.md
+        - SpatialBench Queries (Geometry): queries.md
+        - SpatialBench Queries (Geography): geography-queries.md
         - Datasets & Generators: datasets-generators.md
         - Data Distributions: spatialbench-distributions.md
 
@@ -52,7 +53,8 @@ nav:
       - Home: index.md
       - Quickstart: quickstart.md
       - Methodology: overview-methodology.md
-      - Queries: queries.md
+      - SpatialBench Queries (Geometry): queries.md
+      - SpatialBench Queries (Geography): geography-queries.md
       - Datasets & Generators: datasets-generators.md
       - Data Distributions: spatialbench-distributions.md
       - Single Node Results: single-node-benchmarks.md
@@ -160,7 +162,8 @@ plugins:
               SpatialBench: SpatialBench
               Quickstart: 快速开始
               Methodology: 方法论
-              Queries: 查询
+              SpatialBench Queries (Geometry): SpatialBench 查询（几何）
+              SpatialBench Queries (Geography): SpatialBench 查询（地理）
               Datasets & Generators: 数据集与生成器
               Data Distributions: 数据分布
               Single Node Results: 单节点结果
@@ -170,7 +173,6 @@ plugins:
               Community: 社区
               Apache Software Foundation: Apache 软件基金会
               Framework: 框架
-              SpatialBench Queries: SpatialBench 查询
               Get Involved: 参与贡献
               Sedona OSS Blog: Sedona 开源博客
    - git-revision-date-localized:
