@@ -63,7 +63,7 @@ def q2(data_paths: dict[str, str]) -> pl.DataFrame:
 
 
 def q3(data_paths: dict[str, str]) -> pl.DataFrame:
-    """Q3 (PyCanopy): Monthly trip stats within ~5km of a 10km bounding box around Sedona."""
+    """Q3 (PyCanopy): Monthly trip stats within ~5km of a ~26.5x30 km box around Sedona."""
     distance = 0.045  # degrees (~5km)
     base_poly = shapely.Polygon(
         [

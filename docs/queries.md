@@ -148,11 +148,11 @@ WHERE ST_Intersects(
     └───────────────────────────────┘
 
 
-## Q3: Monthly trip statistics within a 15km radius of the Sedona city center
+## Q3: Monthly trip statistics for a buffered box around the Sedona city center
 
 **Real-life scenario:** Track monthly travel trends and performance metrics in a metropolitan area with seasonal analysis.
 
-This query analyzes taxi and rideshare trip patterns around Sedona, Arizona, by grouping trips into monthly summaries. It looks at all trips that started within a 15-kilometer area around Sedona (a 10km box plus 5km buffer) and calculates key statistics for each month, including total number of trips, average trip distance, average trip duration, and average fare. The results are organized chronologically by month, allowing you to see seasonal trends and changes in ride patterns over time in the Sedona area.
+This query analyzes taxi and rideshare trip patterns around Sedona, Arizona, by grouping trips into monthly summaries. It looks at all trips that started within a box around Sedona — roughly 26.5 km east-west by 30 km north-south, with corners about 20 km from the center — plus a further ~5 km buffer, and calculates key statistics for each month, including total number of trips, average trip distance, average trip duration, and average fare. The results are organized chronologically by month, allowing you to see seasonal trends and changes in ride patterns over time in the Sedona area.
 
 **Spatial query characteristics tested:**
 
