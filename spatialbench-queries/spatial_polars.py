@@ -94,9 +94,9 @@ def q2(data_paths: dict[str, str]) -> DataFrame:
 
 
 def q3(data_paths: dict[str, str]) -> DataFrame:
-    """Q3 (Spatial Polars): Monthly trip stats within 15km (10km box + 5km buffer) of Sedona center.
+    """Q3 (Spatial Polars): Monthly trip stats for a buffered box around Sedona center.
 
-    Implements: filter trips whose pickup location is within 0.045 degrees (~5km) of the 10km bounding
+    Implements: filter trips whose pickup location is within 0.045 degrees (~5km) of the ~26.5x30 km bounding
     box polygon (approximating ST_DWithin(pickup_point, polygon, 0.045)). Then aggregates monthly:
       * total_trips   = COUNT(t_tripkey)
       * avg_distance  = AVG(t_distance) (set NaN if column absent)
