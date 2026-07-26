@@ -950,10 +950,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q3-monthly-trip-statistics-within-a-15km-radius-of-the-sedona-city-center" class="md-nav__link">
+  <a href="#q3-monthly-trip-statistics-for-a-buffered-box-around-the-sedona-city-center" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q3: Monthly trip statistics within a 15km radius of the Sedona city center
+        Q3: Monthly trip statistics for a buffered box around the Sedona city center
       
     </span>
   </a>
@@ -1363,10 +1363,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q3-monthly-trip-statistics-within-a-15km-radius-of-the-sedona-city-center" class="md-nav__link">
+  <a href="#q3-monthly-trip-statistics-for-a-buffered-box-around-the-sedona-city-center" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q3: Monthly trip statistics within a 15km radius of the Sedona city center
+        Q3: Monthly trip statistics for a buffered box around the Sedona city center
       
     </span>
   </a>
@@ -1610,9 +1610,9 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 └───────────────────────────────┘
 </code></pre></div>
 
-<h2 id="q3-monthly-trip-statistics-within-a-15km-radius-of-the-sedona-city-center">Q3: Monthly trip statistics within a 15km radius of the Sedona city center<a class="headerlink" href="#q3-monthly-trip-statistics-within-a-15km-radius-of-the-sedona-city-center" title="Permanent link">¶</a></h2>
+<h2 id="q3-monthly-trip-statistics-for-a-buffered-box-around-the-sedona-city-center">Q3: Monthly trip statistics for a buffered box around the Sedona city center<a class="headerlink" href="#q3-monthly-trip-statistics-for-a-buffered-box-around-the-sedona-city-center" title="Permanent link">¶</a></h2>
 <p><strong>Real-life scenario:</strong> Track monthly travel trends and performance metrics in a metropolitan area with seasonal analysis.</p>
-<p>This query analyzes taxi and rideshare trip patterns around Sedona, Arizona, by grouping trips into monthly summaries. It looks at all trips that started within a 15-kilometer area around Sedona (a 10km box plus 5km buffer) and calculates key statistics for each month, including total number of trips, average trip distance, average trip duration, and average fare. The results are organized chronologically by month, allowing you to see seasonal trends and changes in ride patterns over time in the Sedona area.</p>
+<p>This query analyzes taxi and rideshare trip patterns around Sedona, Arizona, by grouping trips into monthly summaries. It looks at all trips that started within a box around Sedona — roughly 26.5 km east-west by 30 km north-south, with corners about 20 km from the center — plus a further ~5 km buffer, and calculates key statistics for each month, including total number of trips, average trip distance, average trip duration, and average fare. The results are organized chronologically by month, allowing you to see seasonal trends and changes in ride patterns over time in the Sedona area.</p>
 <p><strong>Spatial query characteristics tested:</strong></p>
 <ol>
 <li>Distance-based spatial filtering (ST_DWithin) with buffer</li>
@@ -2055,7 +2055,7 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="July 24, 2026 16:11:01 UTC">July 24, 2026 16:11:01</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="July 26, 2026 06:37:43 UTC">July 26, 2026 06:37:43</span>
   </span>
 
     
