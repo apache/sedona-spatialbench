@@ -7,19 +7,19 @@
       
       
       
-        <link rel="canonical" href="https://sedona.apache.org/spatialbench/queries/">
+        <link rel="canonical" href="https://sedona.apache.org/spatialbench/geography-queries/">
       
       
-        <link rel="prev" href="../overview-methodology/">
+        <link rel="prev" href="../queries/">
       
       
-        <link rel="next" href="../geography-queries/">
+        <link rel="next" href="../datasets-generators/">
       
       
         
           <link rel="alternate" href="./" hreflang="en">
         
-          <link rel="alternate" href="../zh/queries/" hreflang="zh">
+          <link rel="alternate" href="../zh/geography-queries/" hreflang="zh">
         
       
       
@@ -28,7 +28,7 @@
     
     
       
-        <title>SpatialBench Queries (Geometry) - SpatialBench</title>
+        <title>Geography Queries - SpatialBench</title>
       
     
     
@@ -94,7 +94,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#run-the-spatialbench-queries" class="md-skip">
+        <a href="#run-the-spatialbench-geography-queries" class="md-skip">
           Skip to content
         </a>
       
@@ -163,7 +163,7 @@
             <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              SpatialBench Queries (Geometry)
+              Geography Queries
             
           </span>
             </div>
@@ -196,7 +196,7 @@
           </li>
         
           <li class="md-select__item">
-            <a href="../zh/queries/" hreflang="zh" class="md-select__link">
+            <a href="../zh/geography-queries/" hreflang="zh" class="md-select__link">
               中文
             </a>
           </li>
@@ -854,6 +854,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../queries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SpatialBench Queries (Geometry)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -873,7 +901,7 @@
   <span class="md-ellipsis">
     
   
-    SpatialBench Queries (Geometry)
+    SpatialBench Queries (Geography)
   
 
     
@@ -891,7 +919,7 @@
   <span class="md-ellipsis">
     
   
-    SpatialBench Queries (Geometry)
+    SpatialBench Queries (Geography)
   
 
     
@@ -917,6 +945,28 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
       
         <li class="md-nav__item">
+  <a href="#why-a-second-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why a second suite
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-query-module" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The query module
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#before-you-start" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -939,10 +989,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q2-count-trips-starting-within-coconino-county-arizona-zone" class="md-nav__link">
+  <a href="#q2-count-trips-starting-within-coconino-county" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q2: Count trips starting within Coconino County (Arizona) zone
+        Q2: Count trips starting within Coconino County
       
     </span>
   </a>
@@ -950,10 +1000,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q3-monthly-trip-statistics-for-a-buffered-box-around-the-sedona-city-center" class="md-nav__link">
+  <a href="#q3-monthly-trip-statistics-for-a-buffered-box-around-sedona-city-center" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q3: Monthly trip statistics for a buffered box around the Sedona city center
+        Q3: Monthly trip statistics for a buffered box around Sedona city center
       
     </span>
   </a>
@@ -972,10 +1022,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q5-monthly-travel-patterns-for-repeat-customers-convex-hull-of-dropoff-locations" class="md-nav__link">
+  <a href="#q5-monthly-travel-patterns-for-repeat-customers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q5: Monthly travel patterns for repeat customers (convex hull of dropoff locations)
+        Q5: Monthly travel patterns for repeat customers
       
     </span>
   </a>
@@ -983,10 +1033,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q6-zone-statistics-for-trips-within-a-50km-radius-of-the-sedona-city-center" class="md-nav__link">
+  <a href="#q6-zone-statistics-for-trips-intersecting-a-bounding-box" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q6: Zone statistics for trips within a 50km radius of the Sedona city center
+        Q6: Zone statistics for trips intersecting a bounding box
       
     </span>
   </a>
@@ -994,10 +1044,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q7-detect-potential-route-detours-by-comparing-reported-vs-geometric-distances" class="md-nav__link">
+  <a href="#q7-detect-potential-route-detours" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q7: Detect potential route detours by comparing reported vs. geometric distances
+        Q7: Detect potential route detours
       
     </span>
   </a>
@@ -1049,10 +1099,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q12-rank-trip-pickups-by-average-distance-to-their-five-nearest-buildings-knn-join" class="md-nav__link">
+  <a href="#q12-rank-trip-pickups-by-average-distance-to-their-5-nearest-buildings" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q12: Rank trip pickups by average distance to their five nearest buildings (KNN join)
+        Q12: Rank trip pickups by average distance to their 5 nearest buildings
       
     </span>
   </a>
@@ -1063,34 +1113,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../geography-queries/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    SpatialBench Queries (Geography)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1358,6 +1380,28 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
       
         <li class="md-nav__item">
+  <a href="#why-a-second-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why a second suite
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-query-module" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The query module
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#before-you-start" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1380,10 +1424,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q2-count-trips-starting-within-coconino-county-arizona-zone" class="md-nav__link">
+  <a href="#q2-count-trips-starting-within-coconino-county" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q2: Count trips starting within Coconino County (Arizona) zone
+        Q2: Count trips starting within Coconino County
       
     </span>
   </a>
@@ -1391,10 +1435,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q3-monthly-trip-statistics-for-a-buffered-box-around-the-sedona-city-center" class="md-nav__link">
+  <a href="#q3-monthly-trip-statistics-for-a-buffered-box-around-sedona-city-center" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q3: Monthly trip statistics for a buffered box around the Sedona city center
+        Q3: Monthly trip statistics for a buffered box around Sedona city center
       
     </span>
   </a>
@@ -1413,10 +1457,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q5-monthly-travel-patterns-for-repeat-customers-convex-hull-of-dropoff-locations" class="md-nav__link">
+  <a href="#q5-monthly-travel-patterns-for-repeat-customers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q5: Monthly travel patterns for repeat customers (convex hull of dropoff locations)
+        Q5: Monthly travel patterns for repeat customers
       
     </span>
   </a>
@@ -1424,10 +1468,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q6-zone-statistics-for-trips-within-a-50km-radius-of-the-sedona-city-center" class="md-nav__link">
+  <a href="#q6-zone-statistics-for-trips-intersecting-a-bounding-box" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q6: Zone statistics for trips within a 50km radius of the Sedona city center
+        Q6: Zone statistics for trips intersecting a bounding box
       
     </span>
   </a>
@@ -1435,10 +1479,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q7-detect-potential-route-detours-by-comparing-reported-vs-geometric-distances" class="md-nav__link">
+  <a href="#q7-detect-potential-route-detours" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q7: Detect potential route detours by comparing reported vs. geometric distances
+        Q7: Detect potential route detours
       
     </span>
   </a>
@@ -1490,10 +1534,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q12-rank-trip-pickups-by-average-distance-to-their-five-nearest-buildings-knn-join" class="md-nav__link">
+  <a href="#q12-rank-trip-pickups-by-average-distance-to-their-5-nearest-buildings" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q12: Rank trip pickups by average distance to their five nearest buildings (KNN join)
+        Q12: Rank trip pickups by average distance to their 5 nearest buildings
       
     </span>
   </a>
@@ -1517,7 +1561,7 @@
 
 
   
-    <a href="https://github.com/apache/sedona-spatialbench/blob/main/docs/queries.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/apache/sedona-spatialbench/blob/main/docs/geography-queries.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
     </a>
@@ -1525,19 +1569,100 @@
   
 
 
-<h1 id="run-the-spatialbench-queries">Run the SpatialBench Queries<a class="headerlink" href="#run-the-spatialbench-queries" title="Permanent link">¶</a></h1>
-<p>This notebook contains the queries that make up the SpatialBench benchmark.</p>
-<p>SpatialBench is a benchmark for assessing geospatial SQL analytics query performance across database systems. The queries represent common, real-world geospatial analytics tasks and are designed to test a wide range of spatial functions and join conditions.</p>
-<p>The benchmark uses a realistic but synthetic, transportation-themed dataset to ensure the queries reflect practical use cases. By running these queries, you can evaluate and compare the relative performance of different spatial query engines in a consistent and unbiased manner.</p>
+<!---
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+--><h1 id="run-the-spatialbench-geography-queries">Run the SpatialBench Geography Queries<a class="headerlink" href="#run-the-spatialbench-geography-queries" title="Permanent link">¶</a></h1>
+<p>SpatialBench's <a href="https://sedona.apache.org/spatialbench/queries/">main query suite</a> is a <strong>geometry</strong> benchmark: the WKB columns are
+decoded with <code>ST_GeomFromWKB</code>, predicates use planar (2D Euclidean) edges, and every distance
+threshold is an angle in degrees.</p>
+<p>This notebook defines the <strong>geography</strong> counterpart of the same 12 queries. The data is
+unchanged — the same EPSG:4326 longitude/latitude WKB columns — but the columns are decoded
+with <code>ST_GeogFromWKB</code>, so edges are interpreted as geodesics on a sphere and every measure
+comes back in real-world units.</p>
+<h2 id="why-a-second-suite">Why a second suite<a class="headerlink" href="#why-a-second-suite" title="Permanent link">¶</a></h2>
+<p>The geometry suite has to fake real-world units. It filters trips "within 50 km" of Sedona
+using <code>ST_DWithin(..., 0.45)</code>, converts metres to degrees with <code>1 m = 0.000009 degree</code>, and
+reports building overlap areas in square degrees.</p>
+<p>A degree of latitude is roughly 111 km everywhere, but a degree of longitude shrinks with the
+cosine of the latitude. So <code>0.45</code> degrees is about 50 km tall and only about 41 km wide at
+Sedona (34.87°N), and about 25 km wide at 60°N. Since SpatialBench data is generated across
+eight continent-sized boxes spanning latitudes −56° to 78°, a degree-based radius is a
+different real-world shape in every part of the dataset.</p>
+<p>The geography suite replaces all of that with metres and square metres:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Geometry suite</th>
+<th>Geography suite</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Point/polygon constructor</td>
+<td><code>ST_GeomFromWKB</code>, <code>ST_GeomFromText</code></td>
+<td><code>ST_GeogFromWKB</code>, <code>ST_GeogFromWKT</code></td>
+</tr>
+<tr>
+<td>Edge interpretation</td>
+<td>straight lines in a plane</td>
+<td>geodesics on a sphere</td>
+</tr>
+<tr>
+<td><code>ST_DWithin</code> threshold</td>
+<td>degrees (<code>0.45</code>, <code>0.045</code>, <code>0.0045</code>)</td>
+<td>metres (<code>50000</code>, <code>5000</code>, <code>500</code>)</td>
+</tr>
+<tr>
+<td><code>ST_Distance</code>, <code>ST_Length</code></td>
+<td>degrees</td>
+<td>metres</td>
+</tr>
+<tr>
+<td><code>ST_Area</code></td>
+<td>square degrees</td>
+<td>square metres</td>
+</tr>
+<tr>
+<td>Unit conversion in SQL</td>
+<td><code>/ 0.000009</code></td>
+<td>none needed</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">The two suites are not row-for-row comparable</p>
+<p>A 0.45° planar radius and a 50 000 m geodesic radius select different trips, so Q1
+returns a different 100 rows in each suite. That is the point of the exercise, not a
+discrepancy: each suite has its own ground truth, and results should only ever be
+compared within a suite.</p>
+</div>
+<h2 id="the-query-module">The query module<a class="headerlink" href="#the-query-module" title="Permanent link">¶</a></h2>
+<p>The same SQL is available outside this notebook from the query module, which prints the suite
+for a given dialect:</p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>spatialbench-queries/print_geography_queries.py<span class="w"> </span>SedonaDB
+</code></pre></div>
+<p>Running the queries needs an engine with a <code>GEOGRAPHY</code> type whose measures are geodesic;
+support for the individual functions is still filling in across engines, so check your
+engine's own reference for what it implements. Q12 is defined below but is not carried in the
+module and is not executed here: it is a K-nearest-neighbour join, and <code>ST_KNN</code> has no
+geography form yet.</p>
 <h2 id="before-you-start">Before you start<a class="headerlink" href="#before-you-start" title="Permanent link">¶</a></h2>
-<p>Before running this notebook, ensure that you have installed the packages in the <code>requirements.txt</code> file:</p>
 <div class="highlight"><pre><span></span><code><span class="o">%</span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">r</span> <span class="o">~/</span><span class="n">sedona</span><span class="o">-</span><span class="n">spatialbench</span><span class="o">/</span><span class="n">docs</span><span class="o">/</span><span class="n">requirements</span><span class="o">.</span><span class="n">txt</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code><span class="o">...</span>
-<span class="o">...</span>
-<span class="nx">Note</span><span class="p">:</span><span class="w"> </span><span class="nx">you</span><span class="w"> </span><span class="nx">may</span><span class="w"> </span><span class="nx">need</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">restart</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">kernel</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">use</span><span class="w"> </span><span class="nx">updated</span><span class="w"> </span><span class="nx">packages</span><span class="p">.</span>
-</code></pre></div>
-
 <p>Additionally, install the SpatialBench CLI and generate the synthetic data on your machine:</p>
 <div class="highlight"><pre><span></span><code># SpatialBench CLI
 cargo install --path ./spatialbench-cli
@@ -1566,86 +1691,70 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
     <span class="n">sd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">source</span><span class="p">)</span><span class="o">.</span><span class="n">to_view</span><span class="p">(</span><span class="n">table</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="q1-find-trips-starting-within-50km-of-sedona-city-center-ordered-by-distance">Q1: Find trips starting within 50km of Sedona city center, ordered by distance<a class="headerlink" href="#q1-find-trips-starting-within-50km-of-sedona-city-center-ordered-by-distance" title="Permanent link">¶</a></h2>
-<p><strong>Real-life scenario:</strong> Identify and rank trips by proximity to a city center for urban planning and transportation analysis.</p>
-<p>This query finds all taxi or rideshare trips that started within 50 kilometers of downtown Sedona, Arizona. For each qualifying trip, it shows the trip ID, pickup coordinates, pickup time, and calculates the exact distance from the pickup location to Sedona's city center. The results are sorted to show the trips that picked up closest to downtown Sedona first, making it easy to see which rides originated nearest to the city center.</p>
+<p><strong>Real-life scenario:</strong> Identify and rank trips by proximity to a city center for urban
+planning and transportation analysis.</p>
+<p>Unlike the geometry version, the 50 km radius is a true geodesic radius rather than a 0.45°
+angular one, and <code>distance_to_center</code> is in metres.</p>
 <p><strong>Spatial query characteristics tested:</strong></p>
 <ol>
-<li>Distance-based spatial filtering (ST_DWithin)</li>
-<li>Distance calculation to a fixed point</li>
-<li>Coordinate extraction (ST_X, ST_Y)</li>
+<li>Geodesic distance-based spatial filtering (<code>ST_DWithin</code>, metres)</li>
+<li>Geodesic distance calculation to a fixed point</li>
+<li>Coordinate extraction (<code>ST_X</code>, <code>ST_Y</code>)</li>
 <li>Ordering by spatial distance</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT</span>
 <span class="s2">    t.t_tripkey,</span>
+<span class="s2">    -- A point's coordinates are identical under either edge interpretation, so the lon/lat</span>
+<span class="s2">    -- projection stays on the geometry accessor, which is the more widely available one.</span>
 <span class="s2">    ST_X(ST_GeomFromWKB(t.t_pickuploc)) AS pickup_lon,</span>
 <span class="s2">    ST_Y(ST_GeomFromWKB(t.t_pickuploc)) AS pickup_lat,</span>
 <span class="s2">    t.t_pickuptime,</span>
 <span class="s2">    ST_Distance(</span>
-<span class="s2">        ST_GeomFromWKB(t.t_pickuploc),</span>
-<span class="s2">        ST_GeomFromText('POINT (-111.7610 34.8697)')</span>
-<span class="s2">    ) AS distance_to_center</span>
+<span class="s2">        ST_GeogFromWKB(t.t_pickuploc),</span>
+<span class="s2">        ST_GeogFromWKT('POINT (-111.7610 34.8697)')</span>
+<span class="s2">    ) AS distance_to_center -- metres</span>
 <span class="s2">FROM trip t</span>
 <span class="s2">WHERE ST_DWithin(</span>
-<span class="s2">    ST_GeomFromWKB(t.t_pickuploc),</span>
-<span class="s2">    ST_GeomFromText('POINT (-111.7610 34.8697)'),</span>
-<span class="s2">    0.45 -- 50km radius around Sedona center in degrees</span>
+<span class="s2">    ST_GeogFromWKB(t.t_pickuploc),</span>
+<span class="s2">    ST_GeogFromWKT('POINT (-111.7610 34.8697)'),</span>
+<span class="s2">    50000 -- 50 km geodesic radius around Sedona center</span>
 <span class="s2">)</span>
 <span class="s2">ORDER BY distance_to_center ASC, t.t_tripkey ASC</span>
 <span class="s2">LIMIT 100 -- Return only the 100 closest trips (bounded result set)</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────┬────────────────┬──────────────┬─────────────────────┬──────────────────────┐
-│ t_tripkey ┆   pickup_lon   ┆  pickup_lat  ┆     t_pickuptime    ┆  distance_to_center  │
-│   int64   ┆     float64    ┆    float64   ┆      timestamp      ┆        float64       │
-╞═══════════╪════════════════╪══════════════╪═════════════════════╪══════════════════════╡
-│   1451371 ┆ -111.791052127 ┆ 34.826733457 ┆ 1998-08-12T06:47:01 ┆  0.05243333056935387 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   2047835 ┆ -111.706967009 ┆ 34.883889472 ┆ 1992-04-08T07:36:09 ┆ 0.055865062714050374 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   3936870 ┆ -111.827619221 ┆ 34.882950924 ┆ 1998-11-10T13:32:07 ┆  0.06792427838042854 │
-└───────────┴────────────────┴──────────────┴─────────────────────┴──────────────────────┘
-</code></pre></div>
-
-<h2 id="q2-count-trips-starting-within-coconino-county-arizona-zone">Q2: Count trips starting within Coconino County (Arizona) zone<a class="headerlink" href="#q2-count-trips-starting-within-coconino-county-arizona-zone" title="Permanent link">¶</a></h2>
-<p><strong>Real-life scenario:</strong> Count all trips originating within a specific administrative boundary (county) for regional transportation statistics.</p>
-<p>This query counts how many taxi or rideshare trips started within Coconino County, Arizona. It does this by checking if each trip's pickup location falls inside the county's geographic boundaries. The result is a simple count showing the total number of trips that originated anywhere within Coconino County.</p>
+<h2 id="q2-count-trips-starting-within-coconino-county">Q2: Count trips starting within Coconino County<a class="headerlink" href="#q2-count-trips-starting-within-coconino-county" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Count trip activity inside an administrative boundary.</p>
+<p>The county polygon comes from Overture data with planar edges; reading it as a geography
+reinterprets those edges as geodesics, which can move the boundary by a few metres relative
+to the geometry suite and change the count for pickups that fall essentially on the border.</p>
 <p><strong>Spatial query characteristics tested:</strong></p>
 <ol>
-<li>Point-in-polygon spatial filtering (ST_Intersects)</li>
-<li>Subquery with spatial geometry selection</li>
-<li>Simple aggregation on spatially filtered data</li>
+<li>Point-in-polygon spatial predicate on the sphere (<code>ST_Intersects</code>)</li>
+<li>Scalar subquery producing the query geography</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT COUNT(*) AS trip_count_in_coconino_county</span>
 <span class="s2">FROM trip t</span>
 <span class="s2">WHERE ST_Intersects(</span>
-<span class="s2">    ST_GeomFromWKB(t.t_pickuploc),</span>
-<span class="s2">    (</span>
-<span class="s2">        SELECT ST_GeomFromWKB(z.z_boundary)</span>
-<span class="s2">        FROM zone z</span>
-<span class="s2">        WHERE z.z_name = 'Coconino County'</span>
-<span class="s2">        LIMIT 1</span>
-<span class="s2">    )</span>
+<span class="s2">    ST_GeogFromWKB(t.t_pickuploc),</span>
+<span class="s2">    (SELECT ST_GeogFromWKB(z.z_boundary) FROM zone z WHERE z.z_name = 'Coconino County' LIMIT 1)</span>
 <span class="s2">)</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────────────────────────┐
-│ trip_count_in_coconino_county │
-│             int64             │
-╞═══════════════════════════════╡
-│                           541 │
-└───────────────────────────────┘
-</code></pre></div>
-
-<h2 id="q3-monthly-trip-statistics-for-a-buffered-box-around-the-sedona-city-center">Q3: Monthly trip statistics for a buffered box around the Sedona city center<a class="headerlink" href="#q3-monthly-trip-statistics-for-a-buffered-box-around-the-sedona-city-center" title="Permanent link">¶</a></h2>
-<p><strong>Real-life scenario:</strong> Track monthly travel trends and performance metrics in a metropolitan area with seasonal analysis.</p>
-<p>This query analyzes taxi and rideshare trip patterns around Sedona, Arizona, by grouping trips into monthly summaries. It looks at all trips that started within a box around Sedona — roughly 26.5 km east-west by 30 km north-south, with corners about 20 km from the center — plus a further ~5 km buffer, and calculates key statistics for each month, including total number of trips, average trip distance, average trip duration, and average fare. The results are organized chronologically by month, allowing you to see seasonal trends and changes in ride patterns over time in the Sedona area.</p>
+<h2 id="q3-monthly-trip-statistics-for-a-buffered-box-around-sedona-city-center">Q3: Monthly trip statistics for a buffered box around Sedona city center<a class="headerlink" href="#q3-monthly-trip-statistics-for-a-buffered-box-around-sedona-city-center" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Track monthly demand, revenue and trip duration in a metro area.</p>
+<p>The polygon literal is the same ring as in the geometry suite, but its edges are geodesics
+here, so it is a spherical quadrilateral rather than a planar box.</p>
+<p>The ring is centred on Sedona and spans roughly <strong>26.5 km east–west by 30 km north–south</strong> —
+about 13 km and 15 km from the centre along each axis, with the corners ~20 km out. The 5 000 m
+buffer extends that to about 25 km at the corners.</p>
 <p><strong>Spatial query characteristics tested:</strong></p>
 <ol>
-<li>Distance-based spatial filtering (ST_DWithin) with buffer</li>
-<li>Temporal grouping (monthly aggregation)</li>
-<li>Multiple statistical aggregations on spatially filtered data</li>
+<li>Geodesic buffered-polygon filtering (<code>ST_DWithin</code>, metres)</li>
+<li>Temporal grouping with <code>DATE_TRUNC</code></li>
+<li>Multiple aggregations over a spatial filter</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT</span>
@@ -1656,166 +1765,100 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 <span class="s2">    AVG(t.t_fare) AS avg_fare</span>
 <span class="s2">FROM trip t</span>
 <span class="s2">WHERE ST_DWithin(</span>
-<span class="s2">    ST_GeomFromWKB(t.t_pickuploc),</span>
-<span class="s2">    ST_GeomFromText('POLYGON((</span>
-<span class="s2">        -111.9060 34.7347, -111.6160 34.7347,</span>
-<span class="s2">        -111.6160 35.0047, -111.9060 35.0047,</span>
-<span class="s2">        -111.9060 34.7347</span>
-<span class="s2">    ))'), -- Bounding box around Sedona</span>
-<span class="s2">    0.045 -- Additional 5km buffer in degrees</span>
+<span class="s2">    ST_GeogFromWKB(t.t_pickuploc),</span>
+<span class="s2">    -- ~26.5 km E-W by ~30 km N-S about the center; corners sit ~20 km out</span>
+<span class="s2">    ST_GeogFromWKT('POLYGON((-111.9060 34.7347, -111.6160 34.7347, -111.6160 35.0047, -111.9060 35.0047, -111.9060 34.7347))'),</span>
+<span class="s2">    5000 -- Additional 5 km geodesic buffer, so ~25 km at the corners</span>
 <span class="s2">)</span>
 <span class="s2">GROUP BY pickup_month</span>
 <span class="s2">ORDER BY pickup_month</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌─────────────────────┬─────────────┬──────────────┬─────────────────────────────────┬─────────────┐
-│     pickup_month    ┆ total_trips ┆ avg_distance ┆           avg_duration          ┆   avg_fare  │
-│      timestamp      ┆    int64    ┆  decimal128  ┆             duration            ┆  decimal128 │
-╞═════════════════════╪═════════════╪══════════════╪═════════════════════════════════╪═════════════╡
-│ 1992-04-01T00:00:00 ┆           2 ┆  0.000020000 ┆ 0 days 1 hours 23 mins 47.000 … ┆ 0.000075000 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ 1992-07-01T00:00:00 ┆           1 ┆  0.000010000 ┆ 0 days 0 hours 58 mins 58.000 … ┆ 0.000040000 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ 1994-02-01T00:00:00 ┆           2 ┆  0.000020000 ┆ 0 days 1 hours 23 mins 50.000 … ┆ 0.000050000 │
-└─────────────────────┴─────────────┴──────────────┴─────────────────────────────────┴─────────────┘
-</code></pre></div>
-
 <h2 id="q4-zone-distribution-of-top-1000-trips-by-tip-amount">Q4: Zone distribution of top 1000 trips by tip amount<a class="headerlink" href="#q4-zone-distribution-of-top-1000-trips-by-tip-amount" title="Permanent link">¶</a></h2>
-<p><strong>Real-life scenario:</strong> Analyze the geographic distribution of high-value trips (by tip amount) to understand premium service areas.</p>
-<p>This query identifies which neighborhoods or zones produced the most generous tippers by analyzing the top 1000 highest-tipping trips. It first finds the 1000 trips with the largest tips, then determines which geographic zones or neighborhoods those pickup locations fall within, and counts how many of these high-tip trips originated from each area. The results show a ranking of zones by the number of big tippers they produced, helping identify the most lucrative pickup areas for drivers seeking high-tip rides.</p>
+<p><strong>Real-life scenario:</strong> Find which neighbourhoods generate the most generous tips.</p>
 <p><strong>Spatial query characteristics tested:</strong></p>
 <ol>
-<li>Subquery with ordering and limiting</li>
-<li>Point-in-polygon spatial join (ST_Within)</li>
-<li>Aggregation on spatially joined results</li>
-<li>Multi-step query with spatial filtering and grouping</li>
+<li>Point-in-polygon spatial join on the sphere (<code>ST_Within</code>)</li>
+<li>Spatial join against a <code>LIMIT</code>-bounded subquery</li>
+<li>Aggregation on the spatial join result</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
-<span class="s2">SELECT</span>
-<span class="s2">    z.z_zonekey,</span>
-<span class="s2">    z.z_name,</span>
-<span class="s2">    COUNT(*) AS trip_count</span>
-<span class="s2">FROM</span>
-<span class="s2">    zone z</span>
-<span class="s2">    JOIN (</span>
-<span class="s2">        SELECT t.t_pickuploc</span>
-<span class="s2">        FROM trip t</span>
-<span class="s2">        ORDER BY t.t_tip DESC, t.t_tripkey ASC</span>
-<span class="s2">        LIMIT 1000</span>
-<span class="s2">    ) top_trips</span>
-<span class="s2">    ON ST_Within(</span>
-<span class="s2">        ST_GeomFromWKB(top_trips.t_pickuploc),</span>
-<span class="s2">        ST_GeomFromWKB(z.z_boundary)</span>
-<span class="s2">    )</span>
+<span class="s2">SELECT z.z_zonekey, z.z_name, COUNT(*) AS trip_count</span>
+<span class="s2">FROM zone z</span>
+<span class="s2">JOIN (</span>
+<span class="s2">    SELECT t.t_pickuploc</span>
+<span class="s2">    FROM trip t</span>
+<span class="s2">    ORDER BY t.t_tip DESC, t.t_tripkey ASC</span>
+<span class="s2">    LIMIT 1000 -- Replace 1000 with x (how many top tips you want)</span>
+<span class="s2">) top_trips</span>
+<span class="s2">ON ST_Within(ST_GeogFromWKB(top_trips.t_pickuploc), ST_GeogFromWKB(z.z_boundary))</span>
 <span class="s2">GROUP BY z.z_zonekey, z.z_name</span>
 <span class="s2">ORDER BY trip_count DESC, z.z_zonekey ASC</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────┬─────────────────────────────────┬────────────┐
-│ z_zonekey ┆              z_name             ┆ trip_count │
-│   int64   ┆               utf8              ┆    int64   │
-╞═══════════╪═════════════════════════════════╪════════════╡
-│     21286 ┆ Ndélé                           ┆         35 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
-│     80341 ┆ 乐山市                          ┆         27 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
-│     88075 ┆ 锡林郭勒盟 ᠰᠢᠯᠢ ᠶᠢᠨ ᠭᠣᠣᠯ ᠠᠶᠢᠮᠠᠭ ┆         19 │
-└───────────┴─────────────────────────────────┴────────────┘
-</code></pre></div>
-
-<h2 id="q5-monthly-travel-patterns-for-repeat-customers-convex-hull-of-dropoff-locations">Q5: Monthly travel patterns for repeat customers (convex hull of dropoff locations)<a class="headerlink" href="#q5-monthly-travel-patterns-for-repeat-customers-convex-hull-of-dropoff-locations" title="Permanent link">¶</a></h2>
-<p><strong>Real-life scenario:</strong> Analyze the geographic spread of travel patterns for frequent customers to understand their mobility behavior.</p>
-<p>This query analyzes the monthly travel patterns of frequent customers by measuring how much geographic area they cover with their trips. For each customer who took more than five trips in a month, it calculates the size of the "travel hull" - the area enclosed by connecting all their dropoff locations that month. Results are ranked by travel-hull area (largest first) so the most geographically spread-out repeat customer-months appear first, and are bounded to the top 100. Ranking by the hull area (rather than a plain trip count) ensures the convex hull is computed for every group, so the bound cannot be satisfied by a top-k shortcut that skips the spatial work.</p>
+<h2 id="q5-monthly-travel-patterns-for-repeat-customers">Q5: Monthly travel patterns for repeat customers<a class="headerlink" href="#q5-monthly-travel-patterns-for-repeat-customers" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Measure how large an area each frequent customer travels across in a
+month, from the convex hull of their dropoff locations.</p>
+<p>In the geography suite <code>monthly_travel_hull_area</code> is a spherical area in square metres, and
+the hull itself is computed with geodesic edges.</p>
 <p><strong>Spatial query characteristics tested:</strong></p>
 <ol>
-<li>Spatial aggregation (ST_Collect/ARRAY_AGG)</li>
-<li>Convex hull computation (ST_ConvexHull)</li>
-<li>Area calculation on complex geometries</li>
-<li>Temporal and customer-based grouping with spatial operations</li>
+<li>Geography aggregation into a collection (<code>ST_Collect_Agg</code>)</li>
+<li>Spherical convex hull (<code>ST_ConvexHull</code>)</li>
+<li>Spherical area (<code>ST_Area</code>, m²)</li>
+<li>Grouped aggregation with <code>HAVING</code></li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT</span>
 <span class="s2">    c.c_custkey,</span>
 <span class="s2">    c.c_name AS customer_name,</span>
 <span class="s2">    DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,</span>
-<span class="s2">    ST_Area(</span>
-<span class="s2">        ST_ConvexHull(ST_Collect(ST_GeomFromWKB(t.t_dropoffloc)))</span>
-<span class="s2">    ) AS monthly_travel_hull_area,</span>
-<span class="s2">    COUNT(*) as dropoff_count</span>
+<span class="s2">    ST_Area(ST_ConvexHull(ST_Collect_Agg(ST_GeogFromWKB(t.t_dropoffloc)))) AS monthly_travel_hull_area, -- m^2</span>
+<span class="s2">    COUNT(*) AS dropoff_count</span>
 <span class="s2">FROM trip t</span>
-<span class="s2">JOIN customer c</span>
-<span class="s2">    ON t.t_custkey = c.c_custkey</span>
+<span class="s2">JOIN customer c ON t.t_custkey = c.c_custkey</span>
 <span class="s2">GROUP BY c.c_custkey, c.c_name, pickup_month</span>
-<span class="s2">HAVING dropoff_count &gt; 5 -- Only include repeat customers</span>
+<span class="s2">HAVING dropoff_count &gt; 5 -- Only include repeat customers for meaningful hulls</span>
 <span class="s2">ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC, pickup_month ASC</span>
 <span class="s2">LIMIT 100 -- Return only the top 100 repeat customer-months by travel-hull area (bounded result set)</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────┬────────────────────┬─────────────────────┬────────────────────┬───────────────┐
-│ c_custkey ┆    customer_name   ┆     pickup_month    ┆ monthly_travel_hul ┆ dropoff_count │
-│   int64   ┆        utf8        ┆      timestamp      ┆       l_area…      ┆     int64     │
-╞═══════════╪════════════════════╪═════════════════════╪════════════════════╪═══════════════╡
-│     10609 ┆ Customer#000010609 ┆ 1998-05-01T00:00:00 ┆   36943.5600373373 ┆            11 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│     25975 ┆ Customer#000025975 ┆ 1992-02-01T00:00:00 ┆ 34941.303419053635 ┆            10 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│     12061 ┆ Customer#000012061 ┆ 1997-03-01T00:00:00 ┆  34607.53871953154 ┆            14 │
-└───────────┴────────────────────┴─────────────────────┴────────────────────┴───────────────┘
-</code></pre></div>
-
-<h2 id="q6-zone-statistics-for-trips-within-a-50km-radius-of-the-sedona-city-center">Q6: Zone statistics for trips within a 50km radius of the Sedona city center<a class="headerlink" href="#q6-zone-statistics-for-trips-within-a-50km-radius-of-the-sedona-city-center" title="Permanent link">¶</a></h2>
-<p><strong>Real-life scenario:</strong> Analyze trip patterns in zones within a metropolitan area around a specific city center.</p>
-<p>This query analyzes ride activity across all neighborhoods and zones within a 50-kilometer area around Sedona, Arizona. It identifies which zones had the most pickup activity by counting total trips that started in each region. Also, it calculates the average trip cost and duration for rides originating from each zone. The results are ranked by pickup volume, showing which neighborhoods or areas generate the most ride demand and their typical trip characteristics within the greater Sedona region.</p>
+<h2 id="q6-zone-statistics-for-trips-intersecting-a-bounding-box">Q6: Zone statistics for trips intersecting a bounding box<a class="headerlink" href="#q6-zone-statistics-for-trips-intersecting-a-bounding-box" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Summarise trip activity for every zone touching a region of interest.</p>
 <p><strong>Spatial query characteristics tested:</strong></p>
 <ol>
-<li>Polygon containment check (ST_Contains) with bounding box</li>
-<li>Point-in-polygon spatial join (ST_Within)</li>
+<li>Two spatial predicates in one join (<code>ST_Intersects</code> and <code>ST_Within</code>)</li>
+<li>Polygon-polygon intersection test on the sphere</li>
+<li>Aggregation over a doubly-filtered join</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT</span>
-<span class="s2">    z.z_zonekey,</span>
-<span class="s2">    z.z_name,</span>
+<span class="s2">    z.z_zonekey, z.z_name,</span>
 <span class="s2">    COUNT(t.t_tripkey) AS total_pickups,</span>
 <span class="s2">    AVG(t.t_distance) AS avg_distance,</span>
 <span class="s2">    AVG(t.t_dropofftime - t.t_pickuptime) AS avg_duration</span>
 <span class="s2">FROM trip t, zone z</span>
 <span class="s2">WHERE ST_Intersects(</span>
-<span class="s2">    ST_GeomFromText('POLYGON((</span>
-<span class="s2">        -112.2110 34.4197, -111.3110 34.4197,</span>
-<span class="s2">        -111.3110 35.3197, -112.2110 35.3197,</span>
-<span class="s2">        -112.2110 34.4197</span>
-<span class="s2">    ))'), -- Bounding box around Sedona</span>
-<span class="s2">    ST_GeomFromWKB(z.z_boundary)</span>
-<span class="s2">  )</span>
-<span class="s2">  AND ST_Within(</span>
-<span class="s2">    ST_GeomFromWKB(t.t_pickuploc),</span>
-<span class="s2">    ST_GeomFromWKB(z.z_boundary)</span>
-<span class="s2">  )</span>
+<span class="s2">        ST_GeogFromWKT('POLYGON((-112.2110 34.4197, -111.3110 34.4197, -111.3110 35.3197, -112.2110 35.3197, -112.2110 34.4197))'),</span>
+<span class="s2">        ST_GeogFromWKB(z.z_boundary)</span>
+<span class="s2">    )</span>
+<span class="s2">  AND ST_Within(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromWKB(z.z_boundary))</span>
 <span class="s2">GROUP BY z.z_zonekey, z.z_name</span>
 <span class="s2">ORDER BY total_pickups DESC, z.z_zonekey ASC</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────┬─────────────────┬───────────────┬──────────────┬────────────────────────────────────┐
-│ z_zonekey ┆      z_name     ┆ total_pickups ┆ avg_distance ┆            avg_duration            │
-│   int64   ┆       utf8      ┆     int64     ┆  decimal128  ┆              duration              │
-╞═══════════╪═════════════════╪═══════════════╪══════════════╪════════════════════════════════════╡
-│    149106 ┆ Coconino County ┆           541 ┆  0.000030406 ┆ 0 days 1 hours 45 mins 16.591 secs │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│    132418 ┆ Yavapai County  ┆           292 ┆  0.000027157 ┆ 0 days 1 hours 36 mins 43.647 secs │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│     82996 ┆ Gila County     ┆            39 ┆  0.000021282 ┆ 0 days 1 hours 16 mins 59.769 secs │
-└───────────┴─────────────────┴───────────────┴──────────────┴────────────────────────────────────┘
-</code></pre></div>
-
-<h2 id="q7-detect-potential-route-detours-by-comparing-reported-vs-geometric-distances">Q7: Detect potential route detours by comparing reported vs. geometric distances<a class="headerlink" href="#q7-detect-potential-route-detours-by-comparing-reported-vs-geometric-distances" title="Permanent link">¶</a></h2>
-<p><strong>Real-life scenario:</strong> Identify suspicious trips where the reported distance significantly exceeds the straight-line distance, potentially indicating fare manipulation.</p>
-<p>This query analyzes how much taxi and rideshare trips deviate from the most direct route by comparing the actual reported trip distance to the straight-line distance between pickup and dropoff points. It calculates a "detour ratio" that shows how much longer the actual route was compared to flying in a straight line.  For example, a ratio of 1.5 means the trip was 50% longer than the direct path. The results are sorted to show the trips with the highest detour ratios first, helping identify routes that took significant detours due to traffic, road layouts, or other factors.</p>
+<h2 id="q7-detect-potential-route-detours">Q7: Detect potential route detours<a class="headerlink" href="#q7-detect-potential-route-detours" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Flag trips whose reported distance greatly exceeds the straight-line
+distance between pickup and dropoff, a signal for detours or fare padding.</p>
+<p>This is the query the geography type helps most. The geometry version measures a planar line
+length in degrees and divides by <code>0.000009</code> to pretend it is metres; the geography version
+measures the geodesic directly, so <code>line_distance_m</code> and <code>detour_ratio</code> are meaningful
+everywhere in the dataset rather than only near the equator.</p>
 <p><strong>Spatial query characteristics tested:</strong></p>
 <ol>
-<li>Line geometry creation (ST_MakeLine)</li>
-<li>Length calculation (ST_Length)</li>
-<li>Coordinate system conversion and distance calculations</li>
-<li>Ratio-based filtering on geometric vs. reported measurements</li>
+<li>Line construction from two points (<code>ST_MakeLine</code>)</li>
+<li>Geodesic length (<code>ST_Length</code>, metres)</li>
+<li>Ratio computation with division-by-zero guarding</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">WITH trip_lengths AS (</span>
@@ -1824,10 +1867,10 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 <span class="s2">        t.t_distance AS reported_distance_m,</span>
 <span class="s2">        ST_Length(</span>
 <span class="s2">            ST_MakeLine(</span>
-<span class="s2">                ST_GeomFromWKB(t.t_pickuploc),</span>
-<span class="s2">                ST_GeomFromWKB(t.t_dropoffloc)</span>
+<span class="s2">                ST_GeogFromWKB(t.t_pickuploc),</span>
+<span class="s2">                ST_GeogFromWKB(t.t_dropoffloc)</span>
 <span class="s2">            )</span>
-<span class="s2">        ) * 111111 AS line_distance_m -- Approx. meters per degree</span>
+<span class="s2">        ) AS line_distance_m -- metres, no degree conversion needed</span>
 <span class="s2">    FROM trip t</span>
 <span class="s2">)</span>
 <span class="s2">SELECT</span>
@@ -1836,119 +1879,82 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 <span class="s2">    t.line_distance_m,</span>
 <span class="s2">    t.reported_distance_m / NULLIF(t.line_distance_m, 0) AS detour_ratio</span>
 <span class="s2">FROM trip_lengths t</span>
-<span class="s2">ORDER BY</span>
-<span class="s2">    detour_ratio DESC NULLS LAST,</span>
-<span class="s2">    reported_distance_m DESC,</span>
-<span class="s2">    t_tripkey ASC</span>
+<span class="s2">ORDER BY detour_ratio DESC NULLS LAST, reported_distance_m DESC, t_tripkey ASC</span>
 <span class="s2">LIMIT 100 -- Return only the top 100 highest-detour trips (bounded result set)</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────┬─────────────────────┬────────────────────┬──────────────────────┐
-│ t_tripkey ┆ reported_distance_m ┆   line_distance_m  ┆     detour_ratio     │
-│   int64   ┆      decimal128     ┆       float64      ┆        float64       │
-╞═══════════╪═════════════════════╪════════════════════╪══════════════════════╡
-│   4688563 ┆             0.00010 ┆ 11111.114941555596 ┆ 8.999996897341038e-9 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   2380123 ┆             0.00010 ┆ 11111.114983939786 ┆ 8.999996863009868e-9 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   3077131 ┆             0.00010 ┆ 11111.115027455284 ┆ 8.999996827762339e-9 │
-└───────────┴─────────────────────┴────────────────────┴──────────────────────┘
-</code></pre></div>
-
 <h2 id="q8-count-nearby-pickups-for-each-building-within-a-500m-radius">Q8: Count nearby pickups for each building within a 500m radius<a class="headerlink" href="#q8-count-nearby-pickups-for-each-building-within-a-500m-radius" title="Permanent link">¶</a></h2>
-<p><strong>Real-life scenario:</strong> Count how many trips start within 500 meters of each building.</p>
-<p>This query identifies which buildings generate the most taxi and rideshare pickup activity by counting trips that started within 500 meters of each building. It analyzes the relationship between specific buildings (like hotels, shopping centers, airports, or office buildings) and ride demand in their immediate vicinity. The results are ranked to show which buildings are the biggest trip generators, helping identify key pickup hotspots and understand how different types of buildings drive transportation demand.</p>
+<p><strong>Real-life scenario:</strong> Find the buildings that generate the most pickup activity.</p>
+<p>The 500 m radius is a true geodesic distance from the building footprint, so the catchment is
+the same physical size for a building in Norway as for one in Kenya — unlike the geometry
+suite, where <code>0.0045°</code> is a much narrower band at high latitude.</p>
 <p><strong>Spatial query characteristics tested:</strong></p>
 <ol>
-<li>Distance spatial join between points and polygons</li>
+<li>Geodesic distance spatial join between points and polygons (<code>ST_DWithin</code>, metres)</li>
 <li>Aggregation on spatial join result</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT b.b_buildingkey, b.b_name, COUNT(*) AS nearby_pickup_count</span>
 <span class="s2">FROM trip t</span>
 <span class="s2">JOIN building b</span>
-<span class="s2">ON ST_DWithin(ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(b.b_boundary), 0.0045) -- ~500m</span>
+<span class="s2">ON ST_DWithin(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromWKB(b.b_boundary), 500) -- 500 m geodesic</span>
 <span class="s2">GROUP BY b.b_buildingkey, b.b_name</span>
 <span class="s2">ORDER BY nearby_pickup_count DESC, b.b_buildingkey ASC</span>
 <span class="s2">LIMIT 100 -- Return only the top 100 busiest buildings (bounded result set)</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────────┬────────┬─────────────────────┐
-│ b_buildingkey ┆ b_name ┆ nearby_pickup_count │
-│     int64     ┆  utf8  ┆        int64        │
-╞═══════════════╪════════╪═════════════════════╡
-│          3779 ┆ linen  ┆                  42 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│         19135 ┆ misty  ┆                  36 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│          4416 ┆ sienna ┆                  26 │
-└───────────────┴────────┴─────────────────────┘
-</code></pre></div>
-
 <h2 id="q9-building-conflation-duplicateoverlap-detection-via-iou">Q9: Building Conflation (duplicate/overlap detection via IoU)<a class="headerlink" href="#q9-building-conflation-duplicateoverlap-detection-via-iou" title="Permanent link">¶</a></h2>
-<p><strong>Real-life scenario:</strong> Detect duplicate or overlapping building footprints in GIS datasets to identify data quality issues.</p>
-<p>This query identifies overlapping buildings by calculating how much their footprints intersect with each other. For every pair of buildings that touch or overlap, it measures the total area of each building and the area where they overlap, then calculates an "Intersection over Union" (IoU) score that ranges from 0 to 1. The results are sorted by IoU score to show the most significantly overlapping building pairs first, which could help identify data quality issues, adjacent structures, or buildings that share common areas like courtyards or parking lots.</p>
+<p><strong>Real-life scenario:</strong> Detect duplicate or overlapping building footprints to find data
+quality issues.</p>
+<p><code>area1</code>, <code>area2</code> and <code>overlap_area</code> are square metres here rather than square degrees, which
+makes them directly interpretable. <code>iou</code> is a ratio of areas, so it is dimensionless in both
+suites — though the values still differ, because the ratio of spherical areas is not the ratio
+of planar ones.</p>
 <p><strong>Spatial query characteristics tested:</strong></p>
 <ol>
-<li>Self-join with spatial intersection (ST_Intersects)</li>
-<li>Area calculations (ST_Area)</li>
-<li>Geometric intersection operations (ST_Intersection)</li>
-<li>Complex geometric ratio calculations (IoU - Intersection over Union)</li>
+<li>Polygon-polygon self-join with a spatial predicate (<code>ST_Intersects</code>)</li>
+<li>Spherical overlay (<code>ST_Intersection</code>)</li>
+<li>Spherical area (<code>ST_Area</code>, m²)</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">WITH b1 AS (</span>
-<span class="s2">   SELECT b_buildingkey AS id, ST_GeomFromWKB(b_boundary) AS geom</span>
-<span class="s2">   FROM building</span>
+<span class="s2">    SELECT b_buildingkey AS id, ST_GeogFromWKB(b_boundary) AS geog FROM building</span>
 <span class="s2">),</span>
 <span class="s2">b2 AS (</span>
-<span class="s2">    SELECT b_buildingkey AS id, ST_GeomFromWKB(b_boundary) AS geom</span>
-<span class="s2">    FROM building</span>
+<span class="s2">    SELECT b_buildingkey AS id, ST_GeogFromWKB(b_boundary) AS geog FROM building</span>
 <span class="s2">),</span>
 <span class="s2">pairs AS (</span>
 <span class="s2">    SELECT</span>
 <span class="s2">        b1.id AS building_1,</span>
 <span class="s2">        b2.id AS building_2,</span>
-<span class="s2">        ST_Area(b1.geom) AS area1,</span>
-<span class="s2">        ST_Area(b2.geom) AS area2,</span>
-<span class="s2">        ST_Area(ST_Intersection(b1.geom, b2.geom)) AS overlap_area</span>
+<span class="s2">        ST_Area(b1.geog) AS area1,        -- m^2</span>
+<span class="s2">        ST_Area(b2.geog) AS area2,        -- m^2</span>
+<span class="s2">        ST_Area(ST_Intersection(b1.geog, b2.geog)) AS overlap_area -- m^2</span>
 <span class="s2">    FROM b1</span>
-<span class="s2">    JOIN b2 ON b1.id &lt; b2.id AND ST_Intersects(b1.geom, b2.geom)</span>
+<span class="s2">    JOIN b2 ON b1.id &lt; b2.id AND ST_Intersects(b1.geog, b2.geog)</span>
 <span class="s2">)</span>
 <span class="s2">SELECT</span>
-<span class="s2">   building_1,</span>
-<span class="s2">   building_2,</span>
-<span class="s2">   area1,</span>
-<span class="s2">   area2,</span>
-<span class="s2">   overlap_area,</span>
-<span class="s2">   CASE</span>
-<span class="s2">       WHEN (area1 + area2 - overlap_area) = 0 THEN 1.0</span>
-<span class="s2">       ELSE overlap_area / (area1 + area2 - overlap_area)</span>
-<span class="s2">   END AS iou</span>
+<span class="s2">    building_1,</span>
+<span class="s2">    building_2,</span>
+<span class="s2">    area1,</span>
+<span class="s2">    area2,</span>
+<span class="s2">    overlap_area,</span>
+<span class="s2">    CASE</span>
+<span class="s2">        WHEN overlap_area = 0 THEN 0.0</span>
+<span class="s2">        WHEN (area1 + area2 - overlap_area) = 0 THEN 1.0</span>
+<span class="s2">        ELSE overlap_area / (area1 + area2 - overlap_area)</span>
+<span class="s2">    END AS iou</span>
 <span class="s2">FROM pairs</span>
 <span class="s2">ORDER BY iou DESC, building_1 ASC, building_2 ASC</span>
 <span class="s2">LIMIT 100 -- Return only the top 100 most-overlapping building pairs (bounded result set)</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌────────────┬────────────┬───┬─────────────────────────┬────────────────────┐
-│ building_1 ┆ building_2 ┆ … ┆       overlap_area      ┆         iou        │
-│    int64   ┆    int64   ┆   ┆         float64         ┆       float64      │
-╞════════════╪════════════╪═══╪═════════════════════════╪════════════════════╡
-│       7562 ┆      18534 ┆ … ┆ 0.000022785758541344757 ┆ 0.8415764980401906 │
-├╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│       2285 ┆      15719 ┆ … ┆    6.445979506828921e-6 ┆ 0.7022218100645453 │
-├╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│      13658 ┆      15719 ┆ … ┆    6.813826545713668e-6 ┆ 0.7019832720541139 │
-└────────────┴────────────┴───┴─────────────────────────┴────────────────────┘
-</code></pre></div>
-
 <h2 id="q10-zone-statistics-for-trips-starting-within-each-zone">Q10: Zone statistics for trips starting within each zone<a class="headerlink" href="#q10-zone-statistics-for-trips-starting-within-each-zone" title="Permanent link">¶</a></h2>
-<p><strong>Real-life scenario:</strong> Analyze trip patterns and performance metrics for each administrative zone (like city districts or neighborhoods).</p>
-<p>This query analyzes trip patterns across all geographic zones by calculating average trip duration, distance, and volume for rides originating from each area. It uses a left join to include all zones in the results, even those with no pickup activity, showing which neighborhoods generate longer trips on average versus shorter local rides. The results are sorted by average trip duration to identify zones where people tend to take longer journeys, which could indicate more isolated areas, have limited local amenities, or serve as departure points for longer-distance travel.</p>
+<p><strong>Real-life scenario:</strong> Rank zones by average trip duration, keeping zones with no trips.</p>
 <p><strong>Spatial query characteristics tested:</strong></p>
 <ol>
-<li>Point-in-polygon spatial join (ST_Within)</li>
-<li>Aggregation with multiple metrics (average duration, distance, count)</li>
-<li>LEFT JOIN to include zones with no trips</li>
+<li>Left spatial join on the sphere (<code>ST_Within</code>), preserving unmatched zones</li>
+<li>Aggregation with <code>NULL</code> handling in the ordering</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT</span>
@@ -1957,111 +1963,62 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 <span class="s2">    AVG(t.t_dropofftime - t.t_pickuptime) AS avg_duration,</span>
 <span class="s2">    AVG(t.t_distance) AS avg_distance,</span>
 <span class="s2">    COUNT(t.t_tripkey) AS num_trips</span>
-<span class="s2">FROM</span>
-<span class="s2">    zone z</span>
-<span class="s2">    LEFT JOIN trip t</span>
-<span class="s2">    ON ST_Within(</span>
-<span class="s2">        ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(z.z_boundary)</span>
-<span class="s2">    )</span>
+<span class="s2">FROM zone z</span>
+<span class="s2">LEFT JOIN trip t ON ST_Within(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromWKB(z.z_boundary))</span>
 <span class="s2">GROUP BY z.z_zonekey, z.z_name</span>
 <span class="s2">ORDER BY avg_duration DESC NULLS LAST, z.z_zonekey ASC</span>
 <span class="s2">LIMIT 100 -- Return only the top 100 zones by average trip duration (bounded result set)</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────┬────────────────┬────────────────────────────────────┬──────────────┬───────────┐
-│ z_zonekey ┆   pickup_zone  ┆            avg_duration            ┆ avg_distance ┆ num_trips │
-│   int64   ┆      utf8      ┆              duration              ┆  decimal128  ┆   int64   │
-╞═══════════╪════════════════╪════════════════════════════════════╪══════════════╪═══════════╡
-│     13183 ┆ Benewah County ┆ 4 days 13 hours 3 mins 34.000 secs ┆  0.002180000 ┆         2 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-│    124002 ┆ Kreis Unna     ┆ 2 days 4 hours 52 mins 44.000 secs ┆  0.001050000 ┆         1 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-│     52386 ┆ Castel di Leva ┆ 2 days 4 hours 19 mins 39.000 secs ┆  0.001040000 ┆         1 │
-└───────────┴────────────────┴────────────────────────────────────┴──────────────┴───────────┘
-</code></pre></div>
-
 <h2 id="q11-count-trips-that-cross-between-different-zones">Q11: Count trips that cross between different zones<a class="headerlink" href="#q11-count-trips-that-cross-between-different-zones" title="Permanent link">¶</a></h2>
-<p><strong>Real-life scenario:</strong> Identify inter-district or inter-city trips to understand cross-boundary travel patterns.</p>
-<p>This query counts how many trips crossed zone boundaries by starting in one geographic zone and ending in a different zone. It identifies each trip's pickup and dropoff zones, then filters to only include trips where the pickup zone is different from the dropoff zone. The result shows the total number of inter-zone trips, helping measure how much travel occurs between different neighborhoods, districts, or areas rather than staying within the same local zone.</p>
+<p><strong>Real-life scenario:</strong> Quantify inter-zone travel demand for transit planning.</p>
 <p><strong>Spatial query characteristics tested:</strong></p>
 <ol>
-<li>Multiple point-in-polygon spatial joins</li>
-<li>Filtering based on spatial relationship results</li>
+<li>Two independent point-in-polygon spatial joins on the sphere</li>
+<li>Non-spatial filter on the join result</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT COUNT(*) AS cross_zone_trip_count</span>
-<span class="s2">FROM</span>
-<span class="s2">    trip t</span>
-<span class="s2">    JOIN zone pickup_zone</span>
-<span class="s2">        ON ST_Within(</span>
-<span class="s2">            ST_GeomFromWKB(t.t_pickuploc),</span>
-<span class="s2">            ST_GeomFromWKB(pickup_zone.z_boundary)</span>
-<span class="s2">        )</span>
-<span class="s2">    JOIN zone dropoff_zone</span>
-<span class="s2">        ON ST_Within(</span>
-<span class="s2">            ST_GeomFromWKB(t.t_dropoffloc),</span>
-<span class="s2">            ST_GeomFromWKB(dropoff_zone.z_boundary)</span>
-<span class="s2">        )</span>
+<span class="s2">FROM trip t</span>
+<span class="s2">JOIN zone pickup_zone ON ST_Within(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromWKB(pickup_zone.z_boundary))</span>
+<span class="s2">JOIN zone dropoff_zone ON ST_Within(ST_GeogFromWKB(t.t_dropoffloc), ST_GeogFromWKB(dropoff_zone.z_boundary))</span>
 <span class="s2">WHERE pickup_zone.z_zonekey != dropoff_zone.z_zonekey</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────────────────┐
-│ cross_zone_trip_count │
-│         int64         │
-╞═══════════════════════╡
-│                176391 │
-└───────────────────────┘
-</code></pre></div>
-
-<h2 id="q12-rank-trip-pickups-by-average-distance-to-their-five-nearest-buildings-knn-join">Q12: Rank trip pickups by average distance to their five nearest buildings (KNN join)<a class="headerlink" href="#q12-rank-trip-pickups-by-average-distance-to-their-five-nearest-buildings-knn-join" title="Permanent link">¶</a></h2>
-<p><strong>Real-life scenario:</strong> Identify the most isolated trip pickups — those in areas with the fewest nearby buildings — for coverage and location-context analysis.</p>
-<p>This query finds the 5 closest buildings to each trip pickup location using spatial nearest neighbor analysis, then averages those five distances to produce a single "local building density" measure per pickup. Ranking pickups by this average (largest first) surfaces the most isolated trip origins — those farthest from any surrounding buildings — which can indicate rural areas, coverage gaps, or unusual pickup locations. The result is bounded to the top 100 pickups.</p>
+<h2 id="q12-rank-trip-pickups-by-average-distance-to-their-5-nearest-buildings">Q12: Rank trip pickups by average distance to their 5 nearest buildings<a class="headerlink" href="#q12-rank-trip-pickups-by-average-distance-to-their-5-nearest-buildings" title="Permanent link">¶</a></h2>
+<p><strong>Real-life scenario:</strong> Find the most isolated pickups — those farthest from any surrounding
+building — for coverage and service-gap analysis.</p>
+<p><code>avg_distance_to_5_nearest</code> is in metres, and the neighbour ranking itself is by geodesic
+distance rather than planar degrees, so the "5 nearest buildings" are genuinely the 5 nearest
+on the ground.</p>
 <p><strong>Spatial query characteristics tested:</strong></p>
 <ol>
-<li>K-nearest neighbor (KNN) spatial join</li>
-<li>Distance calculations between points and polygons</li>
-<li>Aggregation (average) over each pickup's k nearest neighbors</li>
-<li>Ranking and limiting the aggregated per-pickup results</li>
+<li>K-nearest-neighbour spatial join on the sphere (<code>ST_KNN</code>)</li>
+<li>Geodesic point-to-polygon distance (<code>ST_Distance</code>, metres)</li>
+<li>Aggregation over the KNN result</li>
 </ol>
-<div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
-<span class="s2">WITH trip_with_geom AS (</span>
-<span class="s2">    SELECT</span>
-<span class="s2">        t_tripkey,</span>
-<span class="s2">        ST_GeomFromWKB(t_pickuploc) as pickup_geom</span>
-<span class="s2">    FROM trip</span>
-<span class="s2">),</span>
-<span class="s2">building_with_geom AS (</span>
-<span class="s2">    SELECT</span>
-<span class="s2">        ST_GeomFromWKB(b_boundary) as boundary_geom</span>
-<span class="s2">    FROM building</span>
-<span class="s2">),</span>
-<span class="s2">knn AS (</span>
-<span class="s2">    SELECT</span>
-<span class="s2">        t.t_tripkey,</span>
-<span class="s2">        ST_Distance(t.pickup_geom, b.boundary_geom) AS distance_to_building</span>
-<span class="s2">    FROM trip_with_geom t</span>
-<span class="s2">    JOIN building_with_geom b</span>
-<span class="s2">        ON ST_KNN(t.pickup_geom, b.boundary_geom, 5, FALSE)</span>
-<span class="s2">)</span>
-<span class="s2">SELECT</span>
-<span class="s2">    t_tripkey,</span>
-<span class="s2">    AVG(distance_to_building) AS avg_distance_to_5_nearest</span>
-<span class="s2">FROM knn</span>
-<span class="s2">GROUP BY t_tripkey</span>
-<span class="s2">ORDER BY avg_distance_to_5_nearest DESC, t_tripkey ASC</span>
-<span class="s2">LIMIT 100 -- Return only the top 100 most-isolated pickups (bounded result set)</span>
-<span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
-</code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────┬───────────────────────────┐
-│ t_tripkey ┆ avg_distance_to_5_nearest │
-│   int64   ┆          float64          │
-╞═══════════╪═══════════════════════════╡
-│   1397637 ┆         82.40977530183955 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   4166482 ┆         82.38756120900636 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   2976679 ┆         82.36270091818895 │
-└───────────┴───────────────────────────┘
+<div class="highlight"><pre><span></span><code><span class="k">WITH</span><span class="w"> </span><span class="n">trip_with_geog</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="k">SELECT</span><span class="w"> </span><span class="n">t_tripkey</span><span class="p">,</span><span class="w"> </span><span class="n">ST_GeogFromWKB</span><span class="p">(</span><span class="n">t_pickuploc</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">pickup_geog</span>
+<span class="w">    </span><span class="k">FROM</span><span class="w"> </span><span class="n">trip</span>
+<span class="p">),</span>
+<span class="n">building_with_geog</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="k">SELECT</span><span class="w"> </span><span class="n">ST_GeogFromWKB</span><span class="p">(</span><span class="n">b_boundary</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">boundary_geog</span>
+<span class="w">    </span><span class="k">FROM</span><span class="w"> </span><span class="n">building</span>
+<span class="p">),</span>
+<span class="n">knn</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="k">SELECT</span>
+<span class="w">        </span><span class="n">t</span><span class="p">.</span><span class="n">t_tripkey</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ST_Distance</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">pickup_geog</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">boundary_geog</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">distance_to_building</span><span class="w"> </span><span class="c1">-- metres</span>
+<span class="w">    </span><span class="k">FROM</span><span class="w"> </span><span class="n">trip_with_geog</span><span class="w"> </span><span class="n">t</span>
+<span class="w">    </span><span class="k">JOIN</span><span class="w"> </span><span class="n">building_with_geog</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">ST_KNN</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">pickup_geog</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">boundary_geog</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="k">TRUE</span><span class="p">)</span><span class="w"> </span><span class="c1">-- TRUE = rank by spherical distance</span>
+<span class="p">)</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">t_tripkey</span><span class="p">,</span>
+<span class="w">    </span><span class="k">AVG</span><span class="p">(</span><span class="n">distance_to_building</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">avg_distance_to_5_nearest</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">knn</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">t_tripkey</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">avg_distance_to_5_nearest</span><span class="w"> </span><span class="k">DESC</span><span class="p">,</span><span class="w"> </span><span class="n">t_tripkey</span><span class="w"> </span><span class="k">ASC</span>
+<span class="k">LIMIT</span><span class="w"> </span><span class="mi">100</span><span class="w"> </span><span class="c1">-- Return only the top 100 most-isolated pickups (bounded result set)</span>
 </code></pre></div>
 
 

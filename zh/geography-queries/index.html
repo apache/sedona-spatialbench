@@ -7,17 +7,17 @@
       
       
       
-        <link rel="canonical" href="https://sedona.apache.org/spatialbench/zh/queries/">
+        <link rel="canonical" href="https://sedona.apache.org/spatialbench/zh/geography-queries/">
       
       
-        <link rel="prev" href="../overview-methodology/">
+        <link rel="prev" href="../queries/">
       
       
-        <link rel="next" href="../geography-queries/">
+        <link rel="next" href="../datasets-generators/">
       
       
         
-          <link rel="alternate" href="../../queries/" hreflang="en">
+          <link rel="alternate" href="../../geography-queries/" hreflang="en">
         
           <link rel="alternate" href="./" hreflang="zh">
         
@@ -28,7 +28,7 @@
     
     
       
-        <title>SpatialBench 查询（几何） - SpatialBench</title>
+        <title>地理查询 - SpatialBench</title>
       
     
     
@@ -165,7 +165,7 @@
             <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              SpatialBench 查询（几何）
+              地理查询
             
           </span>
             </div>
@@ -192,7 +192,7 @@
       <ul class="md-select__list">
         
           <li class="md-select__item">
-            <a href="../../queries/" hreflang="en" class="md-select__link">
+            <a href="../../geography-queries/" hreflang="en" class="md-select__link">
               English
             </a>
           </li>
@@ -856,6 +856,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../queries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SpatialBench 查询（几何）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -875,7 +903,7 @@
   <span class="md-ellipsis">
     
   
-    SpatialBench 查询（几何）
+    SpatialBench 查询（地理）
   
 
     
@@ -893,7 +921,7 @@
   <span class="md-ellipsis">
     
   
-    SpatialBench 查询（几何）
+    SpatialBench 查询（地理）
   
 
     
@@ -922,6 +950,28 @@
   <a href="#_1" class="md-nav__link">
     <span class="md-ellipsis">
       
+        为什么需要第二套查询
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        查询模块
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
         在开始之前
       
     </span>
@@ -933,7 +983,7 @@
   <a href="#q1-sedona-50" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q1：在距离 Sedona 市中心 50 公里以内的行程，按距离排序
+        Q1：查找从 Sedona 市中心 50 公里范围内出发的行程，并按距离排序
       
     </span>
   </a>
@@ -941,10 +991,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q2-coconino-arizona" class="md-nav__link">
+  <a href="#q2-coconino-county" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q2：统计 Coconino 县（Arizona）区域内起始的行程数量
+        Q2：统计从 Coconino County 出发的行程数
       
     </span>
   </a>
@@ -955,7 +1005,7 @@
   <a href="#q3sedona" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q3：Sedona 市中心周边带缓冲区方框内的月度行程统计
+        Q3：Sedona 市中心周边带缓冲区范围的每月行程统计
       
     </span>
   </a>
@@ -966,7 +1016,7 @@
   <a href="#q4-1000" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q4：按小费金额排序的前 1000 个行程在各区域的分布
+        Q4：小费最高的 1000 次行程的区域分布
       
     </span>
   </a>
@@ -977,7 +1027,7 @@
   <a href="#q5" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q5：重复客户的月度出行模式（基于下车点的凸包）
+        Q5：回头客的每月出行范围
       
     </span>
   </a>
@@ -985,10 +1035,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q6sedona-50" class="md-nav__link">
+  <a href="#q6" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q6：Sedona 市中心 50 公里半径内各区域的行程统计
+        Q6：与某一范围框相交的区域的行程统计
       
     </span>
   </a>
@@ -999,7 +1049,7 @@
   <a href="#q7" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q7：通过对比上报距离与几何距离来检测可能的绕路
+        Q7：检测潜在的绕路行程
       
     </span>
   </a>
@@ -1010,7 +1060,7 @@
   <a href="#q8-500" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q8：统计每栋建筑物 500 米半径内的上车次数
+        Q8：统计每栋建筑 500 米范围内的上车次数
       
     </span>
   </a>
@@ -1021,7 +1071,7 @@
   <a href="#q9-iou" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q9：通过 IoU 进行建筑物合并（检测重复/重叠的建筑物轮廓）
+        Q9：建筑物融合（通过 IoU 检测重复/重叠）
       
     </span>
   </a>
@@ -1032,7 +1082,7 @@
   <a href="#q10" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q10：每个区域内起始行程的统计指标
+        Q10：各区域内出发行程的统计
       
     </span>
   </a>
@@ -1043,7 +1093,7 @@
   <a href="#q11" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q11：统计跨区域出行的行程数量
+        Q11：统计跨区域的行程数
       
     </span>
   </a>
@@ -1051,10 +1101,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q12-5-knn" class="md-nav__link">
+  <a href="#q12-5" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q12：按到最近 5 栋建筑物的平均距离对行程上车点排序（KNN 连接）
+        Q12：按到最近 5 栋建筑的平均距离对上车点排序
       
     </span>
   </a>
@@ -1065,34 +1115,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../geography-queries/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    SpatialBench 查询（地理）
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1363,6 +1385,28 @@
   <a href="#_1" class="md-nav__link">
     <span class="md-ellipsis">
       
+        为什么需要第二套查询
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        查询模块
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
         在开始之前
       
     </span>
@@ -1374,7 +1418,7 @@
   <a href="#q1-sedona-50" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q1：在距离 Sedona 市中心 50 公里以内的行程，按距离排序
+        Q1：查找从 Sedona 市中心 50 公里范围内出发的行程，并按距离排序
       
     </span>
   </a>
@@ -1382,10 +1426,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q2-coconino-arizona" class="md-nav__link">
+  <a href="#q2-coconino-county" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q2：统计 Coconino 县（Arizona）区域内起始的行程数量
+        Q2：统计从 Coconino County 出发的行程数
       
     </span>
   </a>
@@ -1396,7 +1440,7 @@
   <a href="#q3sedona" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q3：Sedona 市中心周边带缓冲区方框内的月度行程统计
+        Q3：Sedona 市中心周边带缓冲区范围的每月行程统计
       
     </span>
   </a>
@@ -1407,7 +1451,7 @@
   <a href="#q4-1000" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q4：按小费金额排序的前 1000 个行程在各区域的分布
+        Q4：小费最高的 1000 次行程的区域分布
       
     </span>
   </a>
@@ -1418,7 +1462,7 @@
   <a href="#q5" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q5：重复客户的月度出行模式（基于下车点的凸包）
+        Q5：回头客的每月出行范围
       
     </span>
   </a>
@@ -1426,10 +1470,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q6sedona-50" class="md-nav__link">
+  <a href="#q6" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q6：Sedona 市中心 50 公里半径内各区域的行程统计
+        Q6：与某一范围框相交的区域的行程统计
       
     </span>
   </a>
@@ -1440,7 +1484,7 @@
   <a href="#q7" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q7：通过对比上报距离与几何距离来检测可能的绕路
+        Q7：检测潜在的绕路行程
       
     </span>
   </a>
@@ -1451,7 +1495,7 @@
   <a href="#q8-500" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q8：统计每栋建筑物 500 米半径内的上车次数
+        Q8：统计每栋建筑 500 米范围内的上车次数
       
     </span>
   </a>
@@ -1462,7 +1506,7 @@
   <a href="#q9-iou" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q9：通过 IoU 进行建筑物合并（检测重复/重叠的建筑物轮廓）
+        Q9：建筑物融合（通过 IoU 检测重复/重叠）
       
     </span>
   </a>
@@ -1473,7 +1517,7 @@
   <a href="#q10" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q10：每个区域内起始行程的统计指标
+        Q10：各区域内出发行程的统计
       
     </span>
   </a>
@@ -1484,7 +1528,7 @@
   <a href="#q11" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q11：统计跨区域出行的行程数量
+        Q11：统计跨区域的行程数
       
     </span>
   </a>
@@ -1492,10 +1536,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#q12-5-knn" class="md-nav__link">
+  <a href="#q12-5" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Q12：按到最近 5 栋建筑物的平均距离对行程上车点排序（KNN 连接）
+        Q12：按到最近 5 栋建筑的平均距离对上车点排序
       
     </span>
   </a>
@@ -1519,7 +1563,7 @@
 
 
   
-    <a href="https://github.com/apache/sedona-spatialbench/blob/main/docs/queries.zh.md" title="编辑此页" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/apache/sedona-spatialbench/blob/main/docs/geography-queries.zh.md" title="编辑此页" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
     </a>
@@ -1527,11 +1571,90 @@
   
 
 
-<h1 id="spatialbench">运行 SpatialBench 查询<a class="headerlink" href="#spatialbench" title="Permanent link">¶</a></h1>
-<p>本笔记本包含构成 SpatialBench 基准测试的所有查询。</p>
-<p>SpatialBench 是一个用于评估各类数据库系统中地理空间 SQL 分析查询性能的基准测试。这些查询代表了常见的真实世界地理空间分析任务，旨在测试各种空间函数和连接条件。</p>
-<p>该基准测试使用了一个真实但合成的、以交通运输为主题的数据集，以确保查询能够反映实际的使用场景。通过运行这些查询，你可以在一致且中立的基础上评估并比较不同空间查询引擎的相对性能。</p>
-<h2 id="_1">在开始之前<a class="headerlink" href="#_1" title="Permanent link">¶</a></h2>
+<!---
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+--><h1 id="spatialbench">运行 SpatialBench 地理查询<a class="headerlink" href="#spatialbench" title="Permanent link">¶</a></h1>
+<p>SpatialBench 的<a href="https://sedona.apache.org/spatialbench/zh/queries/">主查询套件</a>是一个 <strong>geometry（几何）</strong> 基准：WKB 列通过
+<code>ST_GeomFromWKB</code> 解码，谓词使用平面（二维欧几里得）边，所有距离阈值都是以度为单位的角度。</p>
+<p>本笔记本定义这同样 12 条查询的 <strong>geography（地理）</strong> 版本。数据本身没有变化——仍是同样的
+EPSG:4326 经纬度 WKB 列——但列改用 <code>ST_GeogFromWKB</code> 解码，因此边被解释为球面上的大地线，
+所有度量结果都以真实世界的单位返回。</p>
+<h2 id="_1">为什么需要第二套查询<a class="headerlink" href="#_1" title="Permanent link">¶</a></h2>
+<p>geometry 套件不得不伪造真实世界的单位。它用 <code>ST_DWithin(..., 0.45)</code> 筛选 Sedona “50 公里内”
+的行程，用 <code>1 米 = 0.000009 度</code> 把米换算成度，并以平方度报告建筑物的重叠面积。</p>
+<p>一个纬度差大致在各处都约等于 111 公里，但一个经度差会随纬度的余弦而缩小。因此在 Sedona
+（北纬 34.87°），<code>0.45</code> 度约为 50 公里高、却只有约 41 公里宽；在北纬 60° 处仅约 25 公里宽。
+由于 SpatialBench 的数据生成在八个大陆级别的范围框内、跨越南纬 56° 到北纬 78°，以度为基准的
+半径在数据集的每个区域都对应着不同的真实形状。</p>
+<p>geography 套件把这些全部替换为米和平方米：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>geometry 套件</th>
+<th>geography 套件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>点/面构造函数</td>
+<td><code>ST_GeomFromWKB</code>、<code>ST_GeomFromText</code></td>
+<td><code>ST_GeogFromWKB</code>、<code>ST_GeogFromWKT</code></td>
+</tr>
+<tr>
+<td>边的解释</td>
+<td>平面上的直线</td>
+<td>球面上的大地线</td>
+</tr>
+<tr>
+<td><code>ST_DWithin</code> 阈值</td>
+<td>度（<code>0.45</code>、<code>0.045</code>、<code>0.0045</code>）</td>
+<td>米（<code>50000</code>、<code>5000</code>、<code>500</code>）</td>
+</tr>
+<tr>
+<td><code>ST_Distance</code>、<code>ST_Length</code></td>
+<td>度</td>
+<td>米</td>
+</tr>
+<tr>
+<td><code>ST_Area</code></td>
+<td>平方度</td>
+<td>平方米</td>
+</tr>
+<tr>
+<td>SQL 中的单位换算</td>
+<td><code>/ 0.000009</code></td>
+<td>无需换算</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">两套查询的结果无法逐行比较</p>
+<p>0.45° 的平面半径与 50 000 米的大地线半径会选出不同的行程，因此 Q1 在两套查询中返回的
+是不同的 100 行。这正是本套件的意义所在，而不是结果不一致：每套查询都有各自的标准答案，
+结果只应在同一套件内部进行比较。</p>
+</div>
+<h2 id="_2">查询模块<a class="headerlink" href="#_2" title="Permanent link">¶</a></h2>
+<p>在本笔记本之外，也可以通过查询模块获取同样的 SQL，它会按指定方言打印整套查询：</p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>spatialbench-queries/print_geography_queries.py<span class="w"> </span>SedonaDB
+</code></pre></div>
+<p>运行这些查询需要一个具备 <code>GEOGRAPHY</code> 类型、且其度量基于大地线的引擎——各引擎对具体函数的支持
+仍在逐步完善，请查阅所用引擎自身的参考文档以确认其实现范围。Q12 在下文中给出了定义，但未纳入
+该模块，也不会在此执行：它是一个 K 最近邻连接，而 <code>ST_KNN</code> 目前还没有 geography 形式。</p>
+<h2 id="_3">在开始之前<a class="headerlink" href="#_3" title="Permanent link">¶</a></h2>
 <p>在运行此笔记本前，请确保已安装 <code>requirements.txt</code> 中列出的依赖：</p>
 <div class="highlight"><pre><span></span><code><span class="o">%</span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">r</span> <span class="o">~/</span><span class="n">sedona</span><span class="o">-</span><span class="n">spatialbench</span><span class="o">/</span><span class="n">docs</span><span class="o">/</span><span class="n">requirements</span><span class="o">.</span><span class="n">txt</span>
 </code></pre></div>
@@ -1567,87 +1690,68 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
     <span class="n">source</span> <span class="o">=</span> <span class="n">flat</span> <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">flat</span><span class="p">)</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATA_DIR</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">table</span><span class="si">}</span><span class="s2">/*.parquet"</span>
     <span class="n">sd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">source</span><span class="p">)</span><span class="o">.</span><span class="n">to_view</span><span class="p">(</span><span class="n">table</span><span class="p">)</span>
 </code></pre></div>
-<h2 id="q1-sedona-50">Q1：在距离 Sedona 市中心 50 公里以内的行程，按距离排序<a class="headerlink" href="#q1-sedona-50" title="Permanent link">¶</a></h2>
-<p><strong>真实场景：</strong> 根据与市中心的距离对行程进行识别和排序，用于城市规划和交通分析。</p>
-<p>该查询找出所有从亚利桑那州 Sedona 市中心 50 公里范围内出发的出租车或网约车行程。对于每一个符合条件的行程，结果会显示行程 ID、上车经纬度、上车时间，并计算上车点到 Sedona 市中心的精确距离。结果按距离升序排序，最靠近市中心的行程排在最前面，便于查看哪些行程最贴近市中心。</p>
-<p><strong>被测试的空间查询特性：</strong></p>
+<h2 id="q1-sedona-50">Q1：查找从 Sedona 市中心 50 公里范围内出发的行程，并按距离排序<a class="headerlink" href="#q1-sedona-50" title="Permanent link">¶</a></h2>
+<p><strong>实际场景：</strong> 按照与市中心的距离识别并排序行程，用于城市规划与交通分析。</p>
+<p>与 geometry 版本不同，这里的 50 公里是真正的大地线半径，而不是 0.45° 的角度半径，且
+<code>distance_to_center</code> 以米为单位。</p>
+<p><strong>所考察的空间查询特性：</strong></p>
 <ol>
-<li>基于距离的空间过滤（ST_DWithin）</li>
-<li>到固定点的距离计算</li>
-<li>坐标提取（ST_X、ST_Y）</li>
+<li>基于大地线距离的空间过滤（<code>ST_DWithin</code>，米）</li>
+<li>到固定点的大地线距离计算</li>
+<li>坐标提取（<code>ST_X</code>、<code>ST_Y</code>）</li>
 <li>按空间距离排序</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT</span>
 <span class="s2">    t.t_tripkey,</span>
+<span class="s2">    -- A point's coordinates are identical under either edge interpretation, so the lon/lat</span>
+<span class="s2">    -- projection stays on the geometry accessor, which is the more widely available one.</span>
 <span class="s2">    ST_X(ST_GeomFromWKB(t.t_pickuploc)) AS pickup_lon,</span>
 <span class="s2">    ST_Y(ST_GeomFromWKB(t.t_pickuploc)) AS pickup_lat,</span>
 <span class="s2">    t.t_pickuptime,</span>
 <span class="s2">    ST_Distance(</span>
-<span class="s2">        ST_GeomFromWKB(t.t_pickuploc),</span>
-<span class="s2">        ST_GeomFromText('POINT (-111.7610 34.8697)')</span>
-<span class="s2">    ) AS distance_to_center</span>
+<span class="s2">        ST_GeogFromWKB(t.t_pickuploc),</span>
+<span class="s2">        ST_GeogFromWKT('POINT (-111.7610 34.8697)')</span>
+<span class="s2">    ) AS distance_to_center -- metres</span>
 <span class="s2">FROM trip t</span>
 <span class="s2">WHERE ST_DWithin(</span>
-<span class="s2">    ST_GeomFromWKB(t.t_pickuploc),</span>
-<span class="s2">    ST_GeomFromText('POINT (-111.7610 34.8697)'),</span>
-<span class="s2">    0.45 -- Sedona 中心 50km 半径，以度为单位</span>
+<span class="s2">    ST_GeogFromWKB(t.t_pickuploc),</span>
+<span class="s2">    ST_GeogFromWKT('POINT (-111.7610 34.8697)'),</span>
+<span class="s2">    50000 -- 50 km geodesic radius around Sedona center</span>
 <span class="s2">)</span>
 <span class="s2">ORDER BY distance_to_center ASC, t.t_tripkey ASC</span>
 <span class="s2">LIMIT 100 -- Return only the 100 closest trips (bounded result set)</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────┬────────────────┬──────────────┬─────────────────────┬──────────────────────┐
-│ t_tripkey ┆   pickup_lon   ┆  pickup_lat  ┆     t_pickuptime    ┆  distance_to_center  │
-│   int64   ┆     float64    ┆    float64   ┆      timestamp      ┆        float64       │
-╞═══════════╪════════════════╪══════════════╪═════════════════════╪══════════════════════╡
-│   1451371 ┆ -111.791052127 ┆ 34.826733457 ┆ 1998-08-12T06:47:01 ┆  0.05243333056935387 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   2047835 ┆ -111.706967009 ┆ 34.883889472 ┆ 1992-04-08T07:36:09 ┆ 0.055865062714050374 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   3936870 ┆ -111.827619221 ┆ 34.882950924 ┆ 1998-11-10T13:32:07 ┆  0.06792427838042854 │
-└───────────┴────────────────┴──────────────┴─────────────────────┴──────────────────────┘
-</code></pre></div>
-
-<h2 id="q2-coconino-arizona">Q2：统计 Coconino 县（Arizona）区域内起始的行程数量<a class="headerlink" href="#q2-coconino-arizona" title="Permanent link">¶</a></h2>
-<p><strong>真实场景：</strong> 统计某个特定行政边界（县）内起始的所有行程数量，用于区域交通统计。</p>
-<p>该查询统计有多少出租车或网约车行程在亚利桑那州 Coconino 县内出发。其做法是判断每个行程的上车点是否落在该县的地理边界内。结果是一个简单的总数，表示在 Coconino 县范围内出发的行程总数。</p>
-<p><strong>被测试的空间查询特性：</strong></p>
+<h2 id="q2-coconino-county">Q2：统计从 Coconino County 出发的行程数<a class="headerlink" href="#q2-coconino-county" title="Permanent link">¶</a></h2>
+<p><strong>实际场景：</strong> 统计某一行政边界内的行程活动。</p>
+<p>县级多边形来自 Overture 数据，其边为平面边；将它作为 geography 读取会把这些边重新解释为
+大地线，相对 geometry 套件可能使边界偏移几米，从而改变那些几乎正好落在边界上的上车点的计数。</p>
+<p><strong>所考察的空间查询特性：</strong></p>
 <ol>
-<li>点在多边形内的空间过滤（ST_Intersects）</li>
-<li>包含空间几何选择的子查询</li>
-<li>对经空间过滤的数据进行简单聚合</li>
+<li>球面上的点在多边形内谓词（<code>ST_Intersects</code>）</li>
+<li>由标量子查询产生查询用 geography</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT COUNT(*) AS trip_count_in_coconino_county</span>
 <span class="s2">FROM trip t</span>
 <span class="s2">WHERE ST_Intersects(</span>
-<span class="s2">    ST_GeomFromWKB(t.t_pickuploc),</span>
-<span class="s2">    (</span>
-<span class="s2">        SELECT ST_GeomFromWKB(z.z_boundary)</span>
-<span class="s2">        FROM zone z</span>
-<span class="s2">        WHERE z.z_name = 'Coconino County'</span>
-<span class="s2">        LIMIT 1</span>
-<span class="s2">    )</span>
+<span class="s2">    ST_GeogFromWKB(t.t_pickuploc),</span>
+<span class="s2">    (SELECT ST_GeogFromWKB(z.z_boundary) FROM zone z WHERE z.z_name = 'Coconino County' LIMIT 1)</span>
 <span class="s2">)</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────────────────────────┐
-│ trip_count_in_coconino_county │
-│             int64             │
-╞═══════════════════════════════╡
-│                           541 │
-└───────────────────────────────┘
-</code></pre></div>
-
-<h2 id="q3sedona">Q3：Sedona 市中心周边带缓冲区方框内的月度行程统计<a class="headerlink" href="#q3sedona" title="Permanent link">¶</a></h2>
-<p><strong>真实场景：</strong> 跟踪都市区的月度出行趋势和性能指标，并进行季节性分析。</p>
-<p>该查询通过将行程按月度汇总，分析 Sedona 周边的出租车和网约车行程模式。它会查看所有在 Sedona 周边一个方框内起始的行程——该方框东西向约 26.5 公里、南北向约 30 公里，四角距中心约 20 公里——再加上约 5 公里的缓冲区，并为每个月份计算关键统计量，包括总行程数、平均行驶距离、平均行程时长以及平均车费。结果按月份按时间顺序排列，让你可以观察到 Sedona 地区出行模式的季节性变化趋势。</p>
-<p><strong>被测试的空间查询特性：</strong></p>
+<h2 id="q3sedona">Q3：Sedona 市中心周边带缓冲区范围的每月行程统计<a class="headerlink" href="#q3sedona" title="Permanent link">¶</a></h2>
+<p><strong>实际场景：</strong> 跟踪某都市区每月的需求、收入与行程时长。</p>
+<p>多边形字面量与 geometry 套件中的环相同，但这里它的边是大地线，因此它是一个球面四边形而不是
+平面矩形。</p>
+<p>该环以 Sedona 为中心，东西向约 <strong>26.5 公里</strong>、南北向约 <strong>30 公里</strong>——沿两个方向距中心分别约
+13 公里与 15 公里，四角约在 20 公里处。再加上 5 000 米缓冲后，四角处可达约 25 公里。</p>
+<p><strong>所考察的空间查询特性：</strong></p>
 <ol>
-<li>带缓冲区的基于距离空间过滤（ST_DWithin）</li>
-<li>时间维度的分组（月度聚合）</li>
-<li>在空间过滤后的数据上进行多种统计聚合</li>
+<li>基于大地线的多边形缓冲过滤（<code>ST_DWithin</code>，米）</li>
+<li>使用 <code>DATE_TRUNC</code> 的时间分组</li>
+<li>在空间过滤结果上进行多项聚合</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT</span>
@@ -1658,166 +1762,97 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 <span class="s2">    AVG(t.t_fare) AS avg_fare</span>
 <span class="s2">FROM trip t</span>
 <span class="s2">WHERE ST_DWithin(</span>
-<span class="s2">    ST_GeomFromWKB(t.t_pickuploc),</span>
-<span class="s2">    ST_GeomFromText('POLYGON((</span>
-<span class="s2">        -111.9060 34.7347, -111.6160 34.7347,</span>
-<span class="s2">        -111.6160 35.0047, -111.9060 35.0047,</span>
-<span class="s2">        -111.9060 34.7347</span>
-<span class="s2">    ))'), -- Sedona 周边的边界框</span>
-<span class="s2">    0.045 -- 额外 5km 缓冲（以度计）</span>
+<span class="s2">    ST_GeogFromWKB(t.t_pickuploc),</span>
+<span class="s2">    -- ~26.5 km E-W by ~30 km N-S about the center; corners sit ~20 km out</span>
+<span class="s2">    ST_GeogFromWKT('POLYGON((-111.9060 34.7347, -111.6160 34.7347, -111.6160 35.0047, -111.9060 35.0047, -111.9060 34.7347))'),</span>
+<span class="s2">    5000 -- Additional 5 km geodesic buffer, so ~25 km at the corners</span>
 <span class="s2">)</span>
 <span class="s2">GROUP BY pickup_month</span>
 <span class="s2">ORDER BY pickup_month</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌─────────────────────┬─────────────┬──────────────┬─────────────────────────────────┬─────────────┐
-│     pickup_month    ┆ total_trips ┆ avg_distance ┆           avg_duration          ┆   avg_fare  │
-│      timestamp      ┆    int64    ┆  decimal128  ┆             duration            ┆  decimal128 │
-╞═════════════════════╪═════════════╪══════════════╪═════════════════════════════════╪═════════════╡
-│ 1992-04-01T00:00:00 ┆           2 ┆  0.000020000 ┆ 0 days 1 hours 23 mins 47.000 … ┆ 0.000075000 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ 1992-07-01T00:00:00 ┆           1 ┆  0.000010000 ┆ 0 days 0 hours 58 mins 58.000 … ┆ 0.000040000 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ 1994-02-01T00:00:00 ┆           2 ┆  0.000020000 ┆ 0 days 1 hours 23 mins 50.000 … ┆ 0.000050000 │
-└─────────────────────┴─────────────┴──────────────┴─────────────────────────────────┴─────────────┘
-</code></pre></div>
-
-<h2 id="q4-1000">Q4：按小费金额排序的前 1000 个行程在各区域的分布<a class="headerlink" href="#q4-1000" title="Permanent link">¶</a></h2>
-<p><strong>真实场景：</strong> 分析高价值行程（按小费金额）的地理分布，从而了解高端服务区域。</p>
-<p>该查询分析前 1000 个小费最高的行程，识别出哪些街区或区域产生了最多的“慷慨小费客”。它先找出小费金额最高的 1000 个行程，再判断这些上车点落在哪些地理区域或街区内，并统计每个区域中此类“高小费”行程的数量。结果按高额小费数量进行排名，便于识别出对司机最具吸引力的高小费上车区域。</p>
-<p><strong>被测试的空间查询特性：</strong></p>
+<h2 id="q4-1000">Q4：小费最高的 1000 次行程的区域分布<a class="headerlink" href="#q4-1000" title="Permanent link">¶</a></h2>
+<p><strong>实际场景：</strong> 找出小费最丰厚的街区。</p>
+<p><strong>所考察的空间查询特性：</strong></p>
 <ol>
-<li>包含排序和限制的子查询</li>
-<li>点在多边形内的空间连接（ST_Within）</li>
+<li>球面上的点在多边形内空间连接（<code>ST_Within</code>）</li>
+<li>与 <code>LIMIT</code> 限定子查询的空间连接</li>
 <li>在空间连接结果上进行聚合</li>
-<li>包含空间过滤和分组的多步查询</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
-<span class="s2">SELECT</span>
-<span class="s2">    z.z_zonekey,</span>
-<span class="s2">    z.z_name,</span>
-<span class="s2">    COUNT(*) AS trip_count</span>
-<span class="s2">FROM</span>
-<span class="s2">    zone z</span>
-<span class="s2">    JOIN (</span>
-<span class="s2">        SELECT t.t_pickuploc</span>
-<span class="s2">        FROM trip t</span>
-<span class="s2">        ORDER BY t.t_tip DESC, t.t_tripkey ASC</span>
-<span class="s2">        LIMIT 1000</span>
-<span class="s2">    ) top_trips</span>
-<span class="s2">    ON ST_Within(</span>
-<span class="s2">        ST_GeomFromWKB(top_trips.t_pickuploc),</span>
-<span class="s2">        ST_GeomFromWKB(z.z_boundary)</span>
-<span class="s2">    )</span>
+<span class="s2">SELECT z.z_zonekey, z.z_name, COUNT(*) AS trip_count</span>
+<span class="s2">FROM zone z</span>
+<span class="s2">JOIN (</span>
+<span class="s2">    SELECT t.t_pickuploc</span>
+<span class="s2">    FROM trip t</span>
+<span class="s2">    ORDER BY t.t_tip DESC, t.t_tripkey ASC</span>
+<span class="s2">    LIMIT 1000 -- Replace 1000 with x (how many top tips you want)</span>
+<span class="s2">) top_trips</span>
+<span class="s2">ON ST_Within(ST_GeogFromWKB(top_trips.t_pickuploc), ST_GeogFromWKB(z.z_boundary))</span>
 <span class="s2">GROUP BY z.z_zonekey, z.z_name</span>
 <span class="s2">ORDER BY trip_count DESC, z.z_zonekey ASC</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────┬─────────────────────────────────┬────────────┐
-│ z_zonekey ┆              z_name             ┆ trip_count │
-│   int64   ┆               utf8              ┆    int64   │
-╞═══════════╪═════════════════════════════════╪════════════╡
-│     21286 ┆ Ndélé                           ┆         35 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
-│     80341 ┆ 乐山市                          ┆         27 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
-│     88075 ┆ 锡林郭勒盟 ᠰᠢᠯᠢ ᠶᠢᠨ ᠭᠣᠣᠯ ᠠᠶᠢᠮᠠᠭ ┆         19 │
-└───────────┴─────────────────────────────────┴────────────┘
-</code></pre></div>
-
-<h2 id="q5">Q5：重复客户的月度出行模式（基于下车点的凸包）<a class="headerlink" href="#q5" title="Permanent link">¶</a></h2>
-<p><strong>真实场景：</strong> 分析常客出行模式的地理分布范围，以了解他们的出行行为。</p>
-<p>该查询通过测量常客每月行程所覆盖的地理范围，分析他们的月度出行模式。对于每个在某个月内乘坐超过 5 次行程的客户，它会计算其“出行凸包”的面积——即连接当月所有下车点形成的区域的面积。结果按出行凸包面积降序排列，使出行范围最广的重复客户月份排在最前，并限制为前 100 行。按凸包面积（而非简单的行程计数）排序可确保每个分组都必须计算凸包，因此该限制无法被跳过空间计算的 top-k 优化所规避。</p>
-<p><strong>被测试的空间查询特性：</strong></p>
+<h2 id="q5">Q5：回头客的每月出行范围<a class="headerlink" href="#q5" title="Permanent link">¶</a></h2>
+<p><strong>实际场景：</strong> 通过下车点的凸包，衡量每位高频乘客在一个月内的出行覆盖范围有多大。</p>
+<p>在 geography 套件中，<code>monthly_travel_hull_area</code> 是以平方米为单位的球面面积，且凸包本身也是
+用大地线边计算的。</p>
+<p><strong>所考察的空间查询特性：</strong></p>
 <ol>
-<li>空间聚合（ST_Collect / ARRAY_AGG）</li>
-<li>凸包计算（ST_ConvexHull）</li>
-<li>复杂几何上的面积计算</li>
-<li>结合时间和客户维度的分组与空间运算</li>
+<li>geography 聚合为集合（<code>ST_Collect_Agg</code>）</li>
+<li>球面凸包（<code>ST_ConvexHull</code>）</li>
+<li>球面面积（<code>ST_Area</code>，平方米）</li>
+<li>带 <code>HAVING</code> 的分组聚合</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT</span>
 <span class="s2">    c.c_custkey,</span>
 <span class="s2">    c.c_name AS customer_name,</span>
 <span class="s2">    DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,</span>
-<span class="s2">    ST_Area(</span>
-<span class="s2">        ST_ConvexHull(ST_Collect(ST_GeomFromWKB(t.t_dropoffloc)))</span>
-<span class="s2">    ) AS monthly_travel_hull_area,</span>
-<span class="s2">    COUNT(*) as dropoff_count</span>
+<span class="s2">    ST_Area(ST_ConvexHull(ST_Collect_Agg(ST_GeogFromWKB(t.t_dropoffloc)))) AS monthly_travel_hull_area, -- m^2</span>
+<span class="s2">    COUNT(*) AS dropoff_count</span>
 <span class="s2">FROM trip t</span>
-<span class="s2">JOIN customer c</span>
-<span class="s2">    ON t.t_custkey = c.c_custkey</span>
+<span class="s2">JOIN customer c ON t.t_custkey = c.c_custkey</span>
 <span class="s2">GROUP BY c.c_custkey, c.c_name, pickup_month</span>
-<span class="s2">HAVING dropoff_count &gt; 5 -- 仅保留重复客户</span>
+<span class="s2">HAVING dropoff_count &gt; 5 -- Only include repeat customers for meaningful hulls</span>
 <span class="s2">ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC, pickup_month ASC</span>
 <span class="s2">LIMIT 100 -- Return only the top 100 repeat customer-months by travel-hull area (bounded result set)</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────┬────────────────────┬─────────────────────┬────────────────────┬───────────────┐
-│ c_custkey ┆    customer_name   ┆     pickup_month    ┆ monthly_travel_hul ┆ dropoff_count │
-│   int64   ┆        utf8        ┆      timestamp      ┆       l_area…      ┆     int64     │
-╞═══════════╪════════════════════╪═════════════════════╪════════════════════╪═══════════════╡
-│     10609 ┆ Customer#000010609 ┆ 1998-05-01T00:00:00 ┆   36943.5600373373 ┆            11 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│     25975 ┆ Customer#000025975 ┆ 1992-02-01T00:00:00 ┆ 34941.303419053635 ┆            10 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│     12061 ┆ Customer#000012061 ┆ 1997-03-01T00:00:00 ┆  34607.53871953154 ┆            14 │
-└───────────┴────────────────────┴─────────────────────┴────────────────────┴───────────────┘
-</code></pre></div>
-
-<h2 id="q6sedona-50">Q6：Sedona 市中心 50 公里半径内各区域的行程统计<a class="headerlink" href="#q6sedona-50" title="Permanent link">¶</a></h2>
-<p><strong>真实场景：</strong> 分析特定城市中心周边都市区内各区域的行程模式。</p>
-<p>该查询分析以亚利桑那州 Sedona 为中心、半径 50 公里范围内所有街区和区域的乘车活动。它通过统计每个区域内起始的行程总数，识别出上车活动最频繁的区域；同时，还计算每个区域内行程的平均费用和平均时长。结果按上车次数排序，揭示出大 Sedona 区域内哪些街区或区域产生的乘车需求最旺盛及其典型的行程特征。</p>
-<p><strong>被测试的空间查询特性：</strong></p>
+<h2 id="q6">Q6：与某一范围框相交的区域的行程统计<a class="headerlink" href="#q6" title="Permanent link">¶</a></h2>
+<p><strong>实际场景：</strong> 汇总所有与目标区域接触的区域的行程活动。</p>
+<p><strong>所考察的空间查询特性：</strong></p>
 <ol>
-<li>带边界框的多边形包含检查（ST_Contains）</li>
-<li>点在多边形内的空间连接（ST_Within）</li>
+<li>在一次连接中使用两个空间谓词（<code>ST_Intersects</code> 与 <code>ST_Within</code>）</li>
+<li>球面上的多边形-多边形相交判断</li>
+<li>在双重过滤的连接结果上进行聚合</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT</span>
-<span class="s2">    z.z_zonekey,</span>
-<span class="s2">    z.z_name,</span>
+<span class="s2">    z.z_zonekey, z.z_name,</span>
 <span class="s2">    COUNT(t.t_tripkey) AS total_pickups,</span>
 <span class="s2">    AVG(t.t_distance) AS avg_distance,</span>
 <span class="s2">    AVG(t.t_dropofftime - t.t_pickuptime) AS avg_duration</span>
 <span class="s2">FROM trip t, zone z</span>
 <span class="s2">WHERE ST_Intersects(</span>
-<span class="s2">    ST_GeomFromText('POLYGON((</span>
-<span class="s2">        -112.2110 34.4197, -111.3110 34.4197,</span>
-<span class="s2">        -111.3110 35.3197, -112.2110 35.3197,</span>
-<span class="s2">        -112.2110 34.4197</span>
-<span class="s2">    ))'), -- Sedona 周边的边界框</span>
-<span class="s2">    ST_GeomFromWKB(z.z_boundary)</span>
-<span class="s2">  )</span>
-<span class="s2">  AND ST_Within(</span>
-<span class="s2">    ST_GeomFromWKB(t.t_pickuploc),</span>
-<span class="s2">    ST_GeomFromWKB(z.z_boundary)</span>
-<span class="s2">  )</span>
+<span class="s2">        ST_GeogFromWKT('POLYGON((-112.2110 34.4197, -111.3110 34.4197, -111.3110 35.3197, -112.2110 35.3197, -112.2110 34.4197))'),</span>
+<span class="s2">        ST_GeogFromWKB(z.z_boundary)</span>
+<span class="s2">    )</span>
+<span class="s2">  AND ST_Within(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromWKB(z.z_boundary))</span>
 <span class="s2">GROUP BY z.z_zonekey, z.z_name</span>
 <span class="s2">ORDER BY total_pickups DESC, z.z_zonekey ASC</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────┬─────────────────┬───────────────┬──────────────┬────────────────────────────────────┐
-│ z_zonekey ┆      z_name     ┆ total_pickups ┆ avg_distance ┆            avg_duration            │
-│   int64   ┆       utf8      ┆     int64     ┆  decimal128  ┆              duration              │
-╞═══════════╪═════════════════╪═══════════════╪══════════════╪════════════════════════════════════╡
-│    149106 ┆ Coconino County ┆           541 ┆  0.000030406 ┆ 0 days 1 hours 45 mins 16.591 secs │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│    132418 ┆ Yavapai County  ┆           292 ┆  0.000027157 ┆ 0 days 1 hours 36 mins 43.647 secs │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│     82996 ┆ Gila County     ┆            39 ┆  0.000021282 ┆ 0 days 1 hours 16 mins 59.769 secs │
-└───────────┴─────────────────┴───────────────┴──────────────┴────────────────────────────────────┘
-</code></pre></div>
-
-<h2 id="q7">Q7：通过对比上报距离与几何距离来检测可能的绕路<a class="headerlink" href="#q7" title="Permanent link">¶</a></h2>
-<p><strong>真实场景：</strong> 找出上报行驶距离明显超过两点直线距离的可疑行程，可能存在车费操纵嫌疑。</p>
-<p>该查询通过比较行程上报的实际距离与上车点到下车点的直线距离，分析出租车和网约车行程偏离最短路径的程度。它会计算一个“绕路比”（detour ratio），用于反映实际路线比直线距离长多少。例如，比值为 1.5 表示该行程比直线距离多走了 50%。结果按绕路比从高到低排序，便于识别因交通、道路布局或其他原因而显著绕路的行程。</p>
-<p><strong>被测试的空间查询特性：</strong></p>
+<h2 id="q7">Q7：检测潜在的绕路行程<a class="headerlink" href="#q7" title="Permanent link">¶</a></h2>
+<p><strong>实际场景：</strong> 标记报告距离远超上下车点直线距离的行程，作为绕路或虚增车费的信号。</p>
+<p>这是 geography 类型帮助最大的一条查询。geometry 版本以度为单位测量平面线段长度，再除以
+<code>0.000009</code> 假装它是米；geography 版本直接测量大地线，因此 <code>line_distance_m</code> 与
+<code>detour_ratio</code> 在整个数据集范围内都有意义，而不仅仅在赤道附近成立。</p>
+<p><strong>所考察的空间查询特性：</strong></p>
 <ol>
-<li>线几何的构建（ST_MakeLine）</li>
-<li>长度计算（ST_Length）</li>
-<li>坐标系转换和距离计算</li>
-<li>基于几何与上报值之比的过滤</li>
+<li>由两点构造线（<code>ST_MakeLine</code>）</li>
+<li>大地线长度（<code>ST_Length</code>，米）</li>
+<li>带除零保护的比值计算</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">WITH trip_lengths AS (</span>
@@ -1826,10 +1861,10 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 <span class="s2">        t.t_distance AS reported_distance_m,</span>
 <span class="s2">        ST_Length(</span>
 <span class="s2">            ST_MakeLine(</span>
-<span class="s2">                ST_GeomFromWKB(t.t_pickuploc),</span>
-<span class="s2">                ST_GeomFromWKB(t.t_dropoffloc)</span>
+<span class="s2">                ST_GeogFromWKB(t.t_pickuploc),</span>
+<span class="s2">                ST_GeogFromWKB(t.t_dropoffloc)</span>
 <span class="s2">            )</span>
-<span class="s2">        ) * 111111 AS line_distance_m -- 每度约对应的米数</span>
+<span class="s2">        ) AS line_distance_m -- metres, no degree conversion needed</span>
 <span class="s2">    FROM trip t</span>
 <span class="s2">)</span>
 <span class="s2">SELECT</span>
@@ -1838,119 +1873,79 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 <span class="s2">    t.line_distance_m,</span>
 <span class="s2">    t.reported_distance_m / NULLIF(t.line_distance_m, 0) AS detour_ratio</span>
 <span class="s2">FROM trip_lengths t</span>
-<span class="s2">ORDER BY</span>
-<span class="s2">    detour_ratio DESC NULLS LAST,</span>
-<span class="s2">    reported_distance_m DESC,</span>
-<span class="s2">    t_tripkey ASC</span>
+<span class="s2">ORDER BY detour_ratio DESC NULLS LAST, reported_distance_m DESC, t_tripkey ASC</span>
 <span class="s2">LIMIT 100 -- Return only the top 100 highest-detour trips (bounded result set)</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────┬─────────────────────┬────────────────────┬──────────────────────┐
-│ t_tripkey ┆ reported_distance_m ┆   line_distance_m  ┆     detour_ratio     │
-│   int64   ┆      decimal128     ┆       float64      ┆        float64       │
-╞═══════════╪═════════════════════╪════════════════════╪══════════════════════╡
-│   4688563 ┆             0.00010 ┆ 11111.114941555596 ┆ 8.999996897341038e-9 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   2380123 ┆             0.00010 ┆ 11111.114983939786 ┆ 8.999996863009868e-9 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   3077131 ┆             0.00010 ┆ 11111.115027455284 ┆ 8.999996827762339e-9 │
-└───────────┴─────────────────────┴────────────────────┴──────────────────────┘
-</code></pre></div>
-
-<h2 id="q8-500">Q8：统计每栋建筑物 500 米半径内的上车次数<a class="headerlink" href="#q8-500" title="Permanent link">¶</a></h2>
-<p><strong>真实场景：</strong> 统计每栋建筑物 500 米范围内起始的行程数量。</p>
-<p>该查询通过统计在每栋建筑物 500 米范围内起始的行程数量，识别哪些建筑物附近产生的出租车和网约车上车活动最多。它分析特定建筑物（如酒店、购物中心、机场或办公楼）与其周边乘车需求之间的关系。结果按数量排序，可以帮助识别出最重要的上车热点建筑物，并理解不同类型的建筑物如何影响交通需求。</p>
-<p><strong>被测试的空间查询特性：</strong></p>
+<h2 id="q8-500">Q8：统计每栋建筑 500 米范围内的上车次数<a class="headerlink" href="#q8-500" title="Permanent link">¶</a></h2>
+<p><strong>实际场景：</strong> 找出产生最多上车活动的建筑物。</p>
+<p>500 米半径是自建筑轮廓起算的真实大地线距离，因此挪威的一栋建筑与肯尼亚的一栋建筑拥有相同
+物理尺度的覆盖范围——这与 geometry 套件不同，在那里 <code>0.0045°</code> 在高纬度会形成窄得多的条带。</p>
+<p><strong>所考察的空间查询特性：</strong></p>
 <ol>
-<li>点和多边形之间基于距离的空间连接</li>
-<li>在空间连接结果上的聚合</li>
+<li>点与多边形之间基于大地线距离的空间连接（<code>ST_DWithin</code>，米）</li>
+<li>在空间连接结果上进行聚合</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT b.b_buildingkey, b.b_name, COUNT(*) AS nearby_pickup_count</span>
 <span class="s2">FROM trip t</span>
 <span class="s2">JOIN building b</span>
-<span class="s2">ON ST_DWithin(ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(b.b_boundary), 0.0045) -- 约 500m</span>
+<span class="s2">ON ST_DWithin(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromWKB(b.b_boundary), 500) -- 500 m geodesic</span>
 <span class="s2">GROUP BY b.b_buildingkey, b.b_name</span>
 <span class="s2">ORDER BY nearby_pickup_count DESC, b.b_buildingkey ASC</span>
 <span class="s2">LIMIT 100 -- Return only the top 100 busiest buildings (bounded result set)</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────────┬────────┬─────────────────────┐
-│ b_buildingkey ┆ b_name ┆ nearby_pickup_count │
-│     int64     ┆  utf8  ┆        int64        │
-╞═══════════════╪════════╪═════════════════════╡
-│          3779 ┆ linen  ┆                  42 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│         19135 ┆ misty  ┆                  36 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│          4416 ┆ sienna ┆                  26 │
-└───────────────┴────────┴─────────────────────┘
-</code></pre></div>
-
-<h2 id="q9-iou">Q9：通过 IoU 进行建筑物合并（检测重复/重叠的建筑物轮廓）<a class="headerlink" href="#q9-iou" title="Permanent link">¶</a></h2>
-<p><strong>真实场景：</strong> 检测 GIS 数据集中重复或重叠的建筑物轮廓，识别数据质量问题。</p>
-<p>该查询通过计算建筑物轮廓之间的相互重叠面积来识别重叠的建筑物。对于每一对相互接触或相互重叠的建筑物，它会测量每栋建筑物的总面积以及它们的重叠面积，然后计算 0 到 1 之间的“交并比”（Intersection over Union，IoU）。结果按 IoU 从高到低排序，可揭示出最显著重叠的建筑物对，这有助于识别数据质量问题、相邻结构，或共享公共区域（如院子或停车场）的建筑物。</p>
-<p><strong>被测试的空间查询特性：</strong></p>
+<h2 id="q9-iou">Q9：建筑物融合（通过 IoU 检测重复/重叠）<a class="headerlink" href="#q9-iou" title="Permanent link">¶</a></h2>
+<p><strong>实际场景：</strong> 检测重复或重叠的建筑轮廓，以发现数据质量问题。</p>
+<p>这里 <code>area1</code>、<code>area2</code> 与 <code>overlap_area</code> 的单位是平方米而非平方度，因此可以直接解读。<code>iou</code>
+是面积之比，在两套查询中都是无量纲的——不过取值仍会不同，因为球面面积之比并不等于平面面积
+之比。</p>
+<p><strong>所考察的空间查询特性：</strong></p>
 <ol>
-<li>带空间相交的自连接（ST_Intersects）</li>
-<li>面积计算（ST_Area）</li>
-<li>几何相交操作（ST_Intersection）</li>
-<li>复杂几何比值的计算（IoU——交并比）</li>
+<li>带空间谓词的多边形-多边形自连接（<code>ST_Intersects</code>）</li>
+<li>球面叠加运算（<code>ST_Intersection</code>）</li>
+<li>球面面积（<code>ST_Area</code>，平方米）</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">WITH b1 AS (</span>
-<span class="s2">   SELECT b_buildingkey AS id, ST_GeomFromWKB(b_boundary) AS geom</span>
-<span class="s2">   FROM building</span>
+<span class="s2">    SELECT b_buildingkey AS id, ST_GeogFromWKB(b_boundary) AS geog FROM building</span>
 <span class="s2">),</span>
 <span class="s2">b2 AS (</span>
-<span class="s2">    SELECT b_buildingkey AS id, ST_GeomFromWKB(b_boundary) AS geom</span>
-<span class="s2">    FROM building</span>
+<span class="s2">    SELECT b_buildingkey AS id, ST_GeogFromWKB(b_boundary) AS geog FROM building</span>
 <span class="s2">),</span>
 <span class="s2">pairs AS (</span>
 <span class="s2">    SELECT</span>
 <span class="s2">        b1.id AS building_1,</span>
 <span class="s2">        b2.id AS building_2,</span>
-<span class="s2">        ST_Area(b1.geom) AS area1,</span>
-<span class="s2">        ST_Area(b2.geom) AS area2,</span>
-<span class="s2">        ST_Area(ST_Intersection(b1.geom, b2.geom)) AS overlap_area</span>
+<span class="s2">        ST_Area(b1.geog) AS area1,        -- m^2</span>
+<span class="s2">        ST_Area(b2.geog) AS area2,        -- m^2</span>
+<span class="s2">        ST_Area(ST_Intersection(b1.geog, b2.geog)) AS overlap_area -- m^2</span>
 <span class="s2">    FROM b1</span>
-<span class="s2">    JOIN b2 ON b1.id &lt; b2.id AND ST_Intersects(b1.geom, b2.geom)</span>
+<span class="s2">    JOIN b2 ON b1.id &lt; b2.id AND ST_Intersects(b1.geog, b2.geog)</span>
 <span class="s2">)</span>
 <span class="s2">SELECT</span>
-<span class="s2">   building_1,</span>
-<span class="s2">   building_2,</span>
-<span class="s2">   area1,</span>
-<span class="s2">   area2,</span>
-<span class="s2">   overlap_area,</span>
-<span class="s2">   CASE</span>
-<span class="s2">       WHEN (area1 + area2 - overlap_area) = 0 THEN 1.0</span>
-<span class="s2">       ELSE overlap_area / (area1 + area2 - overlap_area)</span>
-<span class="s2">   END AS iou</span>
+<span class="s2">    building_1,</span>
+<span class="s2">    building_2,</span>
+<span class="s2">    area1,</span>
+<span class="s2">    area2,</span>
+<span class="s2">    overlap_area,</span>
+<span class="s2">    CASE</span>
+<span class="s2">        WHEN overlap_area = 0 THEN 0.0</span>
+<span class="s2">        WHEN (area1 + area2 - overlap_area) = 0 THEN 1.0</span>
+<span class="s2">        ELSE overlap_area / (area1 + area2 - overlap_area)</span>
+<span class="s2">    END AS iou</span>
 <span class="s2">FROM pairs</span>
 <span class="s2">ORDER BY iou DESC, building_1 ASC, building_2 ASC</span>
 <span class="s2">LIMIT 100 -- Return only the top 100 most-overlapping building pairs (bounded result set)</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌────────────┬────────────┬───┬─────────────────────────┬────────────────────┐
-│ building_1 ┆ building_2 ┆ … ┆       overlap_area      ┆         iou        │
-│    int64   ┆    int64   ┆   ┆         float64         ┆       float64      │
-╞════════════╪════════════╪═══╪═════════════════════════╪════════════════════╡
-│       7562 ┆      18534 ┆ … ┆ 0.000022785758541344757 ┆ 0.8415764980401906 │
-├╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│       2285 ┆      15719 ┆ … ┆    6.445979506828921e-6 ┆ 0.7022218100645453 │
-├╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│      13658 ┆      15719 ┆ … ┆    6.813826545713668e-6 ┆ 0.7019832720541139 │
-└────────────┴────────────┴───┴─────────────────────────┴────────────────────┘
-</code></pre></div>
-
-<h2 id="q10">Q10：每个区域内起始行程的统计指标<a class="headerlink" href="#q10" title="Permanent link">¶</a></h2>
-<p><strong>真实场景：</strong> 分析每个行政区域（如市辖区或街区）的行程模式与性能指标。</p>
-<p>该查询通过计算每个区域内起始行程的平均时长、平均距离和数量，分析各个地理区域的行程模式。它使用左连接（LEFT JOIN）来保留所有区域，包括那些没有上车活动的区域，从而展示出哪些街区平均行程较长，哪些则以较短的本地行程为主。结果按平均时长降序排序，便于识别人们倾向于走长途的区域——这些区域可能较为偏远、本地配套有限，或作为长途出行的出发地。</p>
-<p><strong>被测试的空间查询特性：</strong></p>
+<h2 id="q10">Q10：各区域内出发行程的统计<a class="headerlink" href="#q10" title="Permanent link">¶</a></h2>
+<p><strong>实际场景：</strong> 按平均行程时长对区域排序，同时保留没有行程的区域。</p>
+<p><strong>所考察的空间查询特性：</strong></p>
 <ol>
-<li>点在多边形内的空间连接（ST_Within）</li>
-<li>多指标聚合（平均时长、距离、数量）</li>
-<li>使用 LEFT JOIN 保留无行程的区域</li>
+<li>球面上的左空间连接（<code>ST_Within</code>），保留未匹配的区域</li>
+<li>排序中带 <code>NULL</code> 处理的聚合</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT</span>
@@ -1959,111 +1954,60 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 <span class="s2">    AVG(t.t_dropofftime - t.t_pickuptime) AS avg_duration,</span>
 <span class="s2">    AVG(t.t_distance) AS avg_distance,</span>
 <span class="s2">    COUNT(t.t_tripkey) AS num_trips</span>
-<span class="s2">FROM</span>
-<span class="s2">    zone z</span>
-<span class="s2">    LEFT JOIN trip t</span>
-<span class="s2">    ON ST_Within(</span>
-<span class="s2">        ST_GeomFromWKB(t.t_pickuploc), ST_GeomFromWKB(z.z_boundary)</span>
-<span class="s2">    )</span>
+<span class="s2">FROM zone z</span>
+<span class="s2">LEFT JOIN trip t ON ST_Within(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromWKB(z.z_boundary))</span>
 <span class="s2">GROUP BY z.z_zonekey, z.z_name</span>
 <span class="s2">ORDER BY avg_duration DESC NULLS LAST, z.z_zonekey ASC</span>
 <span class="s2">LIMIT 100 -- Return only the top 100 zones by average trip duration (bounded result set)</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────┬────────────────┬────────────────────────────────────┬──────────────┬───────────┐
-│ z_zonekey ┆   pickup_zone  ┆            avg_duration            ┆ avg_distance ┆ num_trips │
-│   int64   ┆      utf8      ┆              duration              ┆  decimal128  ┆   int64   │
-╞═══════════╪════════════════╪════════════════════════════════════╪══════════════╪═══════════╡
-│     13183 ┆ Benewah County ┆ 4 days 13 hours 3 mins 34.000 secs ┆  0.002180000 ┆         2 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-│    124002 ┆ Kreis Unna     ┆ 2 days 4 hours 52 mins 44.000 secs ┆  0.001050000 ┆         1 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-│     52386 ┆ Castel di Leva ┆ 2 days 4 hours 19 mins 39.000 secs ┆  0.001040000 ┆         1 │
-└───────────┴────────────────┴────────────────────────────────────┴──────────────┴───────────┘
-</code></pre></div>
-
-<h2 id="q11">Q11：统计跨区域出行的行程数量<a class="headerlink" href="#q11" title="Permanent link">¶</a></h2>
-<p><strong>真实场景：</strong> 识别跨行政区或跨城市的行程，以了解跨边界的出行模式。</p>
-<p>该查询通过判断行程的上车区域与下车区域是否相同，统计有多少行程跨越了区域边界。它会找出每个行程的上车区域和下车区域，然后仅保留上车区域与下车区域不同的行程。结果是跨区域行程的总数，可用于衡量在不同街区、行政区或区域之间发生的出行量，而非仅停留在同一本地区域内的出行量。</p>
-<p><strong>被测试的空间查询特性：</strong></p>
+<h2 id="q11">Q11：统计跨区域的行程数<a class="headerlink" href="#q11" title="Permanent link">¶</a></h2>
+<p><strong>实际场景：</strong> 量化区域间的出行需求，用于公共交通规划。</p>
+<p><strong>所考察的空间查询特性：</strong></p>
 <ol>
-<li>多次点在多边形内的空间连接</li>
-<li>基于空间关系结果进行过滤</li>
+<li>球面上两次独立的点在多边形内空间连接</li>
+<li>在连接结果上的非空间过滤</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">SELECT COUNT(*) AS cross_zone_trip_count</span>
-<span class="s2">FROM</span>
-<span class="s2">    trip t</span>
-<span class="s2">    JOIN zone pickup_zone</span>
-<span class="s2">        ON ST_Within(</span>
-<span class="s2">            ST_GeomFromWKB(t.t_pickuploc),</span>
-<span class="s2">            ST_GeomFromWKB(pickup_zone.z_boundary)</span>
-<span class="s2">        )</span>
-<span class="s2">    JOIN zone dropoff_zone</span>
-<span class="s2">        ON ST_Within(</span>
-<span class="s2">            ST_GeomFromWKB(t.t_dropoffloc),</span>
-<span class="s2">            ST_GeomFromWKB(dropoff_zone.z_boundary)</span>
-<span class="s2">        )</span>
+<span class="s2">FROM trip t</span>
+<span class="s2">JOIN zone pickup_zone ON ST_Within(ST_GeogFromWKB(t.t_pickuploc), ST_GeogFromWKB(pickup_zone.z_boundary))</span>
+<span class="s2">JOIN zone dropoff_zone ON ST_Within(ST_GeogFromWKB(t.t_dropoffloc), ST_GeogFromWKB(dropoff_zone.z_boundary))</span>
 <span class="s2">WHERE pickup_zone.z_zonekey != dropoff_zone.z_zonekey</span>
 <span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────────────────┐
-│ cross_zone_trip_count │
-│         int64         │
-╞═══════════════════════╡
-│                176391 │
-└───────────────────────┘
-</code></pre></div>
-
-<h2 id="q12-5-knn">Q12：按到最近 5 栋建筑物的平均距离对行程上车点排序（KNN 连接）<a class="headerlink" href="#q12-5-knn" title="Permanent link">¶</a></h2>
-<p><strong>真实场景：</strong> 找出最孤立的行程上车点——即周边建筑物最少的位置——用于覆盖分析和定位上下文。</p>
-<p>该查询通过空间最近邻分析找出每个行程上车点最近的 5 栋建筑物，然后对这 5 个距离取平均，为每个上车点生成一个"局部建筑物密度"度量。按该平均值降序排序即可揭示最孤立的行程起点——即离周边建筑物最远的位置——这可能反映农村地区、覆盖盲区或异常的上车位置。结果限制为前 100 个上车点。</p>
-<p><strong>被测试的空间查询特性：</strong></p>
+<h2 id="q12-5">Q12：按到最近 5 栋建筑的平均距离对上车点排序<a class="headerlink" href="#q12-5" title="Permanent link">¶</a></h2>
+<p><strong>实际场景：</strong> 找出最孤立的上车点——距离周边任何建筑都最远的位置——用于覆盖度与服务空白分析。</p>
+<p><code>avg_distance_to_5_nearest</code> 以米为单位，且近邻排序本身依据大地线距离而非平面度数，因此
+“最近的 5 栋建筑”是地面上真正最近的 5 栋。</p>
+<p><strong>所考察的空间查询特性：</strong></p>
 <ol>
-<li>K 近邻（KNN）空间连接</li>
-<li>点和多边形之间的距离计算</li>
-<li>对每个上车点的 k 个最近邻做聚合（求平均）</li>
-<li>对聚合后的每个上车点结果进行排序与限制</li>
+<li>球面上的 K 最近邻空间连接（<code>ST_KNN</code>）</li>
+<li>点到多边形的大地线距离（<code>ST_Distance</code>，米）</li>
+<li>在 KNN 结果上进行聚合</li>
 </ol>
-<div class="highlight"><pre><span></span><code><span class="n">sd</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"""</span>
-<span class="s2">WITH trip_with_geom AS (</span>
-<span class="s2">    SELECT</span>
-<span class="s2">        t_tripkey,</span>
-<span class="s2">        ST_GeomFromWKB(t_pickuploc) as pickup_geom</span>
-<span class="s2">    FROM trip</span>
-<span class="s2">),</span>
-<span class="s2">building_with_geom AS (</span>
-<span class="s2">    SELECT</span>
-<span class="s2">        ST_GeomFromWKB(b_boundary) as boundary_geom</span>
-<span class="s2">    FROM building</span>
-<span class="s2">),</span>
-<span class="s2">knn AS (</span>
-<span class="s2">    SELECT</span>
-<span class="s2">        t.t_tripkey,</span>
-<span class="s2">        ST_Distance(t.pickup_geom, b.boundary_geom) AS distance_to_building</span>
-<span class="s2">    FROM trip_with_geom t</span>
-<span class="s2">    JOIN building_with_geom b</span>
-<span class="s2">        ON ST_KNN(t.pickup_geom, b.boundary_geom, 5, FALSE)</span>
-<span class="s2">)</span>
-<span class="s2">SELECT</span>
-<span class="s2">    t_tripkey,</span>
-<span class="s2">    AVG(distance_to_building) AS avg_distance_to_5_nearest</span>
-<span class="s2">FROM knn</span>
-<span class="s2">GROUP BY t_tripkey</span>
-<span class="s2">ORDER BY avg_distance_to_5_nearest DESC, t_tripkey ASC</span>
-<span class="s2">LIMIT 100 -- Return only the top 100 most-isolated pickups (bounded result set)</span>
-<span class="s2">"""</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
-</code></pre></div>
-<div class="codehilite"><pre><span></span><code>┌───────────┬───────────────────────────┐
-│ t_tripkey ┆ avg_distance_to_5_nearest │
-│   int64   ┆          float64          │
-╞═══════════╪═══════════════════════════╡
-│   1397637 ┆         82.40977530183955 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   4166482 ┆         82.38756120900636 │
-├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   2976679 ┆         82.36270091818895 │
-└───────────┴───────────────────────────┘
+<div class="highlight"><pre><span></span><code><span class="k">WITH</span><span class="w"> </span><span class="n">trip_with_geog</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="k">SELECT</span><span class="w"> </span><span class="n">t_tripkey</span><span class="p">,</span><span class="w"> </span><span class="n">ST_GeogFromWKB</span><span class="p">(</span><span class="n">t_pickuploc</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">pickup_geog</span>
+<span class="w">    </span><span class="k">FROM</span><span class="w"> </span><span class="n">trip</span>
+<span class="p">),</span>
+<span class="n">building_with_geog</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="k">SELECT</span><span class="w"> </span><span class="n">ST_GeogFromWKB</span><span class="p">(</span><span class="n">b_boundary</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">boundary_geog</span>
+<span class="w">    </span><span class="k">FROM</span><span class="w"> </span><span class="n">building</span>
+<span class="p">),</span>
+<span class="n">knn</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="k">SELECT</span>
+<span class="w">        </span><span class="n">t</span><span class="p">.</span><span class="n">t_tripkey</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ST_Distance</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">pickup_geog</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">boundary_geog</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">distance_to_building</span><span class="w"> </span><span class="c1">-- metres</span>
+<span class="w">    </span><span class="k">FROM</span><span class="w"> </span><span class="n">trip_with_geog</span><span class="w"> </span><span class="n">t</span>
+<span class="w">    </span><span class="k">JOIN</span><span class="w"> </span><span class="n">building_with_geog</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">ST_KNN</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">pickup_geog</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">boundary_geog</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="k">TRUE</span><span class="p">)</span><span class="w"> </span><span class="c1">-- TRUE = rank by spherical distance</span>
+<span class="p">)</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">t_tripkey</span><span class="p">,</span>
+<span class="w">    </span><span class="k">AVG</span><span class="p">(</span><span class="n">distance_to_building</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">avg_distance_to_5_nearest</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">knn</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">t_tripkey</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">avg_distance_to_5_nearest</span><span class="w"> </span><span class="k">DESC</span><span class="p">,</span><span class="w"> </span><span class="n">t_tripkey</span><span class="w"> </span><span class="k">ASC</span>
+<span class="k">LIMIT</span><span class="w"> </span><span class="mi">100</span><span class="w"> </span><span class="c1">-- Return only the top 100 most-isolated pickups (bounded result set)</span>
 </code></pre></div>
 
 
