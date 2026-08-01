@@ -135,7 +135,7 @@ jobs:
 
       - name: Setup Python
         if: steps.cache-data.outputs.cache-hit != 'true'
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -242,7 +242,7 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -319,7 +319,7 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -389,7 +389,7 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -464,7 +464,7 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -534,7 +534,7 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -592,7 +592,7 @@ jobs:
         continue-on-error: true
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -649,7 +649,7 @@ jobs:
           merge-multiple: true
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
