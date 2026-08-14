@@ -29,11 +29,11 @@ keywords = ["spatial", "geospatial", "data-generation", "apache-arrow"]
 categories = ["science::geo", "database", "data-structures"]
 
 [dependencies]
-arrow = { version = "56", default-features = false, features = ["prettyprint"] }
+arrow = { version = "58", default-features = false, features = ["prettyprint"] }
 spatialbench = { path = "../spatialbench", version = "0.3.0" }
 geo = { workspace = true }
 geozero = { workspace = true }
 
 [dev-dependencies]
-arrow-csv = "56"
+arrow-csv = "58"
 chrono = "0.4.39"

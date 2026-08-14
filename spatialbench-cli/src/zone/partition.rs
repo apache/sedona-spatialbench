@@ -16,7 +16,7 @@
 // under the License.
 
 use crate::zone::stats::ZoneTableStats;
-use arrow_array::RecordBatch;
+use arrow::array::RecordBatch;
 use datafusion::prelude::*;
 use log::{debug, info};
 

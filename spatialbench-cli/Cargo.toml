@@ -29,8 +29,8 @@ keywords = ["spatial", "geospatial", "benchmark", "cli", "data-generation"]
 categories = ["science::geo", "database", "command-line-utilities", "development-tools"]
 
 [dependencies]
-arrow = "56"
-parquet = "56"
+arrow = "58"
+parquet = "58"
 clap = { version = "4.5.32", features = ["derive"] }
 spatialbench = { path = "../spatialbench", version = "0.3.0"}
 spatialbench-arrow = { path = "../spatialbench-arrow", version = "0.3.0" }
@@ -42,10 +42,8 @@ env_logger = "0.11.7"
 serde = { version = "1.0.219", features = ["derive"] }
 anyhow = "1.0.99"
 serde_yaml = "0.9.33"
-datafusion = "50.2"
-object_store = { version = "0.12.4", features = ["http", "aws"] }
-arrow-array = "56"
-arrow-schema = "56"
+datafusion = "54.1"
+object_store = { version = "0.13.2", features = ["http", "aws"] }
 url = "2.5.7"
 bytes = "1.10.1"
 

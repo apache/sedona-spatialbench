@@ -17,8 +17,7 @@
 
 use crate::s3_writer::S3Writer;
 use anyhow::Result;
-use arrow_array::RecordBatch;
-use arrow_schema::SchemaRef;
+use arrow::{array::RecordBatch, datatypes::SchemaRef};
 use log::{debug, info};
 use parquet::{arrow::ArrowWriter, file::properties::WriterProperties};
 use std::{path::PathBuf, sync::Arc, time::Instant};
@@ -40,7 +39,7 @@ impl ParquetWriter {
 
         let props = WriterProperties::builder()
             .set_compression(args.parquet_compression)
-            .set_max_row_group_size(rows_per_group)
+            .set_max_row_group_row_count(Some(rows_per_group))
             .build();
 
         debug!("Using row group size: {} rows", rows_per_group);
