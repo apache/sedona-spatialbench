@@ -31,7 +31,7 @@
 
 use assert_cmd::Command;
 use object_store::aws::AmazonS3Builder;
-use object_store::ObjectStore;
+use object_store::{ObjectStore, ObjectStoreExt};
 use std::sync::Arc;
 
 /// Build an S3 client pointing at the MinIO instance, using the same env

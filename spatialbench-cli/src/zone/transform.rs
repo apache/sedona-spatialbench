@@ -16,7 +16,7 @@
 // under the License.
 
 use anyhow::Result;
-use arrow_schema::Schema;
+use arrow::datatypes::Schema;
 use datafusion::{prelude::*, sql::TableReference};
 use log::{debug, info};
 

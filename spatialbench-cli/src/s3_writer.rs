@@ -29,7 +29,7 @@ use bytes::Bytes;
 use log::{debug, info};
 use object_store::aws::AmazonS3Builder;
 use object_store::path::Path as ObjectPath;
-use object_store::ObjectStore;
+use object_store::{ObjectStore, ObjectStoreExt};
 use std::io::{self, Write};
 use std::sync::Arc;
 use tokio::sync::mpsc;
