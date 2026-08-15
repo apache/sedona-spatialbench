@@ -96,7 +96,7 @@ This query performs a distance join, followed by an aggregation. It's a great ex
 
 ## Automated Testing
 
-SpatialBench includes an automated benchmark that runs on GitHub Actions to verify that all queries are fully runnable across supported engines (DuckDB, GeoPandas, SedonaDB, and Spatial Polars).
+SpatialBench includes an automated benchmark that runs on GitHub Actions to verify that all queries are fully runnable across supported engines (DuckDB, GeoPandas, PyCanopy, SedonaDB, and Spatial Polars).
 
 Reference answers for every query are committed under [`benchmark/answers/`](https://github.com/apache/sedona-spatialbench/tree/main/benchmark/answers) (scale factor 1), so each engine's output can be verified for correctness — the same answer for the same query, not just that it runs.
 

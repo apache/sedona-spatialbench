@@ -33,10 +33,9 @@ hand-optimized" version of the queries.
 polars, enabling it to work with geospatial data similar to how Geopandas extends pandas.  It is much newer and nowhere
 near as popular/tested as Geopandas, but is capable of computing all of the spatial bench queries, and has been included.
 
-[PyCanopy](https://github.com/pranav-walimbe/PyCanopy) is also not SQL-based. It's a Rust-backed spatial extension for
-Polars with a lazy spatial query planner and dynamic spatial indexing, exposed through a dataframe-native API rather
-than SQL. It is newer and less established than Geopandas, but is capable of computing all of the spatial bench
-queries, and has been included.
+[PyCanopy](https://github.com/pranav-walimbe/PyCanopy) is a Rust-backed spatial query engine for Polars. It provides a
+dataframe-native API, lazy spatial query planning, and dynamic spatial indexing, and supports the complete SpatialBench
+query suite.
 
 We welcome contributions and civil discussions on how to improve the queries and their implementations.
 

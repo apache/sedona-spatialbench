@@ -118,6 +118,7 @@ The automated tests cover:
 
 - 🦆 **DuckDB** - In-process analytical database with spatial extension
 - 🐼 **GeoPandas** - Python geospatial data analysis library
+- 🌴 **[PyCanopy](https://github.com/pranav-walimbe/PyCanopy)** - High-performance spatial query engine for Polars
 - 🌵 **SedonaDB** - High-performance spatial analytics engine
 - 🐻‍❄️ **Spatial Polars** - Geospatial extension for Polars dataframes
 

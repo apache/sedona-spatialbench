@@ -94,7 +94,7 @@ LIMIT 100;
 
 ## 自动化测试
 
-SpatialBench 包含一个在 GitHub Actions 上运行的自动化基准测试，用于验证所有查询能够在受支持的引擎（DuckDB、GeoPandas、SedonaDB 和 Spatial Polars）上完整运行。
+SpatialBench 包含一个在 GitHub Actions 上运行的自动化基准测试，用于验证所有查询能够在受支持的引擎（DuckDB、GeoPandas、PyCanopy、SedonaDB 和 Spatial Polars）上完整运行。
 
 每个查询的参考答案都已提交到 [`benchmark/answers/`](https://github.com/apache/sedona-spatialbench/tree/main/benchmark/answers)（当前为 scale factor 1），因此可以据此验证各引擎输出的正确性——即对于同一查询返回相同的答案，而不仅仅是能够运行。
 

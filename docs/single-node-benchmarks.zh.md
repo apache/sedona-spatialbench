@@ -118,6 +118,7 @@ SedonaDB 在所有类型的查询上均表现均衡，并能有效扩展到 SF 1
 
 - 🦆 **DuckDB** —— 进程内分析型数据库，带有空间扩展
 - 🐼 **GeoPandas** —— Python 地理空间数据分析库
+- 🌴 **[PyCanopy](https://github.com/pranav-walimbe/PyCanopy)** —— 面向 Polars 的高性能空间查询引擎
 - 🌵 **SedonaDB** —— 高性能空间分析引擎
 - 🐻‍❄️ **Spatial Polars** —— Polars 数据帧的地理空间扩展
 
