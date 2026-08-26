@@ -50,13 +50,27 @@ def q1(data_paths: dict[str, str]) -> pl.DataFrame:
 
 def q2(data_paths: dict[str, str]) -> pl.DataFrame:
     """Q2 (PyCanopy): Count trips starting within Coconino County zone."""
-    zone = pl.read_parquet(data_paths["zone"], columns=["z_name", "z_boundary"])
-    target = zone.filter(pl.col("z_name") == "Coconino County").head(1)
-    if target.height == 0:
+    zone_name = "Coconino County"
+    names = (
+        pl.scan_parquet(data_paths["zone"], include_file_paths="_file")
+        .select(["z_name", "_file"])
+        .collect()
+    )
+    hit = names.with_row_index("_row").filter(pl.col("z_name") == zone_name).head(1)
+    if hit.height == 0:
         return pl.DataFrame({"trip_count_in_coconino_county": [0]})
-    poly = shapely.from_wkb(target["z_boundary"].to_numpy())[0]
 
-    trip = pl.read_parquet(data_paths["trip"], columns=["t_pickuploc"])
+    zone_file = hit["_file"][0]
+    # Convert the global row index to its file-local offset
+    local_row = hit["_row"][0] - int((names["_file"] == zone_file).arg_max())
+    zone, trip = pl.collect_all(
+        [
+            pl.scan_parquet(zone_file).select("z_boundary").slice(local_row, 1),
+            pl.scan_parquet(data_paths["trip"]).select("t_pickuploc"),
+        ]
+    )
+    poly = shapely.from_wkb(zone["z_boundary"][0])
+
     sf = pc.SpatialFrame.from_wkb_points(trip, "t_pickuploc")
     idx = sf.engine.points_within_distance_of_polygon(poly, 0.0)
     return pl.DataFrame({"trip_count_in_coconino_county": [len(idx)]})
@@ -99,19 +113,24 @@ def q4(data_paths: dict[str, str]) -> pl.DataFrame:
     """Q4 (PyCanopy): Zone distribution of the top 1000 trips by tip amount."""
     top_n = 1000
 
-    trip = pl.read_parquet(data_paths["trip"], columns=["t_tripkey", "t_tip", "t_pickuploc"])
-
-    top_keys = (
-        trip.select(["t_tripkey", "t_tip"])
-        .sort(["t_tip", "t_tripkey"], descending=[True, False])
-        .head(top_n)
-        .select("t_tripkey")
+    trip_scan = pl.scan_parquet(data_paths["trip"])
+    top, zone = pl.collect_all(
+        [
+            trip_scan.select(["t_tripkey", "t_tip"])
+            .top_k(top_n, by=["t_tip", "t_tripkey"], reverse=[False, True])
+            .select("t_tripkey"),
+            pl.scan_parquet(data_paths["zone"]).select(["z_zonekey", "z_name", "z_boundary"]),
+        ]
     )
-    top = top_keys.join(trip.select(["t_tripkey", "t_pickuploc"]), on="t_tripkey", how="left")
+
+    top = (
+        trip_scan.select(["t_tripkey", "t_pickuploc"])
+        .filter(pl.col("t_tripkey").is_in(top["t_tripkey"].implode()))
+        .collect()
+    )
     qx, qy = pc.wkb_points_to_xy(top["t_pickuploc"])
     query_df = top.select("t_tripkey").with_columns(pl.Series("qx", qx), pl.Series("qy", qy))
 
-    zone = pl.read_parquet(data_paths["zone"], columns=["z_zonekey", "z_name", "z_boundary"])
     sf = pc.SpatialFrame.from_wkb_polygons(zone, "z_boundary")
 
     return (
