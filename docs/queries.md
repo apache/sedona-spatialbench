@@ -253,7 +253,7 @@ This query analyzes the monthly travel patterns of frequent customers by measuri
 
 **Spatial query characteristics tested:**
 
-1. Spatial aggregation (ST_Collect/ARRAY_AGG)
+1. Spatial aggregation (`ST_Collect_Agg`)
 2. Convex hull computation (ST_ConvexHull)
 3. Area calculation on complex geometries
 4. Temporal and customer-based grouping with spatial operations
@@ -266,7 +266,7 @@ SELECT
     c.c_name AS customer_name,
     DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,
     ST_Area(
-        ST_ConvexHull(ST_Collect(ST_GeomFromWKB(t.t_dropoffloc)))
+        ST_ConvexHull(ST_Collect_Agg(ST_GeomFromWKB(t.t_dropoffloc)))
     ) AS monthly_travel_hull_area,
     COUNT(*) as dropoff_count
 FROM trip t
@@ -366,7 +366,7 @@ WITH trip_lengths AS (
                 ST_GeomFromWKB(t.t_pickuploc),
                 ST_GeomFromWKB(t.t_dropoffloc)
             )
-        ) * 111111 AS line_distance_m -- Approx. meters per degree
+        ) / 0.000009 AS line_distance_m -- 1 meter = 0.000009 degree
     FROM trip t
 )
 SELECT

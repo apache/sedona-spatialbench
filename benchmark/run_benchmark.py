@@ -467,11 +467,11 @@ class PyCanopyBenchmark(BaseBenchmark):
 
 def get_sql_queries(dialect: str) -> dict[str, str]:
     """Get SQL queries for a specific dialect from print_queries.py."""
-    from print_queries import DuckDBSpatialBenchBenchmark, SedonaDBSpatialBenchBenchmark
+    from print_queries import DuckDBSpatialBenchBenchmark, SpatialBenchBenchmark
 
     dialects = {
         "duckdb": DuckDBSpatialBenchBenchmark,
-        "sedonadb": SedonaDBSpatialBenchBenchmark,
+        "sedonadb": SpatialBenchBenchmark,
     }
     return dialects[dialect]().queries()
 

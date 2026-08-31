@@ -125,7 +125,7 @@ ORDER BY trip_count DESC, z.z_zonekey ASC
 SELECT
    c.c_custkey, c.c_name AS customer_name,
    DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,
-   ST_Area(ST_ConvexHull(ST_Collect(ARRAY_AGG(ST_GeomFromWKB(t.t_dropoffloc))))) AS monthly_travel_hull_area,
+   ST_Area(ST_ConvexHull(ST_Collect_Agg(ST_GeomFromWKB(t.t_dropoffloc)))) AS monthly_travel_hull_area,
    COUNT(*) as dropoff_count
 FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
 GROUP BY c.c_custkey, c.c_name, pickup_month
@@ -297,7 +297,7 @@ class DatabricksSpatialBenchBenchmark(SpatialBenchBenchmark):
     @staticmethod
     def q5() -> str:
         return """
--- Q5 (Databricks): NO ST_Collect function, using ST_Union_Agg instead. This is more expensive, but should give the same results.
+-- Q5 (Databricks): NO ST_Collect_Agg function, using ST_Union_Agg instead. This is more expensive, but should give the same results.
 SELECT
    c.c_custkey, c.c_name AS customer_name,
    DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,
@@ -377,6 +377,23 @@ class DuckDBSpatialBenchBenchmark(SpatialBenchBenchmark):
         return "DuckDB"
 
     @staticmethod
+    def q5() -> str:
+        return """
+-- Q5 (DuckDB): NO ST_Collect_Agg function. DuckDB spatial's ST_Collect is a scalar over a
+-- GEOMETRY[], so the geometries are gathered with ARRAY_AGG first.
+SELECT
+   c.c_custkey, c.c_name AS customer_name,
+   DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,
+   ST_Area(ST_ConvexHull(ST_Collect(ARRAY_AGG(ST_GeomFromWKB(t.t_dropoffloc))))) AS monthly_travel_hull_area,
+   COUNT(*) as dropoff_count
+FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
+GROUP BY c.c_custkey, c.c_name, pickup_month
+HAVING dropoff_count > 5 -- Only include repeat customers for meaningful hulls
+ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC, pickup_month ASC
+LIMIT 100 -- Return only the top 100 repeat customer-months by travel-hull area (bounded result set)
+               """
+
+    @staticmethod
     def q12() -> str:
         return """
 -- Q12 (DuckDB): No KNN join, using cross join lateral instead.
@@ -398,41 +415,12 @@ LIMIT 100 -- Return only the top 100 most-isolated pickups (bounded result set)
                """
 
 
-class SedonaDBSpatialBenchBenchmark(SpatialBenchBenchmark):
-    """A SedonaDB-specific implementation of the SpatialBench benchmark.
-
-    This class is used to run the SpatialBench benchmark using SedonaDB's spatial functions.
-    It inherits from the SpatialBenchBenchmark class and uses SedonaDB's spatial functions.
-
-    """
-
-    def dialect(self) -> str:
-        """Return the dialect of the benchmark."""
-        return "SedonaDB"
-
-    @staticmethod
-    def q5() -> str:
-        return """
--- Q5 (SedonaDB): SedonaDB uses ST_Collect_Agg (with _Agg suffix) for aggregate functions.
-SELECT
-    c.c_custkey, c.c_name AS customer_name,
-    DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,
-    ST_Area(ST_ConvexHull(ST_Collect_Agg(ST_GeomFromWKB(t.t_dropoffloc)))) AS monthly_travel_hull_area,
-    COUNT(*) as dropoff_count
-FROM trip t JOIN customer c ON t.t_custkey = c.c_custkey
-GROUP BY c.c_custkey, c.c_name, pickup_month
-HAVING dropoff_count > 5 -- Only include repeat customers for meaningful hulls
-ORDER BY monthly_travel_hull_area DESC, c.c_custkey ASC, pickup_month ASC
-LIMIT 100 -- Return only the top 100 repeat customer-months by travel-hull area (bounded result set)
-               """
-
-
 def main():
     query_classes = {
         "SedonaSpark": SpatialBenchBenchmark,
         "Databricks": DatabricksSpatialBenchBenchmark,
         "DuckDB": DuckDBSpatialBenchBenchmark,
-        "SedonaDB": SedonaDBSpatialBenchBenchmark,
+        "SedonaDB": SpatialBenchBenchmark,
         "Geopandas": None,  # Special case, we will catch this below,
         "Spatial Polars": None,  # Special case, we will catch this below,
         "PyCanopy": None,  # Special case, we will catch this below,
