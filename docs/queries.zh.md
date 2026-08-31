@@ -253,7 +253,7 @@ ORDER BY trip_count DESC, z.z_zonekey ASC
 
 **被测试的空间查询特性：**
 
-1. 空间聚合（ST_Collect / ARRAY_AGG）
+1. 空间聚合（ST_Collect_Agg）
 2. 凸包计算（ST_ConvexHull）
 3. 复杂几何上的面积计算
 4. 结合时间和客户维度的分组与空间运算
@@ -266,7 +266,7 @@ SELECT
     c.c_name AS customer_name,
     DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,
     ST_Area(
-        ST_ConvexHull(ST_Collect(ST_GeomFromWKB(t.t_dropoffloc)))
+        ST_ConvexHull(ST_Collect_Agg(ST_GeomFromWKB(t.t_dropoffloc)))
     ) AS monthly_travel_hull_area,
     COUNT(*) as dropoff_count
 FROM trip t
