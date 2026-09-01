@@ -1730,7 +1730,7 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 <p>该查询通过测量常客每月行程所覆盖的地理范围，分析他们的月度出行模式。对于每个在某个月内乘坐超过 5 次行程的客户，它会计算其“出行凸包”的面积——即连接当月所有下车点形成的区域的面积。结果按出行凸包面积降序排列，使出行范围最广的重复客户月份排在最前，并限制为前 100 行。按凸包面积（而非简单的行程计数）排序可确保每个分组都必须计算凸包，因此该限制无法被跳过空间计算的 top-k 优化所规避。</p>
 <p><strong>被测试的空间查询特性：</strong></p>
 <ol>
-<li>空间聚合（ST_Collect / ARRAY_AGG）</li>
+<li>空间聚合（<code>ST_Collect_Agg</code>）</li>
 <li>凸包计算（ST_ConvexHull）</li>
 <li>复杂几何上的面积计算</li>
 <li>结合时间和客户维度的分组与空间运算</li>
@@ -1741,7 +1741,7 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 <span class="s2">    c.c_name AS customer_name,</span>
 <span class="s2">    DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,</span>
 <span class="s2">    ST_Area(</span>
-<span class="s2">        ST_ConvexHull(ST_Collect(ST_GeomFromWKB(t.t_dropoffloc)))</span>
+<span class="s2">        ST_ConvexHull(ST_Collect_Agg(ST_GeomFromWKB(t.t_dropoffloc)))</span>
 <span class="s2">    ) AS monthly_travel_hull_area,</span>
 <span class="s2">    COUNT(*) as dropoff_count</span>
 <span class="s2">FROM trip t</span>
@@ -1829,7 +1829,7 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 <span class="s2">                ST_GeomFromWKB(t.t_pickuploc),</span>
 <span class="s2">                ST_GeomFromWKB(t.t_dropoffloc)</span>
 <span class="s2">            )</span>
-<span class="s2">        ) * 111111 AS line_distance_m -- 每度约对应的米数</span>
+<span class="s2">        ) / 0.000009 AS line_distance_m -- 1 米 = 0.000009 度</span>
 <span class="s2">    FROM trip t</span>
 <span class="s2">)</span>
 <span class="s2">SELECT</span>
@@ -1849,11 +1849,11 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 │ t_tripkey ┆ reported_distance_m ┆   line_distance_m  ┆     detour_ratio     │
 │   int64   ┆      decimal128     ┆       float64      ┆        float64       │
 ╞═══════════╪═════════════════════╪════════════════════╪══════════════════════╡
-│   4688563 ┆             0.00010 ┆ 11111.114941555596 ┆ 8.999996897341038e-9 │
+│   4688563 ┆             0.00010 ┆ 11111.126052681648 ┆  8.99998789734414e-9 │
 ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   2380123 ┆             0.00010 ┆ 11111.114983939786 ┆ 8.999996863009868e-9 │
+│   2380123 ┆             0.00010 ┆ 11111.126095065882 ┆ 8.999987863013003e-9 │
 ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   3077131 ┆             0.00010 ┆ 11111.115027455284 ┆ 8.999996827762339e-9 │
+│   3077131 ┆             0.00010 ┆ 11111.126138581423 ┆  8.99998782776551e-9 │
 └───────────┴─────────────────────┴────────────────────┴──────────────────────┘
 </code></pre></div>
 
@@ -2085,7 +2085,7 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
     <span class="md-icon" title="最后更新">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="2026年8月28日 07:07:33 UTC">2026年8月28日 07:07:33</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="2026年9月1日 05:08:28 UTC">2026年9月1日 05:08:28</span>
   </span>
 
     

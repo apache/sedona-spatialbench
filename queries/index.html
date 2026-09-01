@@ -1728,7 +1728,7 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 <p>This query analyzes the monthly travel patterns of frequent customers by measuring how much geographic area they cover with their trips. For each customer who took more than five trips in a month, it calculates the size of the "travel hull" - the area enclosed by connecting all their dropoff locations that month. Results are ranked by travel-hull area (largest first) so the most geographically spread-out repeat customer-months appear first, and are bounded to the top 100. Ranking by the hull area (rather than a plain trip count) ensures the convex hull is computed for every group, so the bound cannot be satisfied by a top-k shortcut that skips the spatial work.</p>
 <p><strong>Spatial query characteristics tested:</strong></p>
 <ol>
-<li>Spatial aggregation (ST_Collect/ARRAY_AGG)</li>
+<li>Spatial aggregation (<code>ST_Collect_Agg</code>)</li>
 <li>Convex hull computation (ST_ConvexHull)</li>
 <li>Area calculation on complex geometries</li>
 <li>Temporal and customer-based grouping with spatial operations</li>
@@ -1739,7 +1739,7 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 <span class="s2">    c.c_name AS customer_name,</span>
 <span class="s2">    DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,</span>
 <span class="s2">    ST_Area(</span>
-<span class="s2">        ST_ConvexHull(ST_Collect(ST_GeomFromWKB(t.t_dropoffloc)))</span>
+<span class="s2">        ST_ConvexHull(ST_Collect_Agg(ST_GeomFromWKB(t.t_dropoffloc)))</span>
 <span class="s2">    ) AS monthly_travel_hull_area,</span>
 <span class="s2">    COUNT(*) as dropoff_count</span>
 <span class="s2">FROM trip t</span>
@@ -1827,7 +1827,7 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 <span class="s2">                ST_GeomFromWKB(t.t_pickuploc),</span>
 <span class="s2">                ST_GeomFromWKB(t.t_dropoffloc)</span>
 <span class="s2">            )</span>
-<span class="s2">        ) * 111111 AS line_distance_m -- Approx. meters per degree</span>
+<span class="s2">        ) / 0.000009 AS line_distance_m -- 1 meter = 0.000009 degree</span>
 <span class="s2">    FROM trip t</span>
 <span class="s2">)</span>
 <span class="s2">SELECT</span>
@@ -1847,11 +1847,11 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
 │ t_tripkey ┆ reported_distance_m ┆   line_distance_m  ┆     detour_ratio     │
 │   int64   ┆      decimal128     ┆       float64      ┆        float64       │
 ╞═══════════╪═════════════════════╪════════════════════╪══════════════════════╡
-│   4688563 ┆             0.00010 ┆ 11111.114941555596 ┆ 8.999996897341038e-9 │
+│   4688563 ┆             0.00010 ┆ 11111.126052681648 ┆  8.99998789734414e-9 │
 ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   2380123 ┆             0.00010 ┆ 11111.114983939786 ┆ 8.999996863009868e-9 │
+│   2380123 ┆             0.00010 ┆ 11111.126095065882 ┆ 8.999987863013003e-9 │
 ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│   3077131 ┆             0.00010 ┆ 11111.115027455284 ┆ 8.999996827762339e-9 │
+│   3077131 ┆             0.00010 ┆ 11111.126138581423 ┆  8.99998782776551e-9 │
 └───────────┴─────────────────────┴────────────────────┴──────────────────────┘
 </code></pre></div>
 
@@ -2083,7 +2083,7 @@ hf download apache-sedona/spatialbench --repo-type dataset --include "v0.1.0/sf1
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="August 28, 2026 07:07:33 UTC">August 28, 2026 07:07:33</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="September 1, 2026 05:08:28 UTC">September 1, 2026 05:08:28</span>
   </span>
 
     
