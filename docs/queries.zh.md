@@ -253,7 +253,7 @@ ORDER BY trip_count DESC, z.z_zonekey ASC
 
 **被测试的空间查询特性：**
 
-1. 空间聚合（ST_Collect / ARRAY_AGG）
+1. 空间聚合（`ST_Collect_Agg`）
 2. 凸包计算（ST_ConvexHull）
 3. 复杂几何上的面积计算
 4. 结合时间和客户维度的分组与空间运算
@@ -266,7 +266,7 @@ SELECT
     c.c_name AS customer_name,
     DATE_TRUNC('month', t.t_pickuptime) AS pickup_month,
     ST_Area(
-        ST_ConvexHull(ST_Collect(ST_GeomFromWKB(t.t_dropoffloc)))
+        ST_ConvexHull(ST_Collect_Agg(ST_GeomFromWKB(t.t_dropoffloc)))
     ) AS monthly_travel_hull_area,
     COUNT(*) as dropoff_count
 FROM trip t
@@ -366,7 +366,7 @@ WITH trip_lengths AS (
                 ST_GeomFromWKB(t.t_pickuploc),
                 ST_GeomFromWKB(t.t_dropoffloc)
             )
-        ) * 111111 AS line_distance_m -- 每度约对应的米数
+        ) / 0.000009 AS line_distance_m -- 1 米 = 0.000009 度
     FROM trip t
 )
 SELECT
@@ -387,11 +387,11 @@ LIMIT 100 -- Return only the top 100 highest-detour trips (bounded result set)
     │ t_tripkey ┆ reported_distance_m ┆   line_distance_m  ┆     detour_ratio     │
     │   int64   ┆      decimal128     ┆       float64      ┆        float64       │
     ╞═══════════╪═════════════════════╪════════════════════╪══════════════════════╡
-    │   4688563 ┆             0.00010 ┆ 11111.114941555596 ┆ 8.999996897341038e-9 │
+    │   4688563 ┆             0.00010 ┆ 11111.126052681648 ┆  8.99998789734414e-9 │
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │   2380123 ┆             0.00010 ┆ 11111.114983939786 ┆ 8.999996863009868e-9 │
+    │   2380123 ┆             0.00010 ┆ 11111.126095065882 ┆ 8.999987863013003e-9 │
     ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │   3077131 ┆             0.00010 ┆ 11111.115027455284 ┆ 8.999996827762339e-9 │
+    │   3077131 ┆             0.00010 ┆ 11111.126138581423 ┆  8.99998782776551e-9 │
     └───────────┴─────────────────────┴────────────────────┴──────────────────────┘
 
 
