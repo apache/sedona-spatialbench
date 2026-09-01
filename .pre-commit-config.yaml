@@ -112,7 +112,7 @@ repos:
         name: run gitleaks
         description: check for secrets with gitleaks
   - repo: https://github.com/oxipng/oxipng
-    rev: 628e241e23f368097883807fa6e985ccf7c00357 # frozen: v10.1.1
+    rev: 340cd9878d8d8289f09fa101b48a8f5f0b7783f4 # frozen: v10.2.0
     hooks:
       - id: oxipng
         name: run oxipng
