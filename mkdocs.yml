@@ -77,7 +77,7 @@ theme:
   palette:
     primary: custom
     accent: 'green'
-  favicon: image/sedona_logo_symbol.png
+  favicon: image/sedona-logo-symbol.png
   logo: image/logo.svg
   icon:
     logo: fontawesome/solid/earth-americas
