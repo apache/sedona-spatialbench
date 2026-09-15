@@ -17,7 +17,8 @@
 
 use anyhow::Result;
 use arrow::datatypes::Schema;
-use datafusion::{prelude::*, sql::TableReference};
+use datafusion::common::TableReference;
+use datafusion::prelude::*;
 use log::{debug, info};
 
 pub struct ZoneTransformer {
