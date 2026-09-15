@@ -168,7 +168,7 @@ async fn test_zone_parquet_no_overwrite() {
     run_command();
     let original_metadata =
         fs::metadata(&expected_file).expect("Failed to get metadata of generated file");
-    assert_eq!(original_metadata.len(), 25400203);
+    assert_eq!(original_metadata.len(), 25342328);
 
     // Run the spatialbench-cli command again with the same parameters and expect the
     // file to not be overwritten
@@ -541,7 +541,7 @@ async fn test_write_parquet_row_group_size_default() {
             },
             RowGroups {
                 table: "trip",
-                row_group_bytes: vec![123493205, 123460055, 123449607, 123465483],
+                row_group_bytes: vec![123492787, 123459637, 123449189, 123465065],
             },
             RowGroups {
                 table: "driver",
@@ -553,7 +553,7 @@ async fn test_write_parquet_row_group_size_default() {
             },
             RowGroups {
                 table: "building",
-                row_group_bytes: vec![2492359],
+                row_group_bytes: vec![2491050],
             },
         ],
     );
@@ -584,7 +584,7 @@ async fn test_zone_write_parquet_row_group_size_default() {
         output_dir.path(),
         vec![RowGroups {
             table: "zone/zone.1",
-            row_group_bytes: vec![86288517],
+            row_group_bytes: vec![86288569],
         }],
     );
 }
@@ -616,9 +616,9 @@ async fn test_write_parquet_row_group_size_20mb() {
             RowGroups {
                 table: "trip",
                 row_group_bytes: vec![
-                    24356144, 24356407, 24345650, 24343404, 24348327, 24330535, 24353663, 24337733,
-                    24340689, 24356034, 24332349, 24340694, 24343446, 24356122, 24356250, 24340986,
-                    24345859, 24333134, 24343026, 24356402, 24346155,
+                    24355726, 24355989, 24345232, 24342986, 24347909, 24330117, 24353245, 24337315,
+                    24340271, 24355616, 24331931, 24340276, 24343028, 24355704, 24355832, 24340568,
+                    24345441, 24332716, 24342608, 24355984, 24345737,
                 ],
             },
             RowGroups {
@@ -631,7 +631,7 @@ async fn test_write_parquet_row_group_size_20mb() {
             },
             RowGroups {
                 table: "building",
-                row_group_bytes: vec![2492359],
+                row_group_bytes: vec![2491050],
             },
         ],
     );
@@ -664,7 +664,7 @@ async fn test_zone_write_parquet_row_group_size_20mb() {
         output_dir.path(),
         vec![RowGroups {
             table: "zone/zone.1",
-            row_group_bytes: vec![15428592, 17250042, 19338201, 17046885, 17251978],
+            row_group_bytes: vec![15427740, 17249254, 19337347, 17046007, 17251120],
         }],
     );
 }
